@@ -10,9 +10,11 @@ npm-debug.log*
 *.sqlite-journal
 *.db
 server/data/
+# Секретный ключ Admin SDK — НИКОГДА не коммитить
 serviceAccountKey.json
-google-services.json
-GoogleService-Info.plist
+# Примечание: google-services.json и GoogleService-Info.plist — клиентские
+# конфиги Firebase (не секреты, и так попадают в выпущенный app). Коммитятся,
+# чтобы сборка на другой машине (Mac для iOS) работала без доп. настройки.
 
 # Flutter / Dart
 app/.dart_tool/
