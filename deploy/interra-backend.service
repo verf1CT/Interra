@@ -1,0 +1,15 @@
+[Unit]
+Description=ЛК Интерра — backend рассылки push
+After=network.target
+
+[Service]
+Type=simple
+User=interra
+WorkingDirectory=/opt/interra/server
+ExecStart=/usr/bin/node src/index.js
+EnvironmentFile=/opt/interra/server/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
