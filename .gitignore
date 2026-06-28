@@ -1,0 +1,37 @@
+# Node
+node_modules/
+npm-debug.log*
+.env
+.env.*
+!.env.example
+
+# Databases / secrets
+*.sqlite
+*.sqlite-journal
+*.db
+server/data/
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.pub-cache/
+app/.pub/
+app/ios/Pods/
+app/ios/.symlinks/
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+*.keystore
+*.jks
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ЛК Интерра — рассылка уведомлений</title>
+  <style>
+    :root { --accent: #e3000f; --bg: #f4f5f7; --card: #fff; --line: #e2e5ea; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: var(--bg); color: #1c1f24; }
+    header { background: var(--accent); color: #fff; padding: 16px 24px; font-size: 20px; font-weight: 600; }
+    main { max-width: 720px; margin: 24px auto; padding: 0 16px; display: grid; gap: 20px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+    h2 { margin: 0 0 14px; font-size: 16px; }
+    label { display: block; font-size: 13px; color: #525a66; margin: 12px 0 4px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button.secondary { background: #eef0f3; color: #1c1f24; }
+    button:disabled { opacity: .5; cursor: default; }
+    .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 140px; }
+    .muted { color: #8a92a0; font-size: 13px; }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; }
+    .pill.on { background: #e3f7e8; color: #1a7f37; }
+    .pill.off { background: #fde8e8; color: #b42318; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+    .result { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; display: none; }
+    .result.ok { background: #e3f7e8; color: #1a7f37; display: block; }
+    .result.err { background: #fde8e8; color: #b42318; display: block; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header>Интерра · панель рассылки уведомлений</header>
+  <main>
+    <div class="card" id="auth-card">
+      <h2>Вход</h2>
+      <label>Админ-токен</label>
+      <input type="password" id="token" placeholder="ADMIN_TOKEN из .env" />
+      <div class="row" style="margin-top:14px">
+        <button id="login-btn">Войти</button>
+      </div>
+      <div class="result err" id="auth-error"></div>
+    </div>
+
+    <div class="card hidden" id="stats-card">
+      <h2>Состояние <span id="fcm-pill" class="pill"></span></h2>
+      <div id="stats-body" class="muted">Загрузка…</div>
+    </div>
+
+    <div class="card hidden" id="send-card">
+      <h2>Новое уведомление</h2>
+      <label>Кому</label>
+      <div class="row">
+        <select id="target-type">
+          <option value="all">Всем клиентам</option>
+          <option value="segment">По сегменту</option>
+          <option value="login">Конкретному логину</option>
+        </select>
+        <input type="text" id="target-value" class="hidden" placeholder="значение" />
+      </div>
+
+      <label>Заголовок</label>
+      <input type="text" id="title" placeholder="Например: Скоро завершится тариф" />
+
+      <label>Текст</label>
+      <textarea id="body" placeholder="Текст уведомления"></textarea>
+
+      <div class="row" style="margin-top:16px">
+        <button id="send-btn">Отправить</button>
+        <button class="secondary" id="refresh-btn" style="flex:0 0 auto">Обновить статистику</button>
+      </div>
+      <div class="result" id="send-result"></div>
+    </div>
+
+    <div class="card hidden" id="history-card">
+      <h2>Последние рассылки</h2>
+      <div id="history-body" class="muted">—</div>
+    </div>
+  </main>
+
+  <script>
+    let token = '';
+    const $ = (id) => document.getElementById(id);
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(opts.headers || {}) },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      return data;
+    }
+
+    $('login-btn').onclick = async () => {
+      token = $('token').value.trim();
+      $('auth-error').classList.remove('err');
+      try {
+        await loadStats();
+        $('auth-card').classList.add('hidden');
+        ['stats-card', 'send-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
+      } catch (e) {
+        $('auth-error').textContent = e.message;
+        $('auth-error').classList.add('err');
+      }
+    };
+
+    $('target-type').onchange = (e) => {
+      const v = $('target-value');
+      if (e.target.value === 'all') { v.classList.add('hidden'); }
+      else {
+        v.classList.remove('hidden');
+        v.placeholder = e.target.value === 'login' ? 'логин клиента в UTM5' : 'название сегмента';
+      }
+    };
+
+    async function loadStats() {
+      const s = await api('/api/admin/stats');
+      const pill = $('fcm-pill');
+      pill.textContent = s.fcmEnabled ? 'push включён' : 'push выключен (dry-run)';
+      pill.className = 'pill ' + (s.fcmEnabled ? 'on' : 'off');
+
+      const byPlatform = (s.devices.byPlatform || [])
+        .map((p) => `${p.platform || '—'}: ${p.n}`).join(', ') || '—';
+      $('stats-body').innerHTML =
+        `Устройств всего: <b>${s.devices.total}</b><br>` +
+        `С привязанным логином: <b>${s.devices.withLogin}</b><br>` +
+        `По платформам: ${byPlatform}`;
+
+      const rows = (s.broadcasts || []).map((b) =>
+        `<tr><td>${b.created_at}</td><td>${escapeHtml(b.title)}</td>` +
+        `<td>${b.target_type}${b.target_value ? ':' + escapeHtml(b.target_value) : ''}</td>` +
+        `<td>${b.success_count}/${b.recipients}</td></tr>`).join('');
+      $('history-body').innerHTML = rows
+        ? `<table><tr><th>Когда</th><th>Заголовок</th><th>Кому</th><th>Доставлено</th></tr>${rows}</table>`
+        : 'Пока рассылок не было.';
+    }
+
+    $('refresh-btn').onclick = () => loadStats().catch((e) => alert(e.message));
+
+    $('send-btn').onclick = async () => {
+      const type = $('target-type').value;
+      const target = { type };
+      if (type !== 'all') target.value = $('target-value').value.trim();
+      const payload = { title: $('title').value.trim(), body: $('body').value.trim(), target };
+
+      const result = $('send-result');
+      result.className = 'result';
+      $('send-btn').disabled = true;
+      try {
+        const r = await api('/api/admin/broadcast', { method: 'POST', body: JSON.stringify(payload) });
+        result.textContent = `Отправлено: ${r.successCount}/${r.recipients}` +
+          (r.failureCount ? `, ошибок: ${r.failureCount}` : '') +
+          (r.note ? ` (${r.note})` : '');
+        result.className = 'result ok';
+        $('title').value = ''; $('body').value = '';
+        loadStats();
+      } catch (e) {
+        result.textContent = e.message;
+        result.className = 'result err';
+      } finally {
+        $('send-btn').disabled = false;
+      }
+    };
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+  </script>
+</body>
+</html>
