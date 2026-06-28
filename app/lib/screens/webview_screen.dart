@@ -32,7 +32,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(AppConfig.portalUrl));
+      // Грузим сразу страницу формы входа UTM5 (а не frameset корня),
+      // чтобы поля user/pass были доступны для авто-логина.
+      ..loadRequest(Uri.parse(AppConfig.loginUrl));
   }
 
   /// Если на странице есть форма входа UTM5 (поля user/pass) и сохранены
@@ -44,14 +46,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
     final login = jsonEncode(creds.login);
     final password = jsonEncode(creds.password);
+    // Форма может лежать в верхнем документе или внутри фрейма (UTM5 — frames),
+    // поэтому пробуем и document, и все одно-доменные фреймы.
     final js = '''
       (function(){
-        var u=document.querySelector("input[name='user']");
-        var p=document.querySelector("input[name='pass']");
-        if(u&&p){
-          u.value=$login; p.value=$password;
-          if(u.form){ u.form.submit(); }
-          return 'submitted';
+        function fill(doc){
+          try{
+            var u=doc.querySelector("input[name='user']");
+            var p=doc.querySelector("input[name='pass']");
+            if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
+          }catch(e){}
+          return false;
+        }
+        if(fill(document)) return 'submitted';
+        for(var i=0;i<window.frames.length;i++){
+          if(fill(window.frames[i].document)) return 'submitted';
         }
         return 'no-form';
       })();
