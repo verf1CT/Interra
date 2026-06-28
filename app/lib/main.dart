@@ -8,23 +8,27 @@ import 'screens/webview_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  bool firebaseReady = false;
+  bool hasCreds = false;
   try {
-    await Firebase.initializeApp();
-    firebaseReady = true;
+    hasCreds = await AuthStore().hasCredentials;
   } catch (e) {
-    debugPrint('Firebase не инициализирован (это нормально без конфигурации): $e');
+    debugPrint('Чтение учётных данных не удалось: $e');
   }
 
-  final hasCreds = await AuthStore().hasCredentials;
-
-  // Интерфейс показываем СРАЗУ — не ждём пуши.
+  // Интерфейс показываем ПЕРВЫМ ДЕЛОМ — ничто не должно блокировать первый кадр.
   runApp(InterraApp(loggedIn: hasCreds));
 
-  // Push-инициализация в фоне: не блокирует UI и безопасна без APNs/бэкенда
-  // (на iOS без APNs getToken может висеть/падать — это нормально).
-  if (firebaseReady) {
-    PushService.init();
+  // Firebase и push — полностью в фоне и с таймаутом, чтобы инициализация
+  // (особенно на iOS без APNs) никогда не подвешивала запуск приложения.
+  _initFirebaseAndPush();
+}
+
+Future<void> _initFirebaseAndPush() async {
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
+    await PushService.init();
+  } catch (e) {
+    debugPrint('Firebase/push не инициализированы (ок без конфигурации): $e');
   }
 }
 
