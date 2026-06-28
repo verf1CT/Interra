@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Push-уведомления'),
             subtitle: const Text('Баланс, тариф, статусы заявок'),
             value: _notifications,
-            activeColor: const Color(0xFFE3000F),
+            activeThumbColor: const Color(0xFFE3000F),
             onChanged: _toggleNotifications,
           ),
           const Divider(height: 1),
