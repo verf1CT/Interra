@@ -9,18 +9,24 @@ import 'screens/webview_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Push-инициализация необязательна: если Firebase не сконфигурирован
-  // (нет google-services.json / firebase_options.dart), приложение всё равно
-  // запускается — WebView и авто-логин работают, push включится после настройки.
+  bool firebaseReady = false;
   try {
     await Firebase.initializeApp();
-    await PushService.init();
+    firebaseReady = true;
   } catch (e) {
-    debugPrint('Firebase/push не инициализирован (это нормально без конфигурации): $e');
+    debugPrint('Firebase не инициализирован (это нормально без конфигурации): $e');
   }
 
   final hasCreds = await AuthStore().hasCredentials;
+
+  // Интерфейс показываем СРАЗУ — не ждём пуши.
   runApp(InterraApp(loggedIn: hasCreds));
+
+  // Push-инициализация в фоне: не блокирует UI и безопасна без APNs/бэкенда
+  // (на iOS без APNs getToken может висеть/падать — это нормально).
+  if (firebaseReady) {
+    PushService.init();
+  }
 }
 
 class InterraApp extends StatelessWidget {
