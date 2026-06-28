@@ -30,6 +30,7 @@ app/android/key.properties
 *.jks
 
 # IDE / OS
+.claude/
 .idea/
 .vscode/
 *.iml
