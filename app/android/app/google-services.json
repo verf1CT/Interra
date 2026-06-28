@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "751218573361",
+    "project_id": "interra-5a99e",
+    "storage_bucket": "interra-5a99e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:751218573361:android:c5a04229ce1aa0dfc29510",
+        "android_client_info": {
+          "package_name": "ru.interra.lk_interra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2jFzkzRp1xiWG8ffL0wUggP6tmlINswY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -30,18 +30,18 @@ flutter pub get
 > Кириллица в пути на macOS не мешает сборке (проблема была только на Windows),
 > так что класть проект можно куда угодно.
 
-## 3. Подключить Firebase для iOS
+## 3. Firebase для iOS — уже почти готово
 
-Тот же Firebase-проект, что и у бэкенда/Android. Проще всего:
+iOS-приложение **уже зарегистрировано** в Firebase-проекте `interra-5a99e`
+(bundle id `ru.interra.lkInterra`), а файл `ios/Runner/GoogleService-Info.plist`
+**уже лежит в репозитории**. Нужно только подключить его к Xcode-проекту:
 
-```bash
-dart pub global activate flutterfire_cli
-flutterfire configure
-```
+- Открыть `ios/Runner.xcworkspace` в Xcode (шаг 4),
+- перетащить `Runner/GoogleService-Info.plist` в группу **Runner** в дереве слева,
+- в диалоге снять «Copy items if needed» (файл уже на месте), отметить target **Runner**.
 
-Команда добавит `ios/Runner/GoogleService-Info.plist` и обновит
-`lib/firebase_options.dart`. В Firebase Console заранее добавьте iOS-приложение
-с bundle id `ru.interra.lkInterra` (см. шаг 4).
+> Альтернатива: `dart pub global activate flutterfire_cli && flutterfire configure`
+> — подхватит существующее iOS-приложение и пропишет всё само (нужен вход в Firebase CLI).
 
 ## 4. Подпись и Bundle ID (Xcode)
 
