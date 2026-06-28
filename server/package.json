@@ -1,0 +1,20 @@
+{
+  "name": "interra-server",
+  "version": "0.1.0",
+  "description": "Бэкенд ЛК Интерра: регистрация устройств и рассылка push-уведомлений",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.5.0"
+  }
+}
