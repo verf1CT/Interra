@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/auth_store.dart';
@@ -7,8 +8,16 @@ import 'screens/webview_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await PushService.init();
+
+  // Push-инициализация необязательна: если Firebase не сконфигурирован
+  // (нет google-services.json / firebase_options.dart), приложение всё равно
+  // запускается — WebView и авто-логин работают, push включится после настройки.
+  try {
+    await Firebase.initializeApp();
+    await PushService.init();
+  } catch (e) {
+    debugPrint('Firebase/push не инициализирован (это нормально без конфигурации): $e');
+  }
 
   final hasCreds = await AuthStore().hasCredentials;
   runApp(InterraApp(loggedIn: hasCreds));
