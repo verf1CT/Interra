@@ -1,0 +1,50 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:http/http.dart' as http;
+import '../config.dart';
+
+/// Клиент нашего бэкенда (server/): регистрация устройства для push-рассылок.
+class ApiClient {
+  /// Привязывает push-токен к устройству и (опционально) к логину абонента.
+  static Future<bool> registerDevice({
+    required String token,
+    String? clientLogin,
+    List<String>? segments,
+    Map<String, dynamic>? prefs,
+  }) async {
+    final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/register');
+    try {
+      final res = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'token': token,
+              'clientLogin': clientLogin,
+              'platform': Platform.isIOS ? 'ios' : 'android',
+              'appVersion': AppConfig.appVersion,
+              if (segments != null) 'segments': segments,
+              if (prefs != null) 'prefs': prefs,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode == 200;
+    } catch (_) {
+      // Сеть недоступна — не критично, попробуем при следующем запуске.
+      return false;
+    }
+  }
+
+  static Future<void> unregisterDevice(String token) async {
+    final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/unregister');
+    try {
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'token': token}),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {}
+  }
+}
