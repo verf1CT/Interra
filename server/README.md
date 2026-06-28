@@ -49,6 +49,25 @@ npm start
 
 `target.type`: `all` (всем), `segment` (по тегу), `login` (конкретный логин UTM5).
 
+## Деплой (Docker)
+
+```bash
+cd server
+docker build -t interra-backend .
+docker run -d --name interra-backend -p 8080:8080 \
+  -e ADMIN_TOKEN="длинная-случайная-строка" \
+  -e FIREBASE_SERVICE_ACCOUNT=/run/secrets/sa.json \
+  -v /opt/interra/serviceAccountKey.json:/run/secrets/sa.json:ro \
+  -v interra-data:/data \
+  interra-backend
+```
+
+- `serviceAccountKey.json` НЕ зашит в образ — подключается томом во время запуска.
+- БД лежит в томе `/data` и переживает перезапуски.
+- Поставьте перед сервисом обратный прокси (Caddy/Nginx) с HTTPS — приложению
+  нужен `https://`-адрес. Этот адрес затем прописывается в `app/lib/config.dart`
+  (`backendBaseUrl`).
+
 ## Дальнейшие шаги
 
 - Автоматические уведомления о скором завершении тарифа и статусах заявок:
