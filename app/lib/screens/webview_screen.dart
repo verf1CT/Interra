@@ -17,31 +17,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _loading = true;
 
-  // Один логин-цикл за сессию навигации, чтобы не зациклиться:
   bool _loginNavDone = false; // уже переходили на форму входа
   bool _fillDone = false; // уже подставили логин/пароль
   bool _busy = false; // защита от параллельных обработок
-  String? _sid; // текущий идентификатор сессии UTM5 (из URL кабинета)
+  String? _sessionToken; // токен сессии UTM5 (параметр login в URL кабинета)
   String _currentUrl = ''; // текущий адрес (диагностика)
 
-  // Достаёт sid из ссылок кабинета (UTM5 держит сессию в URL, не в куках).
-  static const String _sidJs = '''
-    (function(){
-      function find(doc){
-        try{
-          var ls=doc.querySelectorAll("a[href*='sid=']");
-          for(var i=0;i<ls.length;i++){ var m=(''+ls[i].href).match(/[?&]sid=([^&]+)/); if(m) return m[1]; }
-        }catch(e){}
-        return '';
-      }
-      var s=find(document); if(s) return s;
-      for(var i=0;i<window.frames.length;i++){ var f=find(window.frames[i].document); if(f) return f; }
-      return '';
-    })();
-  ''';
-
-  // Определяем состояние страницы UTM5: форма входа / промежуточная страница
-  // со ссылкой «вход по паролю» / прочее (кабинет). Учитываем фреймы.
+  // Состояние страницы UTM5: форма входа / промежуточная «вход по паролю» / прочее.
   static const String _detectJs = '''
     (function(){
       function q(doc,sel){ try{ return doc.querySelector(sel); }catch(e){ return null; } }
@@ -56,6 +38,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
     })();
   ''';
 
+  /// Сессионный токен передаётся в параметре login (непустой) на адресах кабинета.
+  String? _tokenFromUrl(String url) {
+    final m = RegExp(r'[?&]login=([^&]+)').firstMatch(url);
+    final v = m?.group(1);
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  void _captureToken(String url) {
+    final t = _tokenFromUrl(url);
+    if (t != null && t != _sessionToken) {
+      _sessionToken = t;
+      AuthStore().saveSession(t);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,7 +63,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
           onPageStarted: (_) => setState(() => _loading = true),
           onUrlChange: (change) {
             final u = change.url;
-            if (u != null) setState(() => _currentUrl = u);
+            if (u != null) {
+              setState(() => _currentUrl = u);
+              _captureToken(u);
+            }
           },
           onPageFinished: (url) async {
             setState(() {
@@ -76,16 +76,22 @@ class _WebViewScreenState extends State<WebViewScreen> {
             await _handlePage();
           },
         ),
-      )
-      // Грузим сам кабинет: если сессия в куках жива — откроется сразу,
-      // без повторного входа (и без страницы подтверждения телефона).
-      ..loadRequest(Uri.parse(AppConfig.portalUrl));
+      );
+    _loadInitial();
   }
 
-  /// Логика авто-логина: подставляем учётные данные только когда реально
-  /// видим форму входа; на промежуточной странице — переходим к форме.
-  /// Фреймы UTM5 догружаются после основного документа, поэтому опрашиваем
-  /// состояние несколько раз.
+  /// Старт: пробуем сохранённый токен (вход без 2FA, если сессия жива),
+  /// иначе грузим корень и идём через авто-логин.
+  Future<void> _loadInitial() async {
+    final token = await AuthStore().readSession();
+    if (token != null && token.isNotEmpty) {
+      _sessionToken = token;
+      await _controller.loadRequest(Uri.parse(AppConfig.cabinetUrl(token)));
+    } else {
+      await _controller.loadRequest(Uri.parse(AppConfig.portalUrl));
+    }
+  }
+
   Future<void> _handlePage() async {
     if (_busy) return;
     _busy = true;
@@ -93,6 +99,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       final creds = await AuthStore().read();
       if (creds == null) return;
 
+      // Фреймы UTM5 догружаются после основного документа — опрашиваем.
       for (var attempt = 0; attempt < 6; attempt++) {
         final state =
             (await _controller.runJavaScriptReturningResult(_detectJs)).toString();
@@ -107,23 +114,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
           return;
         }
         if (state.contains('needlogin')) {
-          // Сессии нет — переходим прямо к форме входа (один раз).
           if (!_loginNavDone) {
             _loginNavDone = true;
             await _controller.loadRequest(Uri.parse(AppConfig.loginUrl));
           }
           return;
         }
-        // 'other': если это кабинет — запоминаем sid и выходим.
-        final sid = (await _controller.runJavaScriptReturningResult(_sidJs))
-            .toString()
-            .replaceAll('"', '')
-            .trim();
-        if (sid.isNotEmpty) {
-          _sid = sid;
+
+        // 'other': если это страница кабинета (в URL есть токен) — запоминаем.
+        final cur = await _controller.currentUrl() ?? _currentUrl;
+        if (_tokenFromUrl(cur) != null) {
+          _captureToken(cur);
           return;
         }
-        // sid не нашли — возможно, фрейм ещё грузится; ждём и пробуем снова.
+        // Иначе, возможно, фрейм/редирект ещё в процессе — ждём.
         await Future.delayed(const Duration(milliseconds: 500));
       }
     } finally {
@@ -154,11 +158,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Future<void> _goHome() async {
     _loginNavDone = false;
     _fillDone = false;
-    // Возврат в кабинет с текущим sid (сессия в URL). Если sid ещё нет —
-    // грузим корень, и авто-логин отработает заново.
-    final sid = _sid;
-    final url =
-        sid != null ? '${AppConfig.cabinetBase}?sid=$sid' : AppConfig.portalUrl;
+    final t = _sessionToken;
+    final url = t != null ? AppConfig.cabinetUrl(t) : AppConfig.portalUrl;
     await _controller.loadRequest(Uri.parse(url));
   }
 
