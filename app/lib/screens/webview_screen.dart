@@ -22,6 +22,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _fillDone = false; // уже подставили логин/пароль
   bool _busy = false; // защита от параллельных обработок
   String? _sid; // текущий идентификатор сессии UTM5 (из URL кабинета)
+  String _currentUrl = ''; // текущий адрес (диагностика)
 
   // Достаёт sid из ссылок кабинета (UTM5 держит сессию в URL, не в куках).
   static const String _sidJs = '''
@@ -63,8 +64,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) => setState(() => _loading = true),
+          onUrlChange: (change) {
+            final u = change.url;
+            if (u != null) setState(() => _currentUrl = u);
+          },
           onPageFinished: (url) async {
-            setState(() => _loading = false);
+            setState(() {
+              _loading = false;
+              _currentUrl = url;
+            });
             await _handlePage();
           },
         ),
@@ -201,31 +209,47 @@ class _WebViewScreenState extends State<WebViewScreen> {
               ),
           ],
         ),
-        bottomNavigationBar: BottomAppBar(
-          height: 56,
-          padding: EdgeInsets.zero,
-          color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Назад',
-                onPressed: _goBack,
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Диагностическая строка с текущим адресом (временно).
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFF2F2F2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              child: SelectableText(
+                _currentUrl,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 10, color: Colors.black54),
               ),
-              IconButton(
-                icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
-                iconSize: 30,
-                tooltip: 'Главная',
-                onPressed: _goHome,
+            ),
+            BottomAppBar(
+              height: 52,
+              padding: EdgeInsets.zero,
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    tooltip: 'Назад',
+                    onPressed: _goBack,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
+                    iconSize: 30,
+                    tooltip: 'Главная',
+                    onPressed: _goHome,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Обновить',
+                    onPressed: _reload,
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Обновить',
-                onPressed: _reload,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
