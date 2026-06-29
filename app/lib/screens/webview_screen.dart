@@ -20,6 +20,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   // Один логин-цикл за сессию навигации, чтобы не зациклиться:
   bool _loginNavDone = false; // уже переходили на форму входа
   bool _fillDone = false; // уже подставили логин/пароль
+  bool _busy = false; // защита от параллельных обработок
 
   // Определяем состояние страницы UTM5: форма входа / промежуточная страница
   // со ссылкой «вход по паролю» / прочее (кабинет). Учитываем фреймы.
@@ -58,40 +59,62 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   /// Логика авто-логина: подставляем учётные данные только когда реально
   /// видим форму входа; на промежуточной странице — переходим к форме.
+  /// Фреймы UTM5 догружаются после основного документа, поэтому опрашиваем
+  /// состояние несколько раз.
   Future<void> _handlePage() async {
-    final creds = await AuthStore().read();
-    if (creds == null) return;
+    if (_busy) return;
+    _busy = true;
+    try {
+      final creds = await AuthStore().read();
+      if (creds == null) return;
 
-    final state = (await _controller.runJavaScriptReturningResult(_detectJs)).toString();
+      for (var attempt = 0; attempt < 6; attempt++) {
+        final state =
+            (await _controller.runJavaScriptReturningResult(_detectJs)).toString();
 
-    if (state.contains('form')) {
-      if (_fillDone) return;
-      final login = jsonEncode(creds.login);
-      final password = jsonEncode(creds.password);
-      final fillJs = '''
-        (function(){
-          function fill(doc){
-            try{
-              var u=doc.querySelector("input[name='user']");
-              var p=doc.querySelector("input[name='pass']");
-              if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
-            }catch(e){}
-            return false;
+        if (state.contains('form')) {
+          if (!_fillDone) {
+            final res =
+                (await _controller.runJavaScriptReturningResult(_fillJs(creds)))
+                    .toString();
+            if (res.contains('submitted')) _fillDone = true;
           }
-          if(fill(document)) return 'submitted';
-          for(var i=0;i<window.frames.length;i++){ if(fill(window.frames[i].document)) return 'submitted'; }
-          return 'no-form';
-        })();
-      ''';
-      final res = (await _controller.runJavaScriptReturningResult(fillJs)).toString();
-      if (res.contains('submitted')) _fillDone = true;
-    } else if (state.contains('needlogin')) {
-      // Сессии нет — переходим прямо к форме входа (один раз).
-      if (_loginNavDone) return;
-      _loginNavDone = true;
-      await _controller.loadRequest(Uri.parse(AppConfig.loginUrl));
+          return;
+        }
+        if (state.contains('needlogin')) {
+          // Сессии нет — переходим прямо к форме входа (один раз).
+          if (!_loginNavDone) {
+            _loginNavDone = true;
+            await _controller.loadRequest(Uri.parse(AppConfig.loginUrl));
+          }
+          return;
+        }
+        // 'other' — возможно, фрейм ещё грузится; ждём и пробуем снова.
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    } finally {
+      _busy = false;
     }
-    // 'other' (кабинет) — ничего не делаем.
+  }
+
+  String _fillJs(({String login, String password}) creds) {
+    final login = jsonEncode(creds.login);
+    final password = jsonEncode(creds.password);
+    return '''
+      (function(){
+        function fill(doc){
+          try{
+            var u=doc.querySelector("input[name='user']");
+            var p=doc.querySelector("input[name='pass']");
+            if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
+          }catch(e){}
+          return false;
+        }
+        if(fill(document)) return 'submitted';
+        for(var i=0;i<window.frames.length;i++){ if(fill(window.frames[i].document)) return 'submitted'; }
+        return 'no-form';
+      })();
+    ''';
   }
 
   Future<void> _goHome() async {
