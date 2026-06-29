@@ -21,6 +21,23 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _loginNavDone = false; // уже переходили на форму входа
   bool _fillDone = false; // уже подставили логин/пароль
   bool _busy = false; // защита от параллельных обработок
+  String? _sid; // текущий идентификатор сессии UTM5 (из URL кабинета)
+
+  // Достаёт sid из ссылок кабинета (UTM5 держит сессию в URL, не в куках).
+  static const String _sidJs = '''
+    (function(){
+      function find(doc){
+        try{
+          var ls=doc.querySelectorAll("a[href*='sid=']");
+          for(var i=0;i<ls.length;i++){ var m=(''+ls[i].href).match(/[?&]sid=([^&]+)/); if(m) return m[1]; }
+        }catch(e){}
+        return '';
+      }
+      var s=find(document); if(s) return s;
+      for(var i=0;i<window.frames.length;i++){ var f=find(window.frames[i].document); if(f) return f; }
+      return '';
+    })();
+  ''';
 
   // Определяем состояние страницы UTM5: форма входа / промежуточная страница
   // со ссылкой «вход по паролю» / прочее (кабинет). Учитываем фреймы.
@@ -89,7 +106,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
           }
           return;
         }
-        // 'other' — возможно, фрейм ещё грузится; ждём и пробуем снова.
+        // 'other': если это кабинет — запоминаем sid и выходим.
+        final sid = (await _controller.runJavaScriptReturningResult(_sidJs))
+            .toString()
+            .replaceAll('"', '')
+            .trim();
+        if (sid.isNotEmpty) {
+          _sid = sid;
+          return;
+        }
+        // sid не нашли — возможно, фрейм ещё грузится; ждём и пробуем снова.
         await Future.delayed(const Duration(milliseconds: 500));
       }
     } finally {
@@ -120,7 +146,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
   Future<void> _goHome() async {
     _loginNavDone = false;
     _fillDone = false;
-    await _controller.loadRequest(Uri.parse(AppConfig.portalUrl));
+    // Возврат в кабинет с текущим sid (сессия в URL). Если sid ещё нет —
+    // грузим корень, и авто-логин отработает заново.
+    final sid = _sid;
+    final url =
+        sid != null ? '${AppConfig.cabinetBase}?sid=$sid' : AppConfig.portalUrl;
+    await _controller.loadRequest(Uri.parse(url));
   }
 
   Future<void> _reload() async {
