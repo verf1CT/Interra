@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: .
+    container_name: interra-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DB_PATH=/data/interra.sqlite
+      - FIREBASE_SERVICE_ACCOUNT=/run/secrets/serviceAccountKey.json
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+    volumes:
+      - ./serviceAccountKey.json:/run/secrets/serviceAccountKey.json:ro
+      - interra-data:/data
+
+volumes:
+  interra-data:

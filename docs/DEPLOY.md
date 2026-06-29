@@ -12,6 +12,28 @@
 
 ---
 
+## Самый простой путь — Docker одной командой
+
+Если на сервере есть Docker:
+
+```bash
+git clone https://github.com/verf1CT/Interra.git /opt/interra
+cd /opt/interra/server
+# положить сюда ключ Firebase Admin SDK:
+#   /opt/interra/server/serviceAccountKey.json
+bash deploy.sh
+```
+
+`deploy.sh` сам создаст `.env` со случайным `ADMIN_TOKEN`, соберёт образ,
+поднимет контейнер и проверит `/health`. БД хранится в docker-томе `interra-data`.
+
+Останется только настроить DNS (шаг 1) и HTTPS-прокси (шаг 5).
+Обновление: `cd /opt/interra && git pull && cd server && docker compose up -d --build`.
+
+Ниже — полный путь без Docker (systemd + nginx), если Docker не используется.
+
+---
+
 ## 1. DNS
 Добавить A-запись: `push.interra.ru` → IP сервера, где будет крутиться backend.
 
