@@ -210,47 +210,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
               ),
           ],
         ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Диагностическая строка с текущим адресом (временно).
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFF2F2F2),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              child: SelectableText(
-                _currentUrl,
-                maxLines: 1,
-                style: const TextStyle(fontSize: 10, color: Colors.black54),
+        bottomNavigationBar: BottomAppBar(
+          height: 56,
+          padding: EdgeInsets.zero,
+          color: Colors.white,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Назад',
+                onPressed: _goBack,
               ),
-            ),
-            BottomAppBar(
-              height: 52,
-              padding: EdgeInsets.zero,
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Назад',
-                    onPressed: _goBack,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
-                    iconSize: 30,
-                    tooltip: 'Главная',
-                    onPressed: _goHome,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Обновить',
-                    onPressed: _reload,
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
+                iconSize: 30,
+                tooltip: 'Главная',
+                onPressed: _goHome,
               ),
-            ),
-          ],
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Обновить',
+                onPressed: _reload,
+              ),
+            ],
+          ),
         ),
       ),
     );
