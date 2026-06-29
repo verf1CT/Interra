@@ -20,6 +20,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _loginNavDone = false; // уже переходили на форму входа
   bool _fillDone = false; // уже подставили логин/пароль
   bool _busy = false; // защита от параллельных обработок
+  bool _firstLoaded = false; // первая страница загрузилась
   String? _sessionToken; // токен сессии UTM5 (параметр login в URL кабинета)
   String _currentUrl = ''; // текущий адрес (диагностика)
 
@@ -71,6 +72,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           onPageFinished: (url) async {
             setState(() {
               _loading = false;
+              _firstLoaded = true;
               _currentUrl = url;
             });
             await _handlePage();
@@ -203,37 +205,80 @@ class _WebViewScreenState extends State<WebViewScreen> {
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_loading)
+            if (_loading && _firstLoaded)
               const LinearProgressIndicator(
                 color: Color(0xFFE3000F),
                 backgroundColor: Colors.transparent,
               ),
+            // Брендовая заставка на первую загрузку кабинета.
+            if (!_firstLoaded)
+              Container(
+                color: const Color(0xFFF6F7F9),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF3B30), Color(0xFFE3000F)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.wifi_rounded,
+                          color: Colors.white, size: 38),
+                    ),
+                    const SizedBox(height: 22),
+                    const SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                          color: Color(0xFFE3000F), strokeWidth: 2.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Загрузка кабинета…',
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
           ],
         ),
         bottomNavigationBar: BottomAppBar(
-          height: 56,
+          height: 58,
           padding: EdgeInsets.zero,
           color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Назад',
-                onPressed: _goBack,
-              ),
-              IconButton(
-                icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
-                iconSize: 30,
-                tooltip: 'Главная',
-                onPressed: _goHome,
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Обновить',
-                onPressed: _reload,
-              ),
-            ],
+          child: Container(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFE9EBEF))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 22),
+                  color: Colors.grey.shade700,
+                  tooltip: 'Назад',
+                  onPressed: _goBack,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.home_rounded,
+                      color: Color(0xFFE3000F)),
+                  iconSize: 32,
+                  tooltip: 'Главная',
+                  onPressed: _goHome,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 24),
+                  color: Colors.grey.shade700,
+                  tooltip: 'Обновить',
+                  onPressed: _reload,
+                ),
+              ],
+            ),
           ),
         ),
       ),

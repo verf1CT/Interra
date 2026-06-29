@@ -5,8 +5,9 @@ import '../services/auth_store.dart';
 import '../services/api_client.dart';
 import 'login_screen.dart';
 
-/// Экран настроек: показывает текущий логин, переключатель уведомлений,
-/// порог низкого баланса и выход из аккаунта.
+const Color _brand = Color(0xFFE3000F);
+
+/// Экран настроек: аккаунт, уведомления, выход.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -60,37 +61,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final initial =
+        (_login != null && _login!.isNotEmpty) ? _login![0].toUpperCase() : '?';
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Настройки'),
-        backgroundColor: const Color(0xFFE3000F),
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Логин'),
-            subtitle: Text(_login ?? '—'),
+          // Карточка аккаунта
+          _card(
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: _brand,
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _login ?? '—',
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text('Абонент Интерры',
+                        style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications),
-            title: const Text('Push-уведомления'),
-            subtitle: const Text('Баланс, тариф, статусы заявок'),
-            value: _notifications,
-            activeThumbColor: const Color(0xFFE3000F),
-            onChanged: _toggleNotifications,
+          const SizedBox(height: 18),
+          _sectionTitle('Уведомления'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: SwitchListTile(
+              secondary: const Icon(Icons.notifications_outlined),
+              title: const Text('Push-уведомления'),
+              subtitle: const Text('Баланс, тариф, статусы заявок'),
+              value: _notifications,
+              activeThumbColor: _brand,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              onChanged: _toggleNotifications,
+            ),
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Выйти из аккаунта',
-                style: TextStyle(color: Colors.red)),
-            onTap: _logout,
+          const SizedBox(height: 18),
+          _sectionTitle('Аккаунт'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: const Icon(Icons.logout, color: _brand),
+              title: const Text('Выйти из аккаунта',
+                  style: TextStyle(color: _brand, fontWeight: FontWeight.w500)),
+              onTap: _logout,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text('ЛК Интерра · v0.1.0',
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
           ),
         ],
       ),
     );
   }
+
+  Widget _sectionTitle(String text) => Padding(
+        padding: const EdgeInsets.only(left: 6, bottom: 8),
+        child: Text(
+          text.toUpperCase(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade500,
+            letterSpacing: 0.5,
+          ),
+        ),
+      );
+
+  Widget _card({required Widget child, EdgeInsets? padding}) => Container(
+        width: double.infinity,
+        padding: padding ?? const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: child,
+      );
 }
