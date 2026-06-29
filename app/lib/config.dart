@@ -7,6 +7,9 @@ class AppConfig {
   static const String loginUrl =
       'https://stat.interra.ru/cgi-bin/utm5/aaa?login=&oper=ident';
 
+  /// Базовый адрес кабинета UTM5 (для возврата на главную с текущим sid).
+  static const String cabinetBase = 'https://stat.interra.ru/cgi-bin/utm5/aaa';
+
   /// Базовый адрес нашего бэкенда (server/). ЗАМЕНИТЬ на реальный домен/IP.
   /// Для локальной отладки на эмуляторе Android используйте http://10.0.2.2:8080
   static const String backendBaseUrl = 'https://push.interra.ru';
