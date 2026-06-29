@@ -16,7 +16,26 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool _loading = true;
-  bool _autoLoginAttempted = false;
+
+  // Один логин-цикл за сессию навигации, чтобы не зациклиться:
+  bool _loginNavDone = false; // уже переходили на форму входа
+  bool _fillDone = false; // уже подставили логин/пароль
+
+  // Определяем состояние страницы UTM5: форма входа / промежуточная страница
+  // со ссылкой «вход по паролю» / прочее (кабинет). Учитываем фреймы.
+  static const String _detectJs = '''
+    (function(){
+      function q(doc,sel){ try{ return doc.querySelector(sel); }catch(e){ return null; } }
+      function scan(sel){
+        if(q(document,sel)) return true;
+        for(var i=0;i<window.frames.length;i++){ if(q(window.frames[i].document,sel)) return true; }
+        return false;
+      }
+      if(scan("input[name='user']") && scan("input[name='pass']")) return 'form';
+      if(scan("a[href*='oper=ident']")) return 'needlogin';
+      return 'other';
+    })();
+  ''';
 
   @override
   void initState() {
@@ -28,52 +47,69 @@ class _WebViewScreenState extends State<WebViewScreen> {
           onPageStarted: (_) => setState(() => _loading = true),
           onPageFinished: (url) async {
             setState(() => _loading = false);
-            await _maybeAutoLogin();
+            await _handlePage();
           },
         ),
       )
-      // Грузим сразу страницу формы входа UTM5 (а не frameset корня),
-      // чтобы поля user/pass были доступны для авто-логина.
-      ..loadRequest(Uri.parse(AppConfig.loginUrl));
+      // Грузим сам кабинет: если сессия в куках жива — откроется сразу,
+      // без повторного входа (и без страницы подтверждения телефона).
+      ..loadRequest(Uri.parse(AppConfig.portalUrl));
   }
 
-  /// Если на странице есть форма входа UTM5 (поля user/pass) и сохранены
-  /// учётные данные — подставляет их и отправляет форму.
-  Future<void> _maybeAutoLogin() async {
-    if (_autoLoginAttempted) return;
+  /// Логика авто-логина: подставляем учётные данные только когда реально
+  /// видим форму входа; на промежуточной странице — переходим к форме.
+  Future<void> _handlePage() async {
     final creds = await AuthStore().read();
     if (creds == null) return;
 
-    final login = jsonEncode(creds.login);
-    final password = jsonEncode(creds.password);
-    // Форма может лежать в верхнем документе или внутри фрейма (UTM5 — frames),
-    // поэтому пробуем и document, и все одно-доменные фреймы.
-    final js = '''
-      (function(){
-        function fill(doc){
-          try{
-            var u=doc.querySelector("input[name='user']");
-            var p=doc.querySelector("input[name='pass']");
-            if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
-          }catch(e){}
-          return false;
-        }
-        if(fill(document)) return 'submitted';
-        for(var i=0;i<window.frames.length;i++){
-          if(fill(window.frames[i].document)) return 'submitted';
-        }
-        return 'no-form';
-      })();
-    ''';
-    final result = await _controller.runJavaScriptReturningResult(js);
-    if (result.toString().contains('submitted')) {
-      _autoLoginAttempted = true;
+    final state = (await _controller.runJavaScriptReturningResult(_detectJs)).toString();
+
+    if (state.contains('form')) {
+      if (_fillDone) return;
+      final login = jsonEncode(creds.login);
+      final password = jsonEncode(creds.password);
+      final fillJs = '''
+        (function(){
+          function fill(doc){
+            try{
+              var u=doc.querySelector("input[name='user']");
+              var p=doc.querySelector("input[name='pass']");
+              if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
+            }catch(e){}
+            return false;
+          }
+          if(fill(document)) return 'submitted';
+          for(var i=0;i<window.frames.length;i++){ if(fill(window.frames[i].document)) return 'submitted'; }
+          return 'no-form';
+        })();
+      ''';
+      final res = (await _controller.runJavaScriptReturningResult(fillJs)).toString();
+      if (res.contains('submitted')) _fillDone = true;
+    } else if (state.contains('needlogin')) {
+      // Сессии нет — переходим прямо к форме входа (один раз).
+      if (_loginNavDone) return;
+      _loginNavDone = true;
+      await _controller.loadRequest(Uri.parse(AppConfig.loginUrl));
     }
+    // 'other' (кабинет) — ничего не делаем.
+  }
+
+  Future<void> _goHome() async {
+    _loginNavDone = false;
+    _fillDone = false;
+    await _controller.loadRequest(Uri.parse(AppConfig.portalUrl));
   }
 
   Future<void> _reload() async {
-    _autoLoginAttempted = false;
+    _loginNavDone = false;
+    _fillDone = false;
     await _controller.reload();
+  }
+
+  Future<void> _goBack() async {
+    if (await _controller.canGoBack()) {
+      await _controller.goBack();
+    }
   }
 
   @override
@@ -93,11 +129,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
           foregroundColor: Colors.white,
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _reload,
-              tooltip: 'Обновить',
-            ),
-            IconButton(
               icon: const Icon(Icons.settings),
               tooltip: 'Настройки',
               onPressed: () => Navigator.of(context).push(
@@ -115,6 +146,32 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 backgroundColor: Colors.transparent,
               ),
           ],
+        ),
+        bottomNavigationBar: BottomAppBar(
+          height: 56,
+          padding: EdgeInsets.zero,
+          color: Colors.white,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Назад',
+                onPressed: _goBack,
+              ),
+              IconButton(
+                icon: const Icon(Icons.home, color: Color(0xFFE3000F)),
+                iconSize: 30,
+                tooltip: 'Главная',
+                onPressed: _goHome,
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Обновить',
+                onPressed: _reload,
+              ),
+            ],
+          ),
         ),
       ),
     );
