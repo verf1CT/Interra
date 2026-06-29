@@ -9,6 +9,7 @@ class AuthStore {
 
   static const _kLogin = 'utm5_login';
   static const _kPassword = 'utm5_password';
+  static const _kSession = 'utm5_session';
 
   Future<void> save(String login, String password) async {
     await _storage.write(key: _kLogin, value: login);
@@ -26,8 +27,16 @@ class AuthStore {
 
   Future<bool> get hasCredentials async => (await read()) != null;
 
+  // Сессионный токен UTM5 (из URL кабинета) — чтобы при перезапуске войти
+  // без повторного логина/2FA, пока сессия жива на сервере.
+  Future<void> saveSession(String token) =>
+      _storage.write(key: _kSession, value: token);
+  Future<String?> readSession() => _storage.read(key: _kSession);
+  Future<void> clearSession() => _storage.delete(key: _kSession);
+
   Future<void> clear() async {
     await _storage.delete(key: _kLogin);
     await _storage.delete(key: _kPassword);
+    await _storage.delete(key: _kSession);
   }
 }
