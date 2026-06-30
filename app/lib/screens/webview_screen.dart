@@ -195,21 +195,23 @@ class _WebViewScreenState extends State<WebViewScreen>
           var st = document.createElement('style');
           st.textContent =
             '@keyframes interraSpin{to{transform:rotate(360deg)}}' +
-            '#interraPTR{position:fixed;top:10px;left:50%;margin-left:-18px;' +
+            '#interraPTR{position:fixed;top:0;left:50%;margin-left:-18px;' +
             'width:36px;height:36px;z-index:2147483647;opacity:0;' +
             'pointer-events:none;will-change:transform,opacity;}' +
             '#interraPTR svg{display:block;width:36px;height:36px;}' +
             '#interraPTR .ring{fill:none;stroke:#3C98D4;stroke-width:4;' +
-            'stroke-linecap:round;stroke-dasharray:80;stroke-dashoffset:20;}' +
-            '#interraPTRbox{position:fixed;top:0;left:0;width:36px;height:36px;}';
+            'stroke-linecap:round;stroke-dasharray:80;stroke-dashoffset:20;}';
           document.head.appendChild(st);
 
-          // Значок: круговое кольцо в фирменном синем.
+          // Значок вешаем на <html>, а не на <body>: у body стоит transform
+          // (страница уезжает вниз), и значок-потомок body двигался бы вместе с
+          // ней. На html (он не трансформируется) позиционируем его сами —
+          // строго внутри образовавшегося зазора, не залезая на контент.
           var ind = document.createElement('div');
           ind.id = 'interraPTR';
           ind.innerHTML =
             '<svg viewBox="0 0 36 36"><circle class="ring" cx="18" cy="18" r="15"/></svg>';
-          document.body.appendChild(ind);
+          document.documentElement.appendChild(ind);
 
           var doc = document.documentElement;
           function atTop(){ return (window.scrollY||doc.scrollTop||0) <= 0; }
@@ -219,10 +221,14 @@ class _WebViewScreenState extends State<WebViewScreen>
             var clamped = Math.min(p, MAX);
             document.body.style.transform = 'translateY(' + clamped + 'px)';
             ind.style.opacity = Math.min(clamped / THRESHOLD, 1);
+            // Значок держим ВНУТРИ зазора: его низ (iy+36) не ниже края контента
+            // (контент начинается на уровне clamped). При малом зазоре значок
+            // уезжает вверх за кромку — это нормально (он там почти прозрачный).
+            var iy = clamped - 40;
             // Поворот пропорционален вытягиванию + лёгкий рост значка.
             var scale = 0.6 + Math.min(clamped / MAX, 1) * 0.4;
             ind.style.transform =
-              'translateY(' + clamped + 'px) rotate(' + (clamped * 3) + 'deg) scale(' + scale + ')';
+              'translateY(' + iy + 'px) rotate(' + (clamped * 3) + 'deg) scale(' + scale + ')';
           }
 
           function reset(animate){
@@ -265,8 +271,9 @@ class _WebViewScreenState extends State<WebViewScreen>
               triggered = true;
               document.body.style.transition = 'transform .2s ease';
               document.body.style.transform = 'translateY(50px)';
-              ind.style.transition = 'opacity .2s ease';
-              ind.style.transform = 'translateY(50px) scale(1)';
+              ind.style.transition = 'transform .2s ease, opacity .2s ease';
+              // Зазор 50px → значок (36px) центрируем в нём, не на контенте.
+              ind.style.transform = 'translateY(8px) scale(1)';
               var svg = ind.querySelector('svg');
               svg.style.transformOrigin = '50% 50%';
               svg.style.animation = 'interraSpin .8s linear infinite';
