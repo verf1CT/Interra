@@ -189,7 +189,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: const Text('Звонок, Telegram, помощь на сайте'),
               trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SupportScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const SupportScreen(),
+                  settings: const RouteSettings(name: 'support'),
+                ),
               ),
             ),
           ),

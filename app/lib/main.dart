@@ -32,7 +32,7 @@ Future<void> main() async {
 Future<void> _initServices() async {
   try {
     await Firebase.initializeApp().timeout(const Duration(seconds: 10));
-    await Analytics.initCrashReporting();
+    await Analytics.enable();
     Analytics.setUser(await AuthStore().phone);
     await PushService.init();
   } catch (e) {
