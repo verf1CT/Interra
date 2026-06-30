@@ -6,7 +6,6 @@ import '../services/push_service.dart';
 import 'webview_screen.dart';
 
 const Color _brand = Color(0xFF3C98D4); // фирменный синий Интерры
-const Color _accent = Color(0xFFF4752D); // фирменный оранжевый
 const Color _danger = Color(0xFFD8362A); // ошибки
 
 /// Регистрация приложения в биллинге по схеме `bbb`:
@@ -150,12 +149,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Container(
                     width: 88,
                     height: 88,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [_brand, _accent],
-                      ),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
@@ -165,8 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.wifi_rounded,
-                        color: Colors.white, size: 46),
+                    child: Image.asset(
+                      'assets/splash_logo.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   const SizedBox(height: 22),
                   const Text(
