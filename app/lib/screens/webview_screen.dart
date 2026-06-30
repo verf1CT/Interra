@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config.dart';
+import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
+import '../widgets/cabinet_skeleton.dart';
 import 'register_screen.dart';
 import 'settings_screen.dart';
 
@@ -228,8 +230,6 @@ class _WebViewScreenState extends State<WebViewScreen>
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Личный кабинет'),
-          backgroundColor: const Color(0xFF3C98D4),
-          foregroundColor: Colors.white,
           actions: [
             IconButton(
               icon: const Icon(Icons.settings),
@@ -245,11 +245,11 @@ class _WebViewScreenState extends State<WebViewScreen>
             WebViewWidget(controller: _controller),
             if (_loading && _firstLoaded && _error == null)
               const LinearProgressIndicator(
-                color: Color(0xFF3C98D4),
+                color: AppColors.brand,
                 backgroundColor: Colors.transparent,
               ),
             if (_error != null) _errorOverlay(),
-            if (!_firstLoaded) _splash(),
+            if (!_firstLoaded) const CabinetSkeleton(),
           ],
         ),
         bottomNavigationBar: BottomAppBar(
@@ -299,7 +299,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   }
 
   Widget _errorOverlay() => Container(
-        color: const Color(0xFFF6F7F9),
+        color: AppColors.bg,
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
@@ -314,35 +314,6 @@ class _WebViewScreenState extends State<WebViewScreen>
             ),
             const SizedBox(height: 22),
             FilledButton(onPressed: _openCabinet, child: const Text('Обновить')),
-          ],
-        ),
-      );
-
-  Widget _splash() => Container(
-        color: const Color(0xFFF6F7F9),
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.asset(
-                'assets/splash_logo.png',
-                width: 72,
-                height: 72,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 22),
-            const SizedBox(
-              width: 26,
-              height: 26,
-              child: CircularProgressIndicator(
-                  color: Color(0xFF3C98D4), strokeWidth: 2.5),
-            ),
-            const SizedBox(height: 16),
-            Text('Загрузка кабинета…',
-                style: TextStyle(color: Colors.grey.shade600)),
           ],
         ),
       );

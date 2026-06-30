@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/api_client.dart';
 import '../services/billing_api.dart';
 import '../services/biometric.dart';
 import 'register_screen.dart';
-
-const Color _brand = Color(0xFF3C98D4); // фирменный синий Интерры
 
 /// Экран настроек: аккаунт, уведомления, выход.
 class SettingsScreen extends StatefulWidget {
@@ -111,24 +110,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _card(
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 26,
-                  backgroundColor: _brand,
-                  child: Icon(Icons.person, color: Colors.white, size: 28),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.brand, AppColors.accent],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatPhone(_phone),
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 2),
-                    Text('Абонент Интерры',
-                        style: TextStyle(color: Colors.grey.shade600)),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatPhone(_phone),
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      _statusChip(),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -142,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Push-уведомления'),
               subtitle: const Text('Баланс, тариф, статусы заявок'),
               value: _notifications,
-              activeThumbColor: _brand,
+              activeThumbColor: AppColors.brand,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               onChanged: _toggleNotifications,
@@ -158,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('Вход по Face ID / отпечатку'),
                 subtitle: const Text('Запрашивать при открытии приложения'),
                 value: _biometricEnabled,
-                activeThumbColor: _brand,
+                activeThumbColor: AppColors.brand,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 onChanged: _toggleBiometric,
@@ -172,9 +180,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListTile(
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: const Icon(Icons.logout, color: _brand),
+              leading: const Icon(Icons.logout, color: AppColors.brand),
               title: const Text('Выйти из аккаунта',
-                  style: TextStyle(color: _brand, fontWeight: FontWeight.w500)),
+                  style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w500)),
               onTap: _logout,
             ),
           ),
@@ -187,6 +195,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+  /// Бейдж статуса приложения: регистрация в биллинге активна.
+  Widget _statusChip() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.ok.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                  color: AppColors.ok, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            const Text('Подключено',
+                style: TextStyle(
+                    color: AppColors.ok,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
 
   /// Форматирует 11-значный номер вида 79229999999 → +7 922 999-99-99.
   String _formatPhone(String? phone) {

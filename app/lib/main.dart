@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'theme.dart';
 import 'services/auth_store.dart';
 import 'services/push_service.dart';
 import 'screens/biometric_gate.dart';
@@ -43,64 +44,10 @@ class InterraApp extends StatelessWidget {
     return MaterialApp(
       title: 'ЛК Интерра',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(),
+      theme: buildAppTheme(),
       builder: (context, child) =>
           BiometricGate(child: child ?? const SizedBox.shrink()),
       home: loggedIn ? const WebViewScreen() : const RegisterScreen(),
     );
   }
-}
-
-/// Фирменные цвета Интерры.
-const Color kBrandBlue = Color(0xFF3C98D4);
-const Color kBrandOrange = Color(0xFFF4752D);
-
-ThemeData _buildTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: kBrandBlue,
-    primary: kBrandBlue,
-    secondary: kBrandOrange,
-  );
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: const Color(0xFFF6F7F9),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: kBrandBlue,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 19,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xFFF2F3F5),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: kBrandBlue, width: 1.5),
-      ),
-    ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: kBrandBlue,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      ),
-    ),
-  );
 }
