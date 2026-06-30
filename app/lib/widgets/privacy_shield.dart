@@ -71,12 +71,8 @@ class _PrivacyView extends StatelessWidget {
         child: Container(
           width: 96,
           height: 96,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.brand, AppColors.accent],
-            ),
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
@@ -86,7 +82,7 @@ class _PrivacyView extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.wifi_rounded, color: Colors.white, size: 48),
+          child: Image.asset('assets/splash_logo.png', fit: BoxFit.cover),
         ),
       ),
     );
