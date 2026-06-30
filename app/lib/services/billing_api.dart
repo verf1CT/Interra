@@ -23,6 +23,18 @@ class BbbResponse {
   });
 
   bool get isOk => data != null;
+
+  /// Разбирает тело ответа `bbb`. Снимает обрамляющие кавычки и пробелы
+  /// (`"178…"` → `178…`); `0`/`1` — коды ошибок; пустое тело — [empty].
+  factory BbbResponse.parse(String body) {
+    var s = body.trim();
+    if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+      s = s.substring(1, s.length - 1).trim();
+    }
+    if (s.isEmpty) return const BbbResponse(empty: true);
+    if (s == '0' || s == '1') return BbbResponse(code: s);
+    return BbbResponse(data: s);
+  }
 }
 
 /// Клиент штатного API биллинга UTM5 (`bbb`): регистрация приложения по SMS
@@ -42,22 +54,11 @@ class BillingApi {
     });
     try {
       final res = await http.get(uri).timeout(const Duration(seconds: 20));
-      return _parse(res.body);
+      return BbbResponse.parse(res.body);
     } catch (e) {
       debugPrint('BillingApi.$cmd сетевой сбой: $e');
       return const BbbResponse(networkError: true);
     }
-  }
-
-  static BbbResponse _parse(String body) {
-    // Снимаем обрамляющие кавычки и пробелы: `"178…"` -> `178…`.
-    var s = body.trim();
-    if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
-      s = s.substring(1, s.length - 1).trim();
-    }
-    if (s.isEmpty) return const BbbResponse(empty: true);
-    if (s == '0' || s == '1') return BbbResponse(code: s);
-    return BbbResponse(data: s);
   }
 
   static String _random15() {
