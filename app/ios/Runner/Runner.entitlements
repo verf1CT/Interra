@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Push-уведомления (APNs). НЕ подключайте этот файл к подписи, пока не
+	  активирован платный Apple Developer аккаунт — free-provisioning не умеет
+	  подписывать aps-environment, и сборка перестанет ставиться на устройства.
+	  Как активировать — см. docs/IOS_PUSH_SETUP.md.
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
