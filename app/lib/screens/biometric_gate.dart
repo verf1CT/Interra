@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 import '../services/biometric.dart';
-
-const Color _brand = Color(0xFF3C98D4);
-const Color _accent = Color(0xFFF4752D);
 
 /// Биометрический замок поверх всего приложения. Запрашивает Face ID / отпечаток
 /// при холодном старте и при каждом возврате из фона, если вход по биометрии
@@ -92,7 +90,7 @@ class _LockView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF6F7F9),
+      color: AppColors.bg,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -104,7 +102,7 @@ class _LockView extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [_brand, _accent],
+                  colors: [AppColors.brand, AppColors.accent],
                 ),
                 borderRadius: BorderRadius.circular(24),
               ),
