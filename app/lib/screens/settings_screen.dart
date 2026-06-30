@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
+import '../utils/phone.dart';
 import '../services/auth_store.dart';
 import '../services/api_client.dart';
 import '../services/billing_api.dart';
@@ -129,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatPhone(_phone),
+                        formatRuPhoneFull(_phone),
                         style: const TextStyle(
                             fontSize: 17, fontWeight: FontWeight.w600),
                       ),
@@ -221,14 +222,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       );
-
-  /// Форматирует 11-значный номер вида 79229999999 → +7 922 999-99-99.
-  String _formatPhone(String? phone) {
-    final d = phone?.replaceAll(RegExp(r'\D'), '') ?? '';
-    if (d.length != 11) return phone ?? '—';
-    return '+${d[0]} ${d.substring(1, 4)} ${d.substring(4, 7)}-'
-        '${d.substring(7, 9)}-${d.substring(9)}';
-  }
 
   Widget _sectionTitle(String text) => Padding(
         padding: const EdgeInsets.only(left: 6, bottom: 8),
