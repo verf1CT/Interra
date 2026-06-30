@@ -7,6 +7,7 @@ import '../config.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
+import '../services/analytics.dart';
 import '../services/page_cache.dart';
 import '../widgets/cabinet_skeleton.dart';
 import 'register_screen.dart';
@@ -143,6 +144,7 @@ class _WebViewScreenState extends State<WebViewScreen>
       _lastOpenAt = DateTime.now();
       _liveUrl = AppConfig.cabinetFromLoginParam(r.data!);
       setState(() => _offline = false);
+      Analytics.cabinetOpened();
       await _controller.loadRequest(Uri.parse(_liveUrl!));
       return;
     }

@@ -5,6 +5,7 @@ import '../utils/phone.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/push_service.dart';
+import '../services/analytics.dart';
 import 'webview_screen.dart';
 
 /// Форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр).
@@ -117,6 +118,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     if (r.isOk) {
       await AuthStore().savePhone(_normalizedPhone);
+      Analytics.setUser(_normalizedPhone);
+      Analytics.loginCompleted();
       await PushService.registerCurrentToken();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
