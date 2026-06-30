@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config.dart';
@@ -266,19 +267,28 @@ class _WebViewScreenState extends State<WebViewScreen>
                   icon: const Icon(Icons.arrow_back_ios_new, size: 22),
                   color: Colors.grey.shade700,
                   tooltip: 'Назад',
-                  onPressed: _goBack,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    _goBack();
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.home_rounded, color: Color(0xFFF4752D)),
                   iconSize: 32,
                   tooltip: 'Главная',
-                  onPressed: _openCabinet,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    _openCabinet();
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 24),
                   color: Colors.grey.shade700,
                   tooltip: 'Обновить',
-                  onPressed: _openCabinet,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    _controller.reload();
+                  },
                 ),
               ],
             ),
