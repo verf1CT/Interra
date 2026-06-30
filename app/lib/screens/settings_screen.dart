@@ -54,24 +54,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', value);
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) {
-      if (value) {
-        await ApiClient.registerDevice(token: token, clientLogin: _phone);
-      } else {
-        await ApiClient.unregisterDevice(token);
+    // getToken на iOS без APNs может висеть/падать — не блокируем переключатель.
+    try {
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 5));
+      if (token != null) {
+        if (value) {
+          await ApiClient.registerDevice(token: token, clientLogin: _phone);
+        } else {
+          await ApiClient.unregisterDevice(token);
+        }
       }
+    } catch (e) {
+      debugPrint('toggleNotifications: push-токен пропущен: $e');
     }
+    if (!mounted) return;
     setState(() => _notifications = value);
   }
 
   Future<void> _logout() async {
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token != null) await ApiClient.unregisterDevice(token);
-    // Удаляем регистрацию приложения в биллинге (cmd=del), затем чистим локально.
-    final app = await AuthStore().appToken;
-    if (app != null) await BillingApi.deleteApp(app);
+    // Удаление push-токена и регистрации в биллинге — best-effort: на iOS без
+    // APNs getToken/сеть могут висеть или падать, но выход должен срабатывать
+    // ВСЕГДА. Поэтому удалённые операции не блокируют локальную очистку и переход.
+    try {
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 5));
+      if (token != null) await ApiClient.unregisterDevice(token);
+    } catch (e) {
+      debugPrint('logout: удаление push-токена пропущено: $e');
+    }
+    try {
+      final app = await AuthStore().appToken;
+      if (app != null) await BillingApi.deleteApp(app);
+    } catch (e) {
+      debugPrint('logout: удаление регистрации в биллинге пропущено: $e');
+    }
     await AuthStore().clear();
+    await Biometric.setEnabled(false); // снимаем биометрический замок при выходе
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RegisterScreen()),
