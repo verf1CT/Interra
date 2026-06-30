@@ -38,6 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String get _normalizedPhone {
     var d = _phone.text.replaceAll(RegExp(r'\D'), '');
     if (d.length == 11 && d.startsWith('8')) d = '7${d.substring(1)}';
+    if (d.length == 10) d = '7$d'; // ввод без кода страны (префикс «+7»)
     return d;
   }
 
@@ -229,14 +230,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         TextField(
           controller: _phone,
-          keyboardType: TextInputType.phone,
+          keyboardType: TextInputType.number,
+          autofocus: true,
           inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\-\s]')),
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
           ],
           decoration: const InputDecoration(
             labelText: 'Телефон',
-            hintText: '+7 922 999 99 99',
+            hintText: '922 999 99 99',
             prefixIcon: Icon(Icons.phone_outlined),
+            prefixText: '+7 ',
           ),
         ),
         const SizedBox(height: 22),
