@@ -23,4 +23,22 @@ class AppConfig {
 
   /// Версия приложения, передаётся при регистрации устройства.
   static const String appVersion = '0.1.0';
+
+  // --- Контакты поддержки (экран «Поддержка», быстрые действия) ---------------
+  // Источник: официальный сайт interra.ru. Если контакты изменятся — правим тут.
+
+  /// Единый телефон контактного центра (только цифры — для набора).
+  static const String supportPhone = '88007700010';
+
+  /// Тот же телефон в человекочитаемом виде — для показа в интерфейсе.
+  static const String supportPhoneHuman = '8 800 770-00-10';
+
+  /// Канал поддержки в Telegram.
+  static const String supportTelegram = 'tginterra';
+
+  /// Сообщество ВКонтакте.
+  static const String supportVkUrl = 'https://vk.com/public172258204';
+
+  /// Раздел помощи на сайте провайдера.
+  static const String supportHelpUrl = 'https://interra.ru/help/';
 }
