@@ -37,12 +37,15 @@ class SupportScreen extends StatelessWidget {
               onTap: () => _open(
                   Uri(scheme: 'tel', path: AppConfig.supportPhone), 'phone'),
             ),
-            _divider(),
+          ]),
+          const SizedBox(height: 18),
+          _sectionTitle('Мы в соцсетях'),
+          _group([
             _tile(
-              icon: Icons.send_rounded,
+              icon: Icons.campaign_rounded,
               color: const Color(0xFF2AABEE),
-              title: 'Написать в Telegram',
-              subtitle: '@${AppConfig.supportTelegram}',
+              title: 'Telegram-канал',
+              subtitle: 'Новости и статус сети',
               onTap: () => _open(
                   Uri.parse('https://t.me/${AppConfig.supportTelegram}'),
                   'telegram'),
