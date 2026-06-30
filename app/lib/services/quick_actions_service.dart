@@ -55,10 +55,16 @@ class QuickActionsService {
         nav.popUntil((r) => r.isFirst);
         break;
       case _typeSupport:
-        nav.push(MaterialPageRoute(builder: (_) => const SupportScreen()));
+        nav.push(MaterialPageRoute(
+          builder: (_) => const SupportScreen(),
+          settings: const RouteSettings(name: 'support'),
+        ));
         break;
       case _typeSettings:
-        nav.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+        nav.push(MaterialPageRoute(
+          builder: (_) => const SettingsScreen(),
+          settings: const RouteSettings(name: 'settings'),
+        ));
         break;
     }
   }
