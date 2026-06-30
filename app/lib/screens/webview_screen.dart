@@ -370,7 +370,10 @@ class _WebViewScreenState extends State<WebViewScreen>
               icon: const Icon(Icons.settings),
               tooltip: 'Настройки',
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                  settings: const RouteSettings(name: 'settings'),
+                ),
               ),
             ),
           ],
