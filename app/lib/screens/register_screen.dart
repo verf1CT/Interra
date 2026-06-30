@@ -1,12 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/push_service.dart';
 import 'webview_screen.dart';
 
-const Color _brand = Color(0xFF3C98D4); // фирменный синий Интерры
-const Color _danger = Color(0xFFD8362A); // ошибки
+/// Форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр).
+class _RuPhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 10) digits = digits.substring(0, 10);
+    final b = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i == 3 || i == 6 || i == 8) b.write(i == 3 ? ' ' : '-');
+      b.write(digits[i]);
+    }
+    final text = b.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
 
 /// Регистрация приложения в биллинге по схеме `bbb`:
 /// телефон → SMS-код → один раз получаем и храним токен приложения.
@@ -155,7 +173,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: _brand.withValues(alpha: 0.35),
+                          color: AppColors.brand.withValues(alpha: 0.35),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -202,7 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       _error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: _danger, fontSize: 13.5),
+                      style: const TextStyle(color: AppColors.danger, fontSize: 13.5),
                     ),
                   ],
                   const SizedBox(height: 18),
@@ -232,13 +250,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _phone,
           keyboardType: TextInputType.number,
           autofocus: true,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
-          ],
+          inputFormatters: [_RuPhoneInputFormatter()],
           decoration: const InputDecoration(
             labelText: 'Телефон',
-            hintText: '922 999 99 99',
+            hintText: '922 999-99-99',
             prefixIcon: Icon(Icons.phone_outlined),
             prefixText: '+7 ',
           ),
