@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/auth_store.dart';
-import 'services/biometric.dart';
 import 'services/push_service.dart';
-import 'screens/lock_screen.dart';
+import 'screens/biometric_gate.dart';
 import 'screens/register_screen.dart';
 import 'screens/webview_screen.dart';
 
@@ -11,17 +10,15 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   bool registered = false;
-  bool locked = false;
   try {
     registered = await AuthStore().isRegistered;
-    // Биометрический гейт показываем только зарегистрированным и если включён.
-    locked = registered && await Biometric.isEnabled;
   } catch (e) {
     debugPrint('Чтение регистрации не удалось: $e');
   }
 
   // Интерфейс показываем ПЕРВЫМ ДЕЛОМ — ничто не должно блокировать первый кадр.
-  runApp(InterraApp(loggedIn: registered, locked: locked));
+  // Биометрический замок навешивает BiometricGate (через MaterialApp.builder).
+  runApp(InterraApp(loggedIn: registered));
 
   // Firebase и push — полностью в фоне и с таймаутом, чтобы инициализация
   // (особенно на iOS без APNs) никогда не подвешивала запуск приложения.
@@ -39,21 +36,17 @@ Future<void> _initFirebaseAndPush() async {
 
 class InterraApp extends StatelessWidget {
   final bool loggedIn;
-  final bool locked;
-  const InterraApp({super.key, required this.loggedIn, this.locked = false});
+  const InterraApp({super.key, required this.loggedIn});
 
   @override
   Widget build(BuildContext context) {
-    final Widget home = !loggedIn
-        ? const RegisterScreen()
-        : locked
-            ? const LockScreen()
-            : const WebViewScreen();
     return MaterialApp(
       title: 'ЛК Интерра',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      home: home,
+      builder: (context, child) =>
+          BiometricGate(child: child ?? const SizedBox.shrink()),
+      home: loggedIn ? const WebViewScreen() : const RegisterScreen(),
     );
   }
 }
