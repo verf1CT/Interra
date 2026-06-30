@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme.dart';
+import '../utils/phone.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/push_service.dart';
@@ -11,14 +12,7 @@ class _RuPhoneInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
-    var digits = newValue.text.replaceAll(RegExp(r'\D'), '');
-    if (digits.length > 10) digits = digits.substring(0, 10);
-    final b = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i == 3 || i == 6 || i == 8) b.write(i == 3 ? ' ' : '-');
-      b.write(digits[i]);
-    }
-    final text = b.toString();
+    final text = formatRuPhoneTyping(newValue.text);
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -54,10 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String get _normalizedPhone {
-    var d = _phone.text.replaceAll(RegExp(r'\D'), '');
-    if (d.length == 11 && d.startsWith('8')) d = '7${d.substring(1)}';
-    if (d.length == 10) d = '7$d'; // ввод без кода страны (префикс «+7»)
-    return d;
+    return normalizeRuPhone(_phone.text);
   }
 
   /// Шаг телефона: первичная регистрация (один раз) + запрос SMS.
