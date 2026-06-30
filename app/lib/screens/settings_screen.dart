@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config.dart';
 import '../theme.dart';
 import '../utils/phone.dart';
 import '../services/auth_store.dart';
@@ -8,6 +9,7 @@ import '../services/api_client.dart';
 import '../services/billing_api.dart';
 import '../services/biometric.dart';
 import 'register_screen.dart';
+import 'support_screen.dart';
 
 /// Экран настроек: аккаунт, уведомления, выход.
 class SettingsScreen extends StatefulWidget {
@@ -175,6 +177,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
           const SizedBox(height: 18),
+          _sectionTitle('Помощь'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: const Icon(Icons.support_agent_rounded,
+                  color: AppColors.brand),
+              title: const Text('Поддержка'),
+              subtitle: const Text('Звонок, Telegram, помощь на сайте'),
+              trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportScreen()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           _sectionTitle('Аккаунт'),
           _card(
             padding: EdgeInsets.zero,
@@ -189,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
           Center(
-            child: Text('ЛК Интерра · v0.1.0',
+            child: Text('ЛК Интерра · v${AppConfig.appVersion}',
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
           ),
         ],
