@@ -63,8 +63,8 @@ class PushService {
           .getToken()
           .timeout(const Duration(seconds: 10));
       if (token == null) return;
-      final login = await AuthStore().login;
-      await ApiClient.registerDevice(token: token, clientLogin: login);
+      final phone = await AuthStore().phone;
+      await ApiClient.registerDevice(token: token, clientLogin: phone);
     } catch (e) {
       debugPrint('registerCurrentToken пропущен (нет APNs/бэкенда?): $e');
     }

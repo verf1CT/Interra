@@ -1,11 +1,18 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../config.dart';
 import '../services/auth_store.dart';
+import '../services/billing_api.dart';
+import 'register_screen.dart';
 import 'settings_screen.dart';
 
-/// Главный экран — WebView с веб-кабинетом Интерра и авто-логином в UTM5.
+/// Главный экран — WebView с веб-кабинетом Интерра.
+///
+/// Схема `bbb`: при каждом открытии берём свежую ссылку на ЛК через
+/// `cmd=open&app={token}` и грузим страницу «Основная информация». Ссылка
+/// живёт ~30 минут, поэтому при возврате из фона и протухшей сессии ссылку
+/// перезапрашиваем автоматически.
 class WebViewScreen extends StatefulWidget {
   const WebViewScreen({super.key});
 
@@ -13,162 +20,192 @@ class WebViewScreen extends StatefulWidget {
   State<WebViewScreen> createState() => _WebViewScreenState();
 }
 
-class _WebViewScreenState extends State<WebViewScreen> {
+class _WebViewScreenState extends State<WebViewScreen>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
   bool _loading = true;
+  bool _firstLoaded = false;
+  String? _error;
+  DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
 
-  bool _loginNavDone = false; // уже переходили на форму входа
-  bool _fillDone = false; // уже подставили логин/пароль
-  bool _busy = false; // защита от параллельных обработок
-  bool _firstLoaded = false; // первая страница загрузилась
-  String? _sessionToken; // токен сессии UTM5 (параметр login в URL кабинета)
-  String _currentUrl = ''; // текущий адрес (диагностика)
+  /// Свой хост держим внутри WebView, всё остальное — наружу.
+  static const String _host = 'stat.interra.ru';
 
-  // Состояние страницы UTM5: форма входа / промежуточная «вход по паролю» / прочее.
-  static const String _detectJs = '''
-    (function(){
-      function q(doc,sel){ try{ return doc.querySelector(sel); }catch(e){ return null; } }
-      function scan(sel){
-        if(q(document,sel)) return true;
-        for(var i=0;i<window.frames.length;i++){ if(q(window.frames[i].document,sel)) return true; }
-        return false;
-      }
-      if(scan("input[name='user']") && scan("input[name='pass']")) return 'form';
-      if(scan("a[href*='oper=ident']")) return 'needlogin';
-      return 'other';
-    })();
-  ''';
-
-  /// Сессионный токен передаётся в параметре login (непустой) на адресах кабинета.
-  String? _tokenFromUrl(String url) {
-    final m = RegExp(r'[?&]login=([^&]+)').firstMatch(url);
-    final v = m?.group(1);
-    return (v == null || v.isEmpty) ? null : v;
-  }
-
-  void _captureToken(String url) {
-    final t = _tokenFromUrl(url);
-    if (t != null && t != _sessionToken) {
-      _sessionToken = t;
-      AuthStore().saveSession(t);
-    }
-  }
+  /// Ссылку считаем устаревшей через 15 минут — при возврате из фона обновим.
+  static const Duration _staleAfter = Duration(minutes: 15);
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel('PullRefresh',
+          onMessageReceived: (_) => _openCabinet())
       ..setNavigationDelegate(
         NavigationDelegate(
+          onNavigationRequest: _handleNavigation,
           onPageStarted: (_) => setState(() => _loading = true),
-          onUrlChange: (change) {
-            final u = change.url;
-            if (u != null) {
-              setState(() => _currentUrl = u);
-              _captureToken(u);
-            }
-          },
-          onPageFinished: (url) async {
+          onPageFinished: (_) async {
             setState(() {
               _loading = false;
               _firstLoaded = true;
-              _currentUrl = url;
             });
-            await _handlePage();
+            await _injectPullToRefresh();
+            await _recoverIfSessionExpired();
+          },
+          onWebResourceError: (err) {
+            // Ошибка только основного документа (не вложенных ресурсов).
+            if (err.isForMainFrame ?? true) {
+              setState(() {
+                _loading = false;
+                _firstLoaded = true;
+                _error = 'Не удалось загрузить кабинет. Потяните вниз '
+                    'или нажмите «Обновить».';
+              });
+            }
           },
         ),
       );
-    _loadInitial();
+    _openCabinet();
   }
 
-  /// Старт: пробуем сохранённый токен (вход без 2FA, если сессия жива),
-  /// иначе грузим корень и идём через авто-логин.
-  Future<void> _loadInitial() async {
-    final token = await AuthStore().readSession();
-    if (token != null && token.isNotEmpty) {
-      _sessionToken = token;
-      await _controller.loadRequest(Uri.parse(AppConfig.cabinetUrl(token)));
-    } else {
-      await _controller.loadRequest(Uri.parse(AppConfig.portalUrl));
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
-  Future<void> _handlePage() async {
-    if (_busy) return;
-    _busy = true;
-    try {
-      final creds = await AuthStore().read();
-      if (creds == null) return;
-
-      // Фреймы UTM5 догружаются после основного документа — опрашиваем.
-      for (var attempt = 0; attempt < 6; attempt++) {
-        final state =
-            (await _controller.runJavaScriptReturningResult(_detectJs)).toString();
-
-        if (state.contains('form')) {
-          if (!_fillDone) {
-            final res =
-                (await _controller.runJavaScriptReturningResult(_fillJs(creds)))
-                    .toString();
-            if (res.contains('submitted')) _fillDone = true;
-          }
-          return;
-        }
-        if (state.contains('needlogin')) {
-          if (!_loginNavDone) {
-            _loginNavDone = true;
-            await _controller.loadRequest(Uri.parse(AppConfig.loginUrl));
-          }
-          return;
-        }
-
-        // 'other': если это страница кабинета (в URL есть токен) — запоминаем.
-        final cur = await _controller.currentUrl() ?? _currentUrl;
-        if (_tokenFromUrl(cur) != null) {
-          _captureToken(cur);
-          return;
-        }
-        // Иначе, возможно, фрейм/редирект ещё в процессе — ждём.
-        await Future.delayed(const Duration(milliseconds: 500));
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // При возврате из фона освежаем ссылку, если она могла протухнуть.
+    if (state == AppLifecycleState.resumed) {
+      final last = _lastOpenAt;
+      if (last == null || DateTime.now().difference(last) > _staleAfter) {
+        _openCabinet();
       }
-    } finally {
-      _busy = false;
     }
   }
 
-  String _fillJs(({String login, String password}) creds) {
-    final login = jsonEncode(creds.login);
-    final password = jsonEncode(creds.password);
-    return '''
-      (function(){
-        function fill(doc){
-          try{
-            var u=doc.querySelector("input[name='user']");
-            var p=doc.querySelector("input[name='pass']");
-            if(u&&p){ u.value=$login; p.value=$password; if(u.form){u.form.submit();} return true; }
-          }catch(e){}
-          return false;
+  /// Внешние ссылки (`tel:`, `mailto:`, чужие домены с target=_blank)
+  /// открываем в системных приложениях, не внутри WebView.
+  NavigationDecision _handleNavigation(NavigationRequest req) {
+    final uri = Uri.tryParse(req.url);
+    if (uri == null) return NavigationDecision.navigate;
+    final scheme = uri.scheme.toLowerCase();
+
+    if (scheme == 'tel' || scheme == 'mailto' || scheme == 'sms') {
+      _launchExternal(uri);
+      return NavigationDecision.prevent;
+    }
+    if ((scheme == 'http' || scheme == 'https') && uri.host != _host) {
+      _launchExternal(uri);
+      return NavigationDecision.prevent;
+    }
+    return NavigationDecision.navigate;
+  }
+
+  Future<void> _launchExternal(Uri uri) async {
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Не удалось открыть $uri: $e');
+    }
+  }
+
+  /// Запрашивает свежую ссылку на ЛК и грузит «Основную информацию».
+  Future<void> _openCabinet() async {
+    setState(() {
+      _error = null;
+      _loading = true;
+    });
+
+    final token = await AuthStore().appToken;
+    if (token == null) {
+      _resetToRegister();
+      return;
+    }
+
+    final r = await BillingApi.openCabinet(token);
+    if (!mounted) return;
+
+    if (r.isOk) {
+      _lastOpenAt = DateTime.now();
+      await _controller
+          .loadRequest(Uri.parse(AppConfig.cabinetFromLoginParam(r.data!)));
+      return;
+    }
+
+    // '0' — приложение не зарегистрировано (регистрация потеряна) → регистрация;
+    // '1' — телефон отвязан от ЛК; пусто/сеть — временный сбой.
+    if (r.code == '0') {
+      await AuthStore().clear();
+      _resetToRegister();
+      return;
+    }
+    setState(() {
+      _loading = false;
+      _firstLoaded = true;
+      _error = r.networkError
+          ? 'Нет связи с кабинетом. Проверьте интернет и обновите.'
+          : r.code == '1'
+              ? 'Телефон приложения отвязан от лицевого счёта. Обратитесь в Интерру.'
+              : 'Не удалось открыть кабинет. Попробуйте обновить.';
+    });
+  }
+
+  /// Если UTM5 уронил сессию и показал форму входа по паролю — токен-ссылка
+  /// протухла; молча перезапрашиваем свежую через `cmd=open`.
+  Future<void> _recoverIfSessionExpired() async {
+    try {
+      final res = await _controller.runJavaScriptReturningResult('''
+        (function(){
+          try{ return (document.querySelector("input[name='pass']") ||
+                       document.querySelector("a[href*='oper=ident']")) ? '1':'0'; }
+          catch(e){ return '0'; }
+        })();
+      ''');
+      if (res.toString().contains('1')) {
+        // Защита от цикла: обновляем не чаще раза в несколько секунд.
+        final last = _lastOpenAt;
+        if (last == null ||
+            DateTime.now().difference(last) > const Duration(seconds: 5)) {
+          _openCabinet();
         }
-        if(fill(document)) return 'submitted';
-        for(var i=0;i<window.frames.length;i++){ if(fill(window.frames[i].document)) return 'submitted'; }
-        return 'no-form';
-      })();
-    ''';
+      }
+    } catch (_) {/* страница могла уже смениться — не критично */}
   }
 
-  Future<void> _goHome() async {
-    _loginNavDone = false;
-    _fillDone = false;
-    final t = _sessionToken;
-    final url = t != null ? AppConfig.cabinetUrl(t) : AppConfig.portalUrl;
-    await _controller.loadRequest(Uri.parse(url));
+  /// Pull-to-refresh: в самом верху страницы тянем вниз → перезагрузка.
+  Future<void> _injectPullToRefresh() async {
+    try {
+      await _controller.runJavaScript('''
+        (function(){
+          if(window.__interraPTR) return; window.__interraPTR = true;
+          var startY = 0, pulling = false;
+          document.addEventListener('touchstart', function(e){
+            if((window.scrollY||document.documentElement.scrollTop)===0){
+              startY = e.touches[0].clientY; pulling = true;
+            } else { pulling = false; }
+          }, {passive:true});
+          document.addEventListener('touchmove', function(e){
+            if(!pulling) return;
+            if(e.touches[0].clientY - startY > 90){
+              pulling = false;
+              if(window.PullRefresh) window.PullRefresh.postMessage('refresh');
+            }
+          }, {passive:true});
+        })();
+      ''');
+    } catch (_) {}
   }
 
-  Future<void> _reload() async {
-    _loginNavDone = false;
-    _fillDone = false;
-    await _controller.reload();
+  void _resetToRegister() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _goBack() async {
@@ -190,7 +227,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Личный кабинет'),
-          backgroundColor: const Color(0xFFE3000F),
+          backgroundColor: const Color(0xFF3C98D4),
           foregroundColor: Colors.white,
           actions: [
             IconButton(
@@ -205,46 +242,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_loading && _firstLoaded)
+            if (_loading && _firstLoaded && _error == null)
               const LinearProgressIndicator(
-                color: Color(0xFFE3000F),
+                color: Color(0xFF3C98D4),
                 backgroundColor: Colors.transparent,
               ),
-            // Брендовая заставка на первую загрузку кабинета.
-            if (!_firstLoaded)
-              Container(
-                color: const Color(0xFFF6F7F9),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFF3B30), Color(0xFFE3000F)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.wifi_rounded,
-                          color: Colors.white, size: 38),
-                    ),
-                    const SizedBox(height: 22),
-                    const SizedBox(
-                      width: 26,
-                      height: 26,
-                      child: CircularProgressIndicator(
-                          color: Color(0xFFE3000F), strokeWidth: 2.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Загрузка кабинета…',
-                        style: TextStyle(color: Colors.grey.shade600)),
-                  ],
-                ),
-              ),
+            if (_error != null) _errorOverlay(),
+            if (!_firstLoaded) _splash(),
           ],
         ),
         bottomNavigationBar: BottomAppBar(
@@ -265,17 +269,16 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   onPressed: _goBack,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.home_rounded,
-                      color: Color(0xFFE3000F)),
+                  icon: const Icon(Icons.home_rounded, color: Color(0xFFF4752D)),
                   iconSize: 32,
                   tooltip: 'Главная',
-                  onPressed: _goHome,
+                  onPressed: _openCabinet,
                 ),
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 24),
                   color: Colors.grey.shade700,
                   tooltip: 'Обновить',
-                  onPressed: _reload,
+                  onPressed: _openCabinet,
                 ),
               ],
             ),
@@ -284,4 +287,58 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ),
     );
   }
+
+  Widget _errorOverlay() => Container(
+        color: const Color(0xFFF6F7F9),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700, height: 1.4),
+            ),
+            const SizedBox(height: 22),
+            FilledButton(onPressed: _openCabinet, child: const Text('Обновить')),
+          ],
+        ),
+      );
+
+  Widget _splash() => Container(
+        color: const Color(0xFFF6F7F9),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3C98D4), Color(0xFFF4752D)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child:
+                  const Icon(Icons.wifi_rounded, color: Colors.white, size: 38),
+            ),
+            const SizedBox(height: 22),
+            const SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(
+                  color: Color(0xFF3C98D4), strokeWidth: 2.5),
+            ),
+            const SizedBox(height: 16),
+            Text('Загрузка кабинета…',
+                style: TextStyle(color: Colors.grey.shade600)),
+          ],
+        ),
+      );
 }

@@ -1,5 +1,7 @@
 package ru.interra.lk_interra
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity (а не FlutterActivity) требуется пакету local_auth
+// для отображения системного диалога биометрии.
+class MainActivity : FlutterFragmentActivity()

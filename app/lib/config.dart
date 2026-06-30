@@ -1,19 +1,24 @@
 /// Конфигурация приложения «ЛК Интерра».
 class AppConfig {
-  /// Адрес веб-кабинета провайдера (UTM5), который показываем в WebView.
+  /// Адрес веб-кабинета провайдера (UTM5) — на случай открытия портала напрямую.
   static const String portalUrl = 'https://stat.interra.ru/';
 
-  /// Страница входа по паролю (форма с полями user/pass).
-  static const String loginUrl =
-      'https://stat.interra.ru/cgi-bin/utm5/aaa?login=&oper=ident';
+  /// Базовый путь CGI-скриптов биллинга UTM5.
+  static const String billingBase = 'https://stat.interra.ru/cgi-bin/utm5';
 
-  /// Главная страница кабинета UTM5 для сохранённой сессии.
-  /// Сессия передаётся в параметре login (это сессионный токен, не логин).
-  static String cabinetUrl(String sessionToken) =>
-      'https://stat.interra.ru/cgi-bin/utm5/aaainfo?login=$sessionToken&oper=info';
+  /// Эндпоинт `bbb` — регистрация приложения и получение ссылки на ЛК.
+  static const String bbbUrl = '$billingBase/bbb';
 
-  /// Базовый адрес нашего бэкенда (server/). ЗАМЕНИТЬ на реальный домен/IP.
-  /// Для локальной отладки на эмуляторе Android используйте http://10.0.2.2:8080
+  /// Полный адрес кабинета из ответа `cmd=open` (ответ вида `?login=X.123…`).
+  ///
+  /// Грузим именно `aaainfo…&oper=info` (страница «Основная информация»):
+  /// `aaa…` отдаёт лишь оболочку с пустым телом, а контент (баланс, тариф)
+  /// рендерит `aaainfo`. Параметр `loginParam` уже начинается с `?login=`.
+  static String cabinetFromLoginParam(String loginParam) =>
+      '$billingBase/aaainfo$loginParam&oper=info';
+
+  /// Базовый адрес нашего бэкенда (server/) для push-рассылок.
+  /// Для локальной отладки на эмуляторе Android: http://10.0.2.2:8080
   static const String backendBaseUrl = 'https://push.interra.ru';
 
   /// Версия приложения, передаётся при регистрации устройства.
