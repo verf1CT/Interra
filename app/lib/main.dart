@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'services/auth_store.dart';
+import 'services/biometric.dart';
 import 'services/push_service.dart';
-import 'screens/login_screen.dart';
+import 'screens/lock_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/webview_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  bool hasCreds = false;
+  bool registered = false;
+  bool locked = false;
   try {
-    hasCreds = await AuthStore().hasCredentials;
+    registered = await AuthStore().isRegistered;
+    // Биометрический гейт показываем только зарегистрированным и если включён.
+    locked = registered && await Biometric.isEnabled;
   } catch (e) {
-    debugPrint('Чтение учётных данных не удалось: $e');
+    debugPrint('Чтение регистрации не удалось: $e');
   }
 
   // Интерфейс показываем ПЕРВЫМ ДЕЛОМ — ничто не должно блокировать первый кадр.
-  runApp(InterraApp(loggedIn: hasCreds));
+  runApp(InterraApp(loggedIn: registered, locked: locked));
 
   // Firebase и push — полностью в фоне и с таймаутом, чтобы инициализация
   // (особенно на iOS без APNs) никогда не подвешивала запуск приложения.
@@ -34,32 +39,41 @@ Future<void> _initFirebaseAndPush() async {
 
 class InterraApp extends StatelessWidget {
   final bool loggedIn;
-  const InterraApp({super.key, required this.loggedIn});
+  final bool locked;
+  const InterraApp({super.key, required this.loggedIn, this.locked = false});
 
   @override
   Widget build(BuildContext context) {
+    final Widget home = !loggedIn
+        ? const RegisterScreen()
+        : locked
+            ? const LockScreen()
+            : const WebViewScreen();
     return MaterialApp(
       title: 'ЛК Интерра',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
-      home: loggedIn ? const WebViewScreen() : const LoginScreen(),
+      home: home,
     );
   }
 }
 
-const Color kBrandRed = Color(0xFFE3000F);
+/// Фирменные цвета Интерры.
+const Color kBrandBlue = Color(0xFF3C98D4);
+const Color kBrandOrange = Color(0xFFF4752D);
 
 ThemeData _buildTheme() {
   final scheme = ColorScheme.fromSeed(
-    seedColor: kBrandRed,
-    primary: kBrandRed,
+    seedColor: kBrandBlue,
+    primary: kBrandBlue,
+    secondary: kBrandOrange,
   );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: const Color(0xFFF6F7F9),
     appBarTheme: const AppBarTheme(
-      backgroundColor: kBrandRed,
+      backgroundColor: kBrandBlue,
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: false,
@@ -83,12 +97,12 @@ ThemeData _buildTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: kBrandRed, width: 1.5),
+        borderSide: const BorderSide(color: kBrandBlue, width: 1.5),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: kBrandRed,
+        backgroundColor: kBrandBlue,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

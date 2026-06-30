@@ -3,9 +3,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_store.dart';
 import '../services/api_client.dart';
-import 'login_screen.dart';
+import '../services/billing_api.dart';
+import '../services/biometric.dart';
+import 'register_screen.dart';
 
-const Color _brand = Color(0xFFE3000F);
+const Color _brand = Color(0xFF3C98D4); // фирменный синий Интерры
 
 /// Экран настроек: аккаунт, уведомления, выход.
 class SettingsScreen extends StatefulWidget {
@@ -16,8 +18,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String? _login;
+  String? _phone;
   bool _notifications = true;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -26,12 +30,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    final login = await AuthStore().login;
+    final phone = await AuthStore().phone;
     final prefs = await SharedPreferences.getInstance();
+    final bioAvail = await Biometric.isAvailable;
+    final bioOn = await Biometric.isEnabled;
     setState(() {
-      _login = login;
+      _phone = phone;
       _notifications = prefs.getBool('notifications_enabled') ?? true;
+      _biometricAvailable = bioAvail;
+      _biometricEnabled = bioOn;
     });
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    // Включение защищаем проверкой биометрии — чтобы случайный человек
+    // не включил замок чужим лицом/пальцем.
+    if (value && !await Biometric.authenticate()) return;
+    await Biometric.setEnabled(value);
+    if (!mounted) return;
+    setState(() => _biometricEnabled = value);
   }
 
   Future<void> _toggleNotifications(bool value) async {
@@ -40,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
       if (value) {
-        await ApiClient.registerDevice(token: token, clientLogin: _login);
+        await ApiClient.registerDevice(token: token, clientLogin: _phone);
       } else {
         await ApiClient.unregisterDevice(token);
       }
@@ -51,18 +68,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _logout() async {
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) await ApiClient.unregisterDevice(token);
+    // Удаляем регистрацию приложения в биллинге (cmd=del), затем чистим локально.
+    final app = await AuthStore().appToken;
+    if (app != null) await BillingApi.deleteApp(app);
     await AuthStore().clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const RegisterScreen()),
       (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final initial =
-        (_login != null && _login!.isNotEmpty) ? _login![0].toUpperCase() : '?';
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
@@ -72,23 +90,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _card(
             child: Row(
               children: [
-                CircleAvatar(
+                const CircleAvatar(
                   radius: 26,
                   backgroundColor: _brand,
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold),
-                  ),
+                  child: Icon(Icons.person, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _login ?? '—',
+                      _formatPhone(_phone),
                       style: const TextStyle(
                           fontSize: 17, fontWeight: FontWeight.w600),
                     ),
@@ -115,6 +127,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: _toggleNotifications,
             ),
           ),
+          if (_biometricAvailable) ...[
+            const SizedBox(height: 18),
+            _sectionTitle('Безопасность'),
+            _card(
+              padding: EdgeInsets.zero,
+              child: SwitchListTile(
+                secondary: const Icon(Icons.fingerprint),
+                title: const Text('Вход по Face ID / отпечатку'),
+                subtitle: const Text('Запрашивать при открытии приложения'),
+                value: _biometricEnabled,
+                activeThumbColor: _brand,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                onChanged: _toggleBiometric,
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           _sectionTitle('Аккаунт'),
           _card(
@@ -136,6 +165,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  /// Форматирует 11-значный номер вида 79229999999 → +7 922 999-99-99.
+  String _formatPhone(String? phone) {
+    final d = phone?.replaceAll(RegExp(r'\D'), '') ?? '';
+    if (d.length != 11) return phone ?? '—';
+    return '+${d[0]} ${d.substring(1, 4)} ${d.substring(4, 7)}-'
+        '${d.substring(7, 9)}-${d.substring(9)}';
   }
 
   Widget _sectionTitle(String text) => Padding(

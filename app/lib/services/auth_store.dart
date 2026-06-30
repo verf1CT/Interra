@@ -1,42 +1,35 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Защищённое хранилище учётных данных абонента (для авто-логина в UTM5).
+/// Защищённое хранилище регистрации приложения в биллинге UTM5.
 /// На Android использует EncryptedSharedPreferences, на iOS — Keychain.
+///
+/// Схема `bbb`: один раз регистрируем приложение по SMS и храним 24-значный
+/// токен [appToken]; телефон [phone] сохраняется после подтверждения кодом.
 class AuthStore {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  static const _kLogin = 'utm5_login';
-  static const _kPassword = 'utm5_password';
-  static const _kSession = 'utm5_session';
+  static const _kAppToken = 'billing_app_token';
+  static const _kPhone = 'billing_phone';
 
-  Future<void> save(String login, String password) async {
-    await _storage.write(key: _kLogin, value: login);
-    await _storage.write(key: _kPassword, value: password);
-  }
+  /// Токен приложения (24 цифры). Появляется уже после первичной регистрации,
+  /// до подтверждения SMS — поэтому сам по себе ещё не значит «зарегистрирован».
+  Future<String?> get appToken => _storage.read(key: _kAppToken);
+  Future<void> saveAppToken(String token) =>
+      _storage.write(key: _kAppToken, value: token);
 
-  Future<({String login, String password})?> read() async {
-    final login = await _storage.read(key: _kLogin);
-    final password = await _storage.read(key: _kPassword);
-    if (login == null || password == null) return null;
-    return (login: login, password: password);
-  }
+  /// Телефон абонента. Сохраняется только после успешного подтверждения кодом.
+  Future<String?> get phone => _storage.read(key: _kPhone);
+  Future<void> savePhone(String phone) =>
+      _storage.write(key: _kPhone, value: phone);
 
-  Future<String?> get login => _storage.read(key: _kLogin);
-
-  Future<bool> get hasCredentials async => (await read()) != null;
-
-  // Сессионный токен UTM5 (из URL кабинета) — чтобы при перезапуске войти
-  // без повторного логина/2FA, пока сессия жива на сервере.
-  Future<void> saveSession(String token) =>
-      _storage.write(key: _kSession, value: token);
-  Future<String?> readSession() => _storage.read(key: _kSession);
-  Future<void> clearSession() => _storage.delete(key: _kSession);
+  /// Регистрация завершена: есть и токен, и подтверждённый телефон.
+  Future<bool> get isRegistered async =>
+      (await appToken) != null && (await phone) != null;
 
   Future<void> clear() async {
-    await _storage.delete(key: _kLogin);
-    await _storage.delete(key: _kPassword);
-    await _storage.delete(key: _kSession);
+    await _storage.delete(key: _kAppToken);
+    await _storage.delete(key: _kPhone);
   }
 }
