@@ -314,19 +314,14 @@ class _WebViewScreenState extends State<WebViewScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3C98D4), Color(0xFFF4752D)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/splash_logo.png',
+                width: 72,
+                height: 72,
+                fit: BoxFit.cover,
               ),
-              child:
-                  const Icon(Icons.wifi_rounded, color: Colors.white, size: 38),
             ),
             const SizedBox(height: 22),
             const SizedBox(
