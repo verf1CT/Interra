@@ -24,6 +24,9 @@ struct BalanceEntry: TimelineEntry {
     let date: Date
     let balance: String
     let updated: String
+    /// Баланс в минусе — отрисовываем предупреждающе.
+    var isNegative: Bool { balance.hasPrefix("\u{2212}") || balance.hasPrefix("-") }
+    var hasData: Bool { balance != "—" && !balance.isEmpty }
 }
 
 struct BalanceProvider: TimelineProvider {
@@ -37,7 +40,7 @@ struct BalanceProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> BalanceEntry {
-        BalanceEntry(date: Date(), balance: "1 846 ₽", updated: "12:00")
+        BalanceEntry(date: Date(), balance: "1 846,03 ₽", updated: "12:00")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (BalanceEntry) -> Void) {
@@ -51,48 +54,168 @@ struct BalanceProvider: TimelineProvider {
     }
 }
 
-struct BalanceWidgetView: View {
-    var entry: BalanceEntry
+// MARK: - Палитра
 
-    // Фирменные цвета Интерры (AppColors в приложении).
-    private let brand = Color(red: 0x3C / 255, green: 0x98 / 255, blue: 0xD4 / 255)
-    private let accent = Color(red: 0xF4 / 255, green: 0x75 / 255, blue: 0x2D / 255)
+private enum Palette {
+    static let brand = Color(red: 0x3C / 255, green: 0x98 / 255, blue: 0xD4 / 255)
+    static let brandDeep = Color(red: 0x2B / 255, green: 0x7A / 255, blue: 0xB4 / 255)
+    static let accent = Color(red: 0xF4 / 255, green: 0x75 / 255, blue: 0x2D / 255)
+    static let danger = Color(red: 0xE5 / 255, green: 0x3E / 255, blue: 0x3E / 255)
+}
 
+/// Фон: диагональный фирменный градиент + мягкий световой блик сверху для
+/// объёма. При минусе уводим в тёплый красновато-оранжевый.
+private struct WidgetBackground: View {
+    let negative: Bool
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: "wifi")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white.opacity(0.9))
-                Text("Интерра")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.9))
-                Spacer()
-                // Кнопка «Обновить»: интент выполняется без открытия приложения.
-                Button(intent: RefreshBalanceIntent()) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.white.opacity(0.9))
-                }
-                .buttonStyle(.plain)
+        ZStack {
+            LinearGradient(
+                colors: negative
+                    ? [Palette.accent, Palette.danger]
+                    : [Palette.brand, Palette.brandDeep],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+            RadialGradient(
+                colors: [Color.white.opacity(0.28), Color.clear],
+                center: .topLeading, startRadius: 0, endRadius: 180)
+        }
+    }
+}
+
+/// Бренд-марка: кружок с волной Wi-Fi.
+private struct BrandMark: View {
+    var size: CGFloat = 26
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.white.opacity(0.20))
+            Image(systemName: "wifi")
+                .font(.system(size: size * 0.5, weight: .bold))
+                .foregroundColor(.white)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+private struct RefreshButton: View {
+    var size: CGFloat = 26
+    var body: some View {
+        Button(intent: RefreshBalanceIntent()) {
+            ZStack {
+                Circle().fill(Color.white.opacity(0.20))
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: size * 0.46, weight: .bold))
+                    .foregroundColor(.white)
             }
-            Spacer()
-            Text(entry.balance)
-                .font(.system(size: 26, weight: .bold))
+            .frame(width: size, height: size)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Small
+
+private struct SmallBalanceView: View {
+    let entry: BalanceEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                BrandMark(size: 24)
+                Spacer()
+                RefreshButton(size: 24)
+            }
+            Spacer(minLength: 6)
+            Text("Баланс".uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .tracking(0.6)
+                .foregroundColor(.white.opacity(0.75))
+            Text(entry.hasData ? entry.balance : "нет данных")
+                .font(.system(size: 27, weight: .heavy, design: .rounded))
+                .foregroundColor(.white)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
-                .foregroundColor(.white)
-            Text(entry.updated.isEmpty ? "Баланс" : "Баланс · \(entry.updated)")
-                .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.75))
+                .contentTransition(.numericText())
+            if !entry.updated.isEmpty {
+                Text("обновлено \(entry.updated)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.top, 2)
+            } else if !entry.hasData {
+                Text("откройте приложение")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.top, 2)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Medium
+
+private struct MediumBalanceView: View {
+    let entry: BalanceEntry
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    BrandMark(size: 28)
+                    Text("Интерра")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                Spacer(minLength: 8)
+                Text("Баланс".uppercased())
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.8)
+                    .foregroundColor(.white.opacity(0.75))
+                Text(entry.hasData ? entry.balance : "нет данных")
+                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .contentTransition(.numericText())
+                Text(entry.updated.isEmpty
+                        ? "откройте приложение"
+                        : "обновлено в \(entry.updated)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.top, 3)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Правый столбик: статус-«таблетка» и крупная кнопка обновления.
+            VStack(alignment: .trailing, spacing: 10) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(entry.isNegative ? Color.white : Color.white)
+                        .frame(width: 6, height: 6)
+                    Text(entry.isNegative ? "Пополните" : "Активен")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Color.white.opacity(0.18)))
+                Spacer()
+                RefreshButton(size: 40)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct BalanceWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    var entry: BalanceEntry
+
+    var body: some View {
+        Group {
+            switch family {
+            case .systemMedium: MediumBalanceView(entry: entry)
+            default: SmallBalanceView(entry: entry)
+            }
+        }
         .containerBackground(for: .widget) {
-            LinearGradient(
-                colors: [brand, accent],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            WidgetBackground(negative: entry.isNegative && entry.hasData)
         }
     }
 }
@@ -103,8 +226,8 @@ struct BalanceWidget: Widget {
         StaticConfiguration(kind: "BalanceWidget", provider: BalanceProvider()) { entry in
             BalanceWidgetView(entry: entry)
         }
-        .configurationDisplayName("Баланс")
-        .description("Текущий баланс лицевого счёта Интерры")
-        .supportedFamilies([.systemSmall])
+        .configurationDisplayName("Баланс Интерры")
+        .description("Баланс лицевого счёта с быстрым обновлением")
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
