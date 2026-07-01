@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'auth_store.dart';
 import 'api_client.dart';
+import 'notify_prefs.dart';
 
 /// Обработчик push в фоне/при закрытом приложении. Должен быть top-level.
 @pragma('vm:entry-point')
@@ -64,7 +65,12 @@ class PushService {
           .timeout(const Duration(seconds: 10));
       if (token == null) return;
       final phone = await AuthStore().phone;
-      await ApiClient.registerDevice(token: token, clientLogin: phone);
+      await ApiClient.registerDevice(
+        token: token,
+        clientLogin: phone,
+        segments: await NotifyPrefs.enabledSegments(),
+        prefs: await NotifyPrefs.prefsMap(),
+      );
     } catch (e) {
       debugPrint('registerCurrentToken пропущен (нет APNs/бэкенда?): $e');
     }

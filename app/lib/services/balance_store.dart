@@ -1,0 +1,72 @@
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Нативный баланс абонента, извлечённый из страницы кабинета.
+///
+/// Источник — текст страницы «Основная информация» (`aaainfo`), которую и так
+/// грузит WebView: отдельного API баланса у биллинга нет. Значение кэшируем в
+/// SharedPreferences, чтобы показывать его сразу при старте и в офлайне.
+class BalanceInfo {
+  final double amount;
+  final DateTime updatedAt;
+  const BalanceInfo(this.amount, this.updatedAt);
+}
+
+class BalanceStore {
+  static const _kAmount = 'balance_amount';
+  static const _kUpdatedAt = 'balance_updated_at';
+
+  /// Текущее значение для UI. null — баланс ещё ни разу не извлекали.
+  static final ValueNotifier<BalanceInfo?> notifier = ValueNotifier(null);
+
+  /// Поднимает сохранённое значение (вызывать один раз при старте экрана).
+  static Future<void> restore() async {
+    if (notifier.value != null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final amount = prefs.getDouble(_kAmount);
+      final ts = prefs.getString(_kUpdatedAt);
+      if (amount == null || ts == null) return;
+      final at = DateTime.tryParse(ts);
+      if (at != null) notifier.value = BalanceInfo(amount, at);
+    } catch (e) {
+      debugPrint('BalanceStore.restore пропущен: $e');
+    }
+  }
+
+  /// Обновляет баланс (из парсинга страницы) и сохраняет на диск.
+  static Future<void> update(double amount) async {
+    final info = BalanceInfo(amount, DateTime.now());
+    notifier.value = info;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_kAmount, amount);
+      await prefs.setString(_kUpdatedAt, info.updatedAt.toIso8601String());
+    } catch (e) {
+      debugPrint('BalanceStore.update: не сохранилось: $e');
+    }
+  }
+
+  /// Разбирает строку вида `1846.03`, `1 846,03`, `-12.5` в число.
+  static double? parseAmount(String raw) {
+    final s = raw.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.');
+    return double.tryParse(s);
+  }
+
+  /// «1 846,03 ₽» — формат для чипа в шапке.
+  static String format(double amount) {
+    final sign = amount < 0 ? '−' : '';
+    final abs = amount.abs();
+    final whole = abs.truncate();
+    final cents = ((abs - whole) * 100).round();
+    final digits = whole.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(' ');
+      buf.write(digits[i]);
+    }
+    final frac =
+        cents == 0 ? '' : ',${cents.toString().padLeft(2, '0')}';
+    return '$sign$buf$frac ₽';
+  }
+}
