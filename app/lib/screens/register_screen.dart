@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme.dart';
@@ -41,11 +42,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _error;
   String? _appToken; // токен из первичной регистрации (для шага подтверждения)
 
+  // Антиспам повторной отправки SMS: после успешного запроса кода блокируем
+  // повторную отправку на 60 секунд и показываем обратный отсчёт.
+  Timer? _resendTimer;
+  int _resendLeft = 0;
+
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _phone.dispose();
     _code.dispose();
     super.dispose();
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendLeft = 60);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _resendLeft--);
+      if (_resendLeft <= 0) t.cancel();
+    });
   }
 
   String get _normalizedPhone {
@@ -87,6 +104,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _busy = false;
         _step = _Step.code;
       });
+      _startResendCooldown();
     } else {
       // '0' — биллинг не знает наш токен (первичная регистрация потеряна).
       // Сбрасываем его, иначе каждая следующая попытка упрётся в тот же отказ.
@@ -154,10 +172,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  /// Повторная отправка SMS тем же токеном (кнопка активна только после отсчёта).
+  Future<void> _resendCode() async {
+    final token = _appToken;
+    if (token == null) return _backToPhone();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final r = await BillingApi.requestSms(_normalizedPhone, token);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = r.isOk ? null : 'Не удалось отправить код повторно.';
+    });
+    if (r.isOk) _startResendCooldown();
+  }
+
   void _backToPhone() {
+    _resendTimer?.cancel();
     setState(() {
       _step = _Step.phone;
       _error = null;
+      _resendLeft = 0;
       _code.clear();
     });
   }
@@ -297,6 +334,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: _busy ? _spinner() : const Text('Подтвердить'),
         ),
         const SizedBox(height: 8),
+        TextButton(
+          onPressed: (_busy || _resendLeft > 0) ? null : _resendCode,
+          child: Text(
+            _resendLeft > 0
+                ? 'Отправить код повторно ($_resendLeft)'
+                : 'Отправить код повторно',
+            style: TextStyle(
+                color: _resendLeft > 0
+                    ? Colors.grey.shade400
+                    : AppColors.brand),
+          ),
+        ),
         TextButton(
           onPressed: _busy ? null : _backToPhone,
           child: const Text('Изменить номер',

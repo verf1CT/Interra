@@ -29,7 +29,8 @@ final class WatchModel: NSObject, ObservableObject, WCSessionDelegate {
 
     func load() {
         let d = BalanceCore.defaults
-        balance = d?.string(forKey: "balance_text") ?? "—"
+        let b = d?.string(forKey: "balance_text") ?? ""
+        balance = b.isEmpty ? "—" : b
         updated = d?.string(forKey: "balance_updated") ?? ""
     }
 
