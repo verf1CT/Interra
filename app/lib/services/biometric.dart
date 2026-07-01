@@ -59,10 +59,8 @@ class Biometric {
     try {
       return await _auth.authenticate(
         localizedReason: 'Подтвердите вход в личный кабинет',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false, // допускаем код-пароль как запасной вариант
-        ),
+        biometricOnly: false, // допускаем код-пароль как запасной вариант
+        persistAcrossBackgrounding: true, // бывший stickyAuth
       );
     } catch (e) {
       debugPrint('Biometric.authenticate: $e');
