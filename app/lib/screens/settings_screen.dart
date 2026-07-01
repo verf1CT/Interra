@@ -6,8 +6,10 @@ import '../theme.dart';
 import '../utils/phone.dart';
 import '../services/auth_store.dart';
 import '../services/api_client.dart';
+import '../services/balance_store.dart';
 import '../services/billing_api.dart';
 import '../services/biometric.dart';
+import '../services/page_cache.dart';
 import '../services/notify_prefs.dart';
 import '../services/pin_lock.dart';
 import '../services/push_service.dart';
@@ -152,6 +154,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await AuthStore().clear();
     await Biometric.setEnabled(false); // снимаем биометрический замок при выходе
     await PinLock.clear(); // и код-пароль
+    // Персональные данные не должны переживать выход: снимок кабинета
+    // (ФИО, адрес, баланс) и баланс в приложении/виджете.
+    await PageCache.clear();
+    await BalanceStore.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RegisterScreen()),
