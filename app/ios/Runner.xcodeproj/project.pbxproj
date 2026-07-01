@@ -20,6 +20,9 @@
 		9ABB05FA07997A43B712B88D /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D8CC72EF88C69C89D2AED79 /* Pods_RunnerTests.framework */; };
 		BA1A9C000000000000000001 /* BalanceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000003 /* BalanceWidget.swift */; };
 		BA1A9C000000000000000002 /* BalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000005 /* BalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BA1A9C000000000000000022 /* BalanceCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000020 /* BalanceCore.swift */; };
+		BA1A9C000000000000000023 /* BalanceCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000020 /* BalanceCore.swift */; };
+		BA1A9C000000000000000024 /* BalanceIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000021 /* BalanceIntents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +95,8 @@
 		BA1A9C000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BA1A9C000000000000000005 /* BalanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BalanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		EC6A8FC9EC141B981B402868 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		BA1A9C000000000000000020 /* BalanceCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceCore.swift; sourceTree = "<group>"; };
+		BA1A9C000000000000000021 /* BalanceIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceIntents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -159,6 +164,7 @@
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				BA1A9C000000000000000006 /* BalanceWidget */,
+				BA1A9C000000000000000025 /* Shared */,
 				CD553D3D8AD52914641AAF24 /* Pods */,
 				714F6843D911C6F6EF25C5F7 /* Frameworks */,
 			);
@@ -185,6 +191,7 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
+				BA1A9C000000000000000021 /* BalanceIntents.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -210,6 +217,14 @@
 				08541674329265FBCCCFA879 /* Pods-RunnerTests.profile.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		BA1A9C000000000000000025 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BA1A9C000000000000000020 /* BalanceCore.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -445,6 +460,8 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
+				BA1A9C000000000000000022 /* BalanceCore.swift in Sources */,
+				BA1A9C000000000000000024 /* BalanceIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,6 +470,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BA1A9C000000000000000001 /* BalanceWidget.swift in Sources */,
+				BA1A9C000000000000000023 /* BalanceCore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
