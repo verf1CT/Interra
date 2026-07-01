@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
+import 'diagnostics_screen.dart';
 
 /// Экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
 /// на сайте) и версия приложения. Контакты — из [AppConfig].
@@ -63,6 +64,22 @@ class SupportScreen extends StatelessWidget {
           const SizedBox(height: 18),
           _sectionTitle('Самостоятельно'),
           _group([
+            Builder(
+              builder: (context) => _tile(
+                icon: Icons.network_check_rounded,
+                color: AppColors.accent,
+                title: 'Диагностика сети',
+                subtitle: 'Проверить, где проблема с интернетом',
+                onTap: () {
+                  Analytics.supportOpened('diagnostics');
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const DiagnosticsScreen(),
+                    settings: const RouteSettings(name: 'diagnostics'),
+                  ));
+                },
+              ),
+            ),
+            _divider(),
             _tile(
               icon: Icons.help_outline_rounded,
               color: AppColors.brand,
