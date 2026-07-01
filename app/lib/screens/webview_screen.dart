@@ -466,8 +466,9 @@ class _WebViewScreenState extends State<WebViewScreen>
         valueListenable: BalanceStore.notifier,
         builder: (context, info, _) {
           if (info == null) return const SizedBox.shrink();
-          final low = info.amount < 0;
-          final color = low ? AppColors.accent : AppColors.ok;
+          // Шапка синяя — чип делаем белым, сумму фирменным оранжевым
+          // (минус — красным), иначе цвет тонет на синем фоне.
+          final color = info.amount < 0 ? AppColors.danger : AppColors.accent;
           return Center(
             child: GestureDetector(
               onTap: _openCabinet,
@@ -476,8 +477,15 @@ class _WebViewScreenState extends State<WebViewScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
