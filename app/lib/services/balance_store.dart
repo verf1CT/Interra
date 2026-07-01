@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_store.dart';
 
 /// Нативный баланс абонента, извлечённый из страницы кабинета.
 ///
@@ -65,6 +66,10 @@ class BalanceStore {
       final hh = t.hour.toString().padLeft(2, '0');
       final mm = t.minute.toString().padLeft(2, '0');
       await HomeWidget.saveWidgetData('balance_updated', '$hh:$mm');
+      // Токен биллинга — для кнопки «Обновить» на виджете и интента Сири:
+      // они запрашивают баланс нативно, без запуска Dart. App group доступен
+      // только приложениям с нашей подписью.
+      await HomeWidget.saveWidgetData('bbb_token', await AuthStore().appToken);
       await HomeWidget.updateWidget(iOSName: _widgetKind);
     } catch (e) {
       debugPrint('Виджет баланса не обновлён: $e');
@@ -87,6 +92,7 @@ class BalanceStore {
       await HomeWidget.setAppGroupId(_appGroup);
       await HomeWidget.saveWidgetData('balance_text', '—');
       await HomeWidget.saveWidgetData('balance_updated', '');
+      await HomeWidget.saveWidgetData('bbb_token', null);
       await HomeWidget.updateWidget(iOSName: _widgetKind);
     } catch (e) {
       debugPrint('Виджет баланса не очищен: $e');
