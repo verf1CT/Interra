@@ -37,3 +37,4 @@ app/android/key.properties
 *.iml
 .DS_Store
 Thumbs.db
+*.bak
