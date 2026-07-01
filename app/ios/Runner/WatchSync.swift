@@ -20,11 +20,13 @@ final class WatchSync: NSObject, WCSessionDelegate {
         let session = WCSession.default
         guard session.activationState == .activated, session.isPaired else { return }
         let d = UserDefaults(suiteName: BalanceCore.appGroup)
+        // Отправляем ВСЕ ключи (пустая строка, если значения нет), чтобы часы
+        // могли и очиститься после выхода из аккаунта, а не только получить
+        // обновление. applicationContext перезаписывает предыдущий целиком.
         var ctx: [String: Any] = [:]
         for key in ["balance_text", "balance_updated", "bbb_token"] {
-            if let v = d?.string(forKey: key) { ctx[key] = v }
+            ctx[key] = d?.string(forKey: key) ?? ""
         }
-        guard !ctx.isEmpty else { return }
         try? session.updateApplicationContext(ctx)
     }
 

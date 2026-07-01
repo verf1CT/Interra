@@ -8,8 +8,17 @@
 		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Подтверждение входа в личный кабинет по Face ID</string>
+		<!-- Русский — основной язык: иначе фразы Сири (App Shortcuts) на русском
+		     не распознаются, и Сири «не видит» баланс. -->
 		<key>CFBundleDevelopmentRegion</key>
-		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<string>ru</string>
+		<key>CFBundleLocalizations</key>
+		<array>
+			<string>ru</string>
+			<string>en</string>
+		</array>
+		<key>CFBundleAllowMixedLocalizations</key>
+		<true/>
 		<key>CFBundleDisplayName</key>
 		<string>ЛК Интерра</string>
 		<key>CFBundleExecutable</key>

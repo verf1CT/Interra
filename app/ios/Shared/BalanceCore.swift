@@ -35,8 +35,10 @@ enum BalanceCore {
             let (d2, _) = try await URLSession.shared.data(from: infoURL)
             guard let html = String(data: d2, encoding: .utf8) else { return nil }
             // «…Баланс…1846.03 руб.» — ищем число перед «руб» после слова Баланс.
+            // Внимание: в шаблоне ICU неразрывный пробел —   (ровно 4 hex),
+            // НЕ swift-синтаксис \u{00a0}, иначе регулярка не компилируется.
             let re = try NSRegularExpression(
-                pattern: "Баланс[\\s\\S]{0,200}?(-?[\\d\\u{00a0} ]+(?:[.,]\\d+)?)\\s*руб",
+                pattern: "Баланс[\\s\\S]{0,200}?(-?[\\d\\u00a0 ]+(?:[.,]\\d+)?)\\s*руб",
                 options: [])
             let range = NSRange(html.startIndex..., in: html)
             guard let m = re.firstMatch(in: html, options: [], range: range),
