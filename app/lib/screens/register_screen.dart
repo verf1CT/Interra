@@ -88,6 +88,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _step = _Step.code;
       });
     } else {
+      // '0' — биллинг не знает наш токен (первичная регистрация потеряна).
+      // Сбрасываем его, иначе каждая следующая попытка упрётся в тот же отказ.
+      if (r.code == '0') {
+        await AuthStore().clear();
+        _appToken = null;
+      }
+      if (!mounted) return;
       setState(() {
         _busy = false;
         _error = r.networkError
@@ -126,8 +133,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => const WebViewScreen()),
       );
     } else {
+      // '1' — первичная регистрация утеряна: токен мёртв, сбрасываем и
+      // возвращаем на шаг телефона, чтобы регистрация началась заново.
+      if (r.code == '1') {
+        await AuthStore().clear();
+        _appToken = null;
+      }
+      if (!mounted) return;
       setState(() {
         _busy = false;
+        if (r.code == '1') _step = _Step.phone;
         _error = r.networkError
             ? 'Нет связи с биллингом. Проверьте интернет.'
             : r.code == '0'
@@ -268,6 +283,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _code,
           keyboardType: TextInputType.number,
           autofocus: true,
+          // iOS/Android подставят код из SMS прямо над клавиатурой.
+          autofillHints: const [AutofillHints.oneTimeCode],
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: const InputDecoration(
             labelText: 'Код из SMS',

@@ -13,8 +13,15 @@ class PinLock {
 
   static const _kHash = 'pin_hash';
   static const _kSalt = 'pin_salt';
+  static const _kFails = 'pin_fails';
+  static const _kLockUntil = 'pin_lock_until_ms';
 
   static const int length = 4;
+
+  /// Защита от перебора: после [maxAttempts] неверных вводов подряд —
+  /// пауза [cooldown], в течение которой любой ввод отклоняется.
+  static const int maxAttempts = 5;
+  static const Duration cooldown = Duration(seconds: 30);
 
   static String _hash(String pin, String salt) =>
       sha256.convert(utf8.encode('$salt:$pin')).toString();
@@ -32,17 +39,48 @@ class PinLock {
     await _storage.write(key: _kHash, value: _hash(pin, salt));
   }
 
-  /// Проверяет введённый PIN.
+  /// Сколько осталось ждать до следующей попытки (Duration.zero — можно вводить).
+  static Future<Duration> get cooldownRemaining async {
+    final raw = await _storage.read(key: _kLockUntil);
+    final until = int.tryParse(raw ?? '');
+    if (until == null) return Duration.zero;
+    final left = until - DateTime.now().millisecondsSinceEpoch;
+    return left > 0 ? Duration(milliseconds: left) : Duration.zero;
+  }
+
+  /// Проверяет введённый PIN (с учётом паузы после серии неверных вводов).
   static Future<bool> verify(String pin) async {
+    if ((await cooldownRemaining) > Duration.zero) return false;
     final hash = await _storage.read(key: _kHash);
     final salt = await _storage.read(key: _kSalt);
     if (hash == null || salt == null) return false;
-    return _hash(pin, salt) == hash;
+
+    if (_hash(pin, salt) == hash) {
+      await _storage.delete(key: _kFails);
+      await _storage.delete(key: _kLockUntil);
+      return true;
+    }
+
+    final fails = (int.tryParse(await _storage.read(key: _kFails) ?? '') ?? 0) + 1;
+    if (fails >= maxAttempts) {
+      await _storage.write(
+        key: _kLockUntil,
+        value: (DateTime.now().millisecondsSinceEpoch +
+                cooldown.inMilliseconds)
+            .toString(),
+      );
+      await _storage.delete(key: _kFails);
+    } else {
+      await _storage.write(key: _kFails, value: fails.toString());
+    }
+    return false;
   }
 
   /// Убирает PIN (выход из аккаунта / отключение в настройках).
   static Future<void> clear() async {
     await _storage.delete(key: _kHash);
     await _storage.delete(key: _kSalt);
+    await _storage.delete(key: _kFails);
+    await _storage.delete(key: _kLockUntil);
   }
 }
