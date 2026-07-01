@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../services/biometric.dart';
+import '../services/pin_lock.dart';
+import '../widgets/pin_pad.dart';
 
-/// Биометрический замок поверх всего приложения. Запрашивает Face ID / отпечаток
-/// при холодном старте и при каждом возврате из фона, если вход по биометрии
-/// включён в настройках. Размещается через `MaterialApp.builder`, поэтому
-/// перекрывает в том числе вложенные экраны (настройки и т.п.).
+/// Замок поверх всего приложения: Face ID / отпечаток и/или код-пароль.
+///
+/// Показывается при холодном старте и возврате из фона, если защита включена
+/// и льготный период ([Biometric.gracePeriod]) истёк — чтобы не запрашивать
+/// разблокировку при каждом переключении приложений.
+/// Размещается через `MaterialApp.builder`, поэтому перекрывает в том числе
+/// вложенные экраны (настройки и т.п.).
 class BiometricGate extends StatefulWidget {
   final Widget child;
   const BiometricGate({super.key, required this.child});
@@ -19,12 +24,14 @@ class _BiometricGateState extends State<BiometricGate>
   bool _locked = false;
   bool _authInProgress = false;
   bool _wasPaused = false;
+  bool _bioEnabled = false;
+  bool _pinSet = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _lockIfEnabled();
+    _lockIfNeeded();
   }
 
   @override
@@ -41,20 +48,26 @@ class _BiometricGateState extends State<BiometricGate>
       _wasPaused = true;
     } else if (state == AppLifecycleState.resumed && _wasPaused) {
       _wasPaused = false;
-      _lockIfEnabled();
+      _lockIfNeeded();
     }
   }
 
-  Future<void> _lockIfEnabled() async {
+  Future<void> _lockIfNeeded() async {
     if (_locked) return;
-    if (await Biometric.isEnabled) {
-      if (!mounted) return;
-      setState(() => _locked = true);
-      _authenticate();
-    }
+    final bio = await Biometric.isEnabled;
+    final pin = await PinLock.isSet;
+    if (!bio && !pin) return;
+    if (await Biometric.withinGracePeriod) return;
+    if (!mounted) return;
+    setState(() {
+      _locked = true;
+      _bioEnabled = bio;
+      _pinSet = pin;
+    });
+    if (bio) _authenticateBio();
   }
 
-  Future<void> _authenticate() async {
+  Future<void> _authenticateBio() async {
     if (_authInProgress) return;
     setState(() => _authInProgress = true);
     final ok = await Biometric.authenticate();
@@ -62,10 +75,23 @@ class _BiometricGateState extends State<BiometricGate>
       _authInProgress = false;
       return;
     }
+    if (ok) {
+      await Biometric.markUnlocked();
+      if (!mounted) return;
+    }
     setState(() {
       _authInProgress = false;
       if (ok) _locked = false;
     });
+  }
+
+  Future<bool> _submitPin(String pin) async {
+    final ok = await PinLock.verify(pin);
+    if (ok) {
+      await Biometric.markUnlocked();
+      if (mounted) setState(() => _locked = false);
+    }
+    return ok;
   }
 
   @override
@@ -75,7 +101,13 @@ class _BiometricGateState extends State<BiometricGate>
         widget.child,
         if (_locked)
           Positioned.fill(
-            child: _LockView(busy: _authInProgress, onUnlock: _authenticate),
+            child: _LockView(
+              busy: _authInProgress,
+              pinSet: _pinSet,
+              bioEnabled: _bioEnabled,
+              onBiometric: _authenticateBio,
+              onPin: _submitPin,
+            ),
           ),
       ],
     );
@@ -84,42 +116,69 @@ class _BiometricGateState extends State<BiometricGate>
 
 class _LockView extends StatelessWidget {
   final bool busy;
-  final VoidCallback onUnlock;
-  const _LockView({required this.busy, required this.onUnlock});
+  final bool pinSet;
+  final bool bioEnabled;
+  final VoidCallback onBiometric;
+  final Future<bool> Function(String) onPin;
+
+  const _LockView({
+    required this.busy,
+    required this.pinSet,
+    required this.bioEnabled,
+    required this.onBiometric,
+    required this.onPin,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.bg,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.brand, AppColors.accent],
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.brand, AppColors.accent],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(Icons.lock_outline,
+                      color: Colors.white, size: 36),
                 ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child:
-                  const Icon(Icons.lock_outline, color: Colors.white, size: 44),
+                const SizedBox(height: 24),
+                if (pinSet)
+                  // Код-пароль установлен: цифровая клавиатура, биометрия —
+                  // кнопкой в нижнем ряду (если включена).
+                  PinPad(
+                    title: 'Введите код-пароль',
+                    onSubmit: onPin,
+                    onBiometric: bioEnabled && !busy ? onBiometric : null,
+                  )
+                else ...[
+                  const Text('Личный кабинет заблокирован',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 28),
+                  FilledButton.icon(
+                    onPressed: busy ? null : onBiometric,
+                    icon: const Icon(Icons.fingerprint),
+                    label: const Text('Разблокировать'),
+                    style:
+                        FilledButton.styleFrom(minimumSize: const Size(220, 52)),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 24),
-            const Text('Личный кабинет заблокирован',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: busy ? null : onUnlock,
-              icon: const Icon(Icons.fingerprint),
-              label: const Text('Разблокировать'),
-              style: FilledButton.styleFrom(minimumSize: const Size(220, 52)),
-            ),
-          ],
+          ),
         ),
       ),
     );
