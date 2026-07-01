@@ -1,5 +1,18 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
+
+/// Интент кнопки «Обновить» на виджете: тянет свежий баланс из биллинга
+/// прямо из процесса виджета (токен зеркалирован в app group).
+struct RefreshBalanceIntent: AppIntent {
+    static let title: LocalizedStringResource = "Обновить баланс"
+    static let description = IntentDescription("Запрашивает актуальный баланс")
+
+    func perform() async throws -> some IntentResult {
+        await BalanceCore.refresh()
+        return .result()
+    }
+}
 
 /// Виджет «Баланс Интерры» для домашнего экрана.
 ///
@@ -54,6 +67,14 @@ struct BalanceWidgetView: View {
                 Text("Интерра")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.9))
+                Spacer()
+                // Кнопка «Обновить»: интент выполняется без открытия приложения.
+                Button(intent: RefreshBalanceIntent()) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .buttonStyle(.plain)
             }
             Spacer()
             Text(entry.balance)
