@@ -22,7 +22,7 @@ class AppConfig {
   static const String backendBaseUrl = 'https://push.interra.ru';
 
   /// Версия приложения, передаётся при регистрации устройства.
-  static const String appVersion = '0.1.0';
+  static const String appVersion = '1.0.0';
 
   // --- Контакты поддержки (экран «Поддержка», быстрые действия) ---------------
   // Источник: официальный сайт interra.ru. Если контакты изменятся — правим тут.
