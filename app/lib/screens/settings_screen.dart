@@ -8,6 +8,8 @@ import '../services/auth_store.dart';
 import '../services/api_client.dart';
 import '../services/billing_api.dart';
 import '../services/biometric.dart';
+import '../services/notify_prefs.dart';
+import '../services/push_service.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
 
@@ -24,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifications = true;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
+  final Map<String, bool> _categories = {}; // ключ категории → включена
 
   @override
   void initState() {
@@ -36,11 +39,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final bioAvail = await Biometric.isAvailable;
     final bioOn = await Biometric.isEnabled;
+    final cats = <String, bool>{};
+    for (final c in NotifyPrefs.categories) {
+      cats[c.key] = await NotifyPrefs.isEnabled(c.key);
+    }
     setState(() {
       _phone = phone;
       _notifications = prefs.getBool('notifications_enabled') ?? true;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
+      _categories
+        ..clear()
+        ..addAll(cats);
     });
   }
 
@@ -63,7 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .timeout(const Duration(seconds: 5));
       if (token != null) {
         if (value) {
-          await ApiClient.registerDevice(token: token, clientLogin: _phone);
+          // Регистрируем через PushService — он передаёт сегменты категорий.
+          await PushService.registerCurrentToken();
         } else {
           await ApiClient.unregisterDevice(token);
         }
@@ -73,6 +84,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (!mounted) return;
     setState(() => _notifications = value);
+  }
+
+  Future<void> _toggleCategory(String key, bool value) async {
+    await NotifyPrefs.setEnabled(key, value);
+    if (mounted) setState(() => _categories[key] = value);
+    // Обновляем сегменты на бэкенде (best-effort, сеть может отсутствовать).
+    PushService.registerCurrentToken();
   }
 
   Future<void> _logout() async {
@@ -148,15 +166,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _sectionTitle('Уведомления'),
           _card(
             padding: EdgeInsets.zero,
-            child: SwitchListTile(
-              secondary: const Icon(Icons.notifications_outlined),
-              title: const Text('Push-уведомления'),
-              subtitle: const Text('Баланс, тариф, статусы заявок'),
-              value: _notifications,
-              activeThumbColor: AppColors.brand,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              onChanged: _toggleNotifications,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.notifications_outlined),
+                  title: const Text('Push-уведомления'),
+                  subtitle: const Text('Баланс, тариф, статусы заявок'),
+                  value: _notifications,
+                  activeThumbColor: AppColors.brand,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  onChanged: _toggleNotifications,
+                ),
+                if (_notifications)
+                  for (final c in NotifyPrefs.categories) ...[
+                    const Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: 68,
+                        color: AppColors.line),
+                    SwitchListTile(
+                      secondary: const SizedBox.shrink(),
+                      title: Text(c.title,
+                          style: const TextStyle(fontSize: 15)),
+                      subtitle: Text(c.subtitle,
+                          style: const TextStyle(fontSize: 12.5)),
+                      value: _categories[c.key] ?? true,
+                      activeThumbColor: AppColors.brand,
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(
+                          left: 16, right: 16, top: 2, bottom: 2),
+                      onChanged: (v) => _toggleCategory(c.key, v),
+                    ),
+                  ],
+              ],
             ),
           ),
           if (_biometricAvailable) ...[
