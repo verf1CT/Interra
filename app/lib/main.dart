@@ -5,6 +5,7 @@ import 'services/auth_store.dart';
 import 'services/push_service.dart';
 import 'services/analytics.dart';
 import 'services/quick_actions_service.dart';
+import 'services/update_check.dart';
 import 'screens/biometric_gate.dart';
 import 'screens/register_screen.dart';
 import 'screens/webview_screen.dart';
@@ -40,6 +41,8 @@ Future<void> _initServices() async {
   }
   // Быстрые действия от Firebase не зависят — настраиваем отдельно.
   await QuickActionsService.init();
+  // Проверка новой версии (пока обновляемся не через сторы).
+  UpdateCheck.run();
 }
 
 class InterraApp extends StatelessWidget {

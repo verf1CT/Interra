@@ -13,6 +13,7 @@ import '../services/page_cache.dart';
 import '../services/notify_prefs.dart';
 import '../services/pin_lock.dart';
 import '../services/push_service.dart';
+import '../services/update_check.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
@@ -172,6 +173,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Плашка о доступном обновлении (обновляемся пока не через сторы).
+          ValueListenableBuilder<String?>(
+            valueListenable: UpdateCheck.available,
+            builder: (context, latest, _) {
+              if (latest == null) return const SizedBox.shrink();
+              return Container(
+                margin: const EdgeInsets.only(bottom: 18),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.system_update_alt_rounded,
+                        color: AppColors.accent, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Доступна новая версия $latest — '
+                        'обновите приложение при следующей установке.',
+                        style: const TextStyle(fontSize: 13, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // Карточка аккаунта
           _card(
             child: Row(
