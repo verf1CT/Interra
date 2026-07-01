@@ -6,9 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Схема `bbb`: один раз регистрируем приложение по SMS и храним 24-значный
 /// токен [appToken]; телефон [phone] сохраняется после подтверждения кодом.
 class AuthStore {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  // v10: шифрование на Android включено по умолчанию, параметр не нужен.
+  static const _storage = FlutterSecureStorage();
 
   static const _kAppToken = 'billing_app_token';
   static const _kPhone = 'billing_phone';

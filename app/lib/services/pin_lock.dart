@@ -8,9 +8,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Храним не сам PIN, а его SHA-256 с солью, в защищённом хранилище системы
 /// (Keychain / EncryptedSharedPreferences) — как и токен биллинга в AuthStore.
 class PinLock {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  // v10: шифрование на Android включено по умолчанию, параметр не нужен.
+  static const _storage = FlutterSecureStorage();
 
   static const _kHash = 'pin_hash';
   static const _kSalt = 'pin_salt';
