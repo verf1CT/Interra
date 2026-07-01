@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Нативный баланс абонента, извлечённый из страницы кабинета.
@@ -15,6 +17,11 @@ class BalanceInfo {
 class BalanceStore {
   static const _kAmount = 'balance_amount';
   static const _kUpdatedAt = 'balance_updated_at';
+
+  // Виджет домашнего экрана (iOS, WidgetKit): данные уходят в общий
+  // UserDefaults app group, читает их ios/BalanceWidget/BalanceWidget.swift.
+  static const _appGroup = 'group.ru.interra.lkInterra';
+  static const _widgetKind = 'BalanceWidget';
 
   /// Текущее значение для UI. null — баланс ещё ни разу не извлекали.
   static final ValueNotifier<BalanceInfo?> notifier = ValueNotifier(null);
@@ -44,6 +51,23 @@ class BalanceStore {
       await prefs.setString(_kUpdatedAt, info.updatedAt.toIso8601String());
     } catch (e) {
       debugPrint('BalanceStore.update: не сохранилось: $e');
+    }
+    await _pushToWidget(info);
+  }
+
+  /// Отдаёт баланс виджету домашнего экрана (пока только iOS).
+  static Future<void> _pushToWidget(BalanceInfo info) async {
+    if (kIsWeb || !Platform.isIOS) return;
+    try {
+      await HomeWidget.setAppGroupId(_appGroup);
+      await HomeWidget.saveWidgetData('balance_text', format(info.amount));
+      final t = info.updatedAt;
+      final hh = t.hour.toString().padLeft(2, '0');
+      final mm = t.minute.toString().padLeft(2, '0');
+      await HomeWidget.saveWidgetData('balance_updated', '$hh:$mm');
+      await HomeWidget.updateWidget(iOSName: _widgetKind);
+    } catch (e) {
+      debugPrint('Виджет баланса не обновлён: $e');
     }
   }
 
