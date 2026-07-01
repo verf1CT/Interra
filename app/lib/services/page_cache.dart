@@ -28,6 +28,18 @@ class PageCache {
     }
   }
 
+  /// Удаляет снимок (выход из аккаунта: в нём ФИО, адрес и баланс).
+  static Future<void> clear() async {
+    try {
+      final f = await _file();
+      if (await f.exists()) await f.delete();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kUrl);
+    } catch (e) {
+      debugPrint('PageCache.clear: $e');
+    }
+  }
+
   /// Возвращает `(html, baseUrl)` или null, если снимка ещё нет.
   static Future<(String, String?)?> load() async {
     try {

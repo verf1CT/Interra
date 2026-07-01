@@ -71,6 +71,28 @@ class BalanceStore {
     }
   }
 
+  /// Сброс при выходе из аккаунта: чистим память, диск и виджет,
+  /// чтобы баланс не оставался видимым после logout.
+  static Future<void> clear() async {
+    notifier.value = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kAmount);
+      await prefs.remove(_kUpdatedAt);
+    } catch (e) {
+      debugPrint('BalanceStore.clear: $e');
+    }
+    if (kIsWeb || !Platform.isIOS) return;
+    try {
+      await HomeWidget.setAppGroupId(_appGroup);
+      await HomeWidget.saveWidgetData('balance_text', '—');
+      await HomeWidget.saveWidgetData('balance_updated', '');
+      await HomeWidget.updateWidget(iOSName: _widgetKind);
+    } catch (e) {
+      debugPrint('Виджет баланса не очищен: $e');
+    }
+  }
+
   /// Разбирает строку вида `1846.03`, `1 846,03`, `-12.5` в число.
   static double? parseAmount(String raw) {
     final s = raw.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.');
