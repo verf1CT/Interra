@@ -9,7 +9,9 @@ import '../services/api_client.dart';
 import '../services/billing_api.dart';
 import '../services/biometric.dart';
 import '../services/notify_prefs.dart';
+import '../services/pin_lock.dart';
 import '../services/push_service.dart';
+import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
 
@@ -26,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifications = true;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
+  bool _pinSet = false;
   final Map<String, bool> _categories = {}; // ключ категории → включена
 
   @override
@@ -39,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     final bioAvail = await Biometric.isAvailable;
     final bioOn = await Biometric.isEnabled;
+    final pinSet = await PinLock.isSet;
     final cats = <String, bool>{};
     for (final c in NotifyPrefs.categories) {
       cats[c.key] = await NotifyPrefs.isEnabled(c.key);
@@ -48,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notifications = prefs.getBool('notifications_enabled') ?? true;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
+      _pinSet = pinSet;
       _categories
         ..clear()
         ..addAll(cats);
@@ -61,6 +66,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await Biometric.setEnabled(value);
     if (!mounted) return;
     setState(() => _biometricEnabled = value);
+  }
+
+  Future<void> _togglePin(bool value) async {
+    if (value) {
+      final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
+        builder: (_) => const PinSetupScreen(),
+        settings: const RouteSettings(name: 'pin_setup'),
+      ));
+      if (ok == true && mounted) setState(() => _pinSet = true);
+    } else {
+      // Отключение защищаем вводом текущего кода.
+      final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
+        builder: (_) => const PinVerifyScreen(),
+        settings: const RouteSettings(name: 'pin_verify'),
+      ));
+      if (ok == true) {
+        await PinLock.clear();
+        if (mounted) setState(() => _pinSet = false);
+      }
+    }
+  }
+
+  Future<void> _changePin() async {
+    // Смена: сначала текущий код, затем установка нового.
+    final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => const PinVerifyScreen(),
+      settings: const RouteSettings(name: 'pin_verify'),
+    ));
+    if (ok != true || !mounted) return;
+    await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => const PinSetupScreen(),
+      settings: const RouteSettings(name: 'pin_setup'),
+    ));
   }
 
   Future<void> _toggleNotifications(bool value) async {
@@ -113,6 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     await AuthStore().clear();
     await Biometric.setEnabled(false); // снимаем биометрический замок при выходе
+    await PinLock.clear(); // и код-пароль
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RegisterScreen()),
@@ -202,23 +241,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          if (_biometricAvailable) ...[
-            const SizedBox(height: 18),
-            _sectionTitle('Безопасность'),
-            _card(
-              padding: EdgeInsets.zero,
-              child: SwitchListTile(
-                secondary: const Icon(Icons.fingerprint),
-                title: const Text('Вход по Face ID / отпечатку'),
-                subtitle: const Text('Запрашивать при открытии приложения'),
-                value: _biometricEnabled,
-                activeThumbColor: AppColors.brand,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                onChanged: _toggleBiometric,
-              ),
+          const SizedBox(height: 18),
+          _sectionTitle('Безопасность'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                if (_biometricAvailable)
+                  SwitchListTile(
+                    secondary: const Icon(Icons.fingerprint),
+                    title: const Text('Вход по Face ID / отпечатку'),
+                    subtitle:
+                        const Text('Не чаще, чем раз в 30 минут'),
+                    value: _biometricEnabled,
+                    activeThumbColor: AppColors.brand,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    onChanged: _toggleBiometric,
+                  ),
+                if (_biometricAvailable)
+                  const Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 68,
+                      color: AppColors.line),
+                SwitchListTile(
+                  secondary: const Icon(Icons.pin_outlined),
+                  title: const Text('Код-пароль'),
+                  subtitle: Text(_pinSet
+                      ? 'Запасной вход, если Face ID недоступен'
+                      : 'Четырёхзначный код для входа'),
+                  value: _pinSet,
+                  activeThumbColor: AppColors.brand,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  onChanged: _togglePin,
+                ),
+                if (_pinSet) ...[
+                  const Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 68,
+                      color: AppColors.line),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 0),
+                    leading: const SizedBox.shrink(),
+                    title: const Text('Изменить код-пароль',
+                        style: TextStyle(fontSize: 15)),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: _changePin,
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
           const SizedBox(height: 18),
           _sectionTitle('Помощь'),
           _card(
