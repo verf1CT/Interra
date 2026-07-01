@@ -11,6 +11,7 @@ import '../services/analytics.dart';
 import '../services/balance_store.dart';
 import '../services/page_cache.dart';
 import '../widgets/cabinet_skeleton.dart';
+import 'diagnostics_screen.dart';
 import 'register_screen.dart';
 import 'settings_screen.dart';
 
@@ -624,6 +625,19 @@ class _WebViewScreenState extends State<WebViewScreen>
                 icon: const Icon(Icons.refresh, size: 20),
                 label: const Text('Обновить'),
                 style: FilledButton.styleFrom(minimumSize: const Size(200, 52)),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const DiagnosticsScreen(),
+                  settings: const RouteSettings(name: 'diagnostics'),
+                )),
+                icon: const Icon(Icons.network_check_rounded, size: 20),
+                label: const Text('Диагностика сети'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.brand,
+                  minimumSize: const Size(200, 44),
+                ),
               ),
             ],
           ),
