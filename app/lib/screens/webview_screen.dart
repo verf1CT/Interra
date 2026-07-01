@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/analytics.dart';
+import '../services/balance_store.dart';
 import '../services/page_cache.dart';
 import '../widgets/cabinet_skeleton.dart';
 import 'register_screen.dart';
@@ -46,6 +47,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    BalanceStore.restore(); // показать последний известный баланс сразу
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('PullRefresh',
@@ -62,7 +64,10 @@ class _WebViewScreenState extends State<WebViewScreen>
             await _injectPullToRefresh();
             // Снимок для офлайна делаем только с «живой» сетевой страницы,
             // а не когда сами отрисовали кэш через loadHtmlString.
-            if (!_offline) await _cacheSnapshot();
+            if (!_offline) {
+              await _cacheSnapshot();
+              await _extractBalance();
+            }
             await _recoverIfSessionExpired();
           },
           onWebResourceError: (err) {
@@ -188,6 +193,31 @@ class _WebViewScreenState extends State<WebViewScreen>
       if (html.contains('<')) await PageCache.save(html, url);
     } catch (e) {
       debugPrint('Снимок кабинета не сохранён: $e');
+    }
+  }
+
+  /// Достаёт баланс из текста живой страницы кабинета («Баланс 1846.03 руб.»)
+  /// и кладёт в [BalanceStore]. Страницы без баланса (отчёты и т.п.) просто
+  /// не совпадут с шаблоном — значение останется прежним.
+  Future<void> _extractBalance() async {
+    try {
+      final res = await _controller.runJavaScriptReturningResult(r'''
+        (function(){
+          try{
+            var m = (document.body.innerText || '')
+              .match(/Баланс[\s:]*(-?[\d  ]+(?:[.,]\d+)?)\s*руб/);
+            return m ? m[1] : '';
+          }catch(e){ return ''; }
+        })();
+      ''');
+      var s = res is String ? res : res.toString();
+      if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+        s = s.substring(1, s.length - 1);
+      }
+      final amount = BalanceStore.parseAmount(s);
+      if (amount != null) await BalanceStore.update(amount);
+    } catch (e) {
+      debugPrint('Баланс не извлечён: $e');
     }
   }
 
@@ -366,6 +396,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         appBar: AppBar(
           title: const Text('Личный кабинет'),
           actions: [
+            _balanceChip(),
             IconButton(
               icon: const Icon(Icons.settings),
               tooltip: 'Настройки',
@@ -427,6 +458,48 @@ class _WebViewScreenState extends State<WebViewScreen>
       ),
     );
   }
+
+  /// Чип с нативным балансом в шапке. Обновляется после каждой живой загрузки
+  /// кабинета; при старте показывает последнее сохранённое значение (офлайн).
+  /// Тап — обновить кабинет (и баланс вместе с ним).
+  Widget _balanceChip() => ValueListenableBuilder<BalanceInfo?>(
+        valueListenable: BalanceStore.notifier,
+        builder: (context, info, _) {
+          if (info == null) return const SizedBox.shrink();
+          final low = info.amount < 0;
+          final color = low ? AppColors.accent : AppColors.ok;
+          return Center(
+            child: GestureDetector(
+              onTap: _openCabinet,
+              child: Container(
+                margin: const EdgeInsets.only(right: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.account_balance_wallet_rounded,
+                        size: 16, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      BalanceStore.format(info.amount),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
 
   /// Кнопка нижней панели: иконка + подпись.
   Widget _navButton({
