@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../services/analytics.dart';
 import 'diagnostics_screen.dart';
 import 'speedtest_screen.dart';
+import 'monitor_screen.dart';
 
 /// экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
 /// на сайте) и версия приложения. контакты - из [AppConfig]
@@ -92,6 +93,22 @@ class SupportScreen extends StatelessWidget {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const SpeedTestScreen(),
                     settings: const RouteSettings(name: 'speedtest'),
+                  ));
+                },
+              ),
+            ),
+            _divider(),
+            Builder(
+              builder: (context) => _tile(
+                icon: Icons.monitor_heart_rounded,
+                color: AppColors.ok,
+                title: 'Качество связи',
+                subtitle: 'История задержек и журнал простоев',
+                onTap: () {
+                  Analytics.supportOpened('monitor');
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const MonitorScreen(),
+                    settings: const RouteSettings(name: 'monitor'),
                   ));
                 },
               ),
