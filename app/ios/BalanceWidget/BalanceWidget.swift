@@ -14,43 +14,91 @@ struct RefreshBalanceIntent: AppIntent {
     }
 }
 
-/// Виджет «Баланс Интерры» для домашнего экрана.
-///
-/// Данные пишет приложение через home_widget в общий UserDefaults
-/// (app group), ключи: balance_text («1 846,03 ₽») и balance_updated («14:05»).
+// MARK: - Конфигурация виджета
+
+/// Что показывать в виджете (выбирается долгим тапом → «Редактировать»).
+enum BalanceMetric: String, AppEnum {
+    case balance
+    case account
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Показатель" }
+    static var caseDisplayRepresentations: [BalanceMetric: DisplayRepresentation] {
+        [.balance: "Баланс", .account: "Лицевой счёт"]
+    }
+}
+
+struct BalanceWidgetConfig: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource { "Виджет Интерры" }
+    static var description: IntentDescription { IntentDescription("Что показывать в виджете") }
+
+    @Parameter(title: "Показатель", default: .balance)
+    var metric: BalanceMetric
+}
+
+// MARK: - Данные
+
+/// Данные пишет приложение через home_widget в общий UserDefaults (app group):
+/// balance_text («1 846,03 ₽»), account_text («504600»), balance_updated («14:05»).
 private let appGroup = "group.ru.interra.lkInterra"
 
 struct BalanceEntry: TimelineEntry {
     let date: Date
     let balance: String
+    let account: String
     let updated: String
-    /// Баланс в минусе — отрисовываем предупреждающе.
-    var isNegative: Bool { balance.hasPrefix("\u{2212}") || balance.hasPrefix("-") }
-    var hasData: Bool { balance != "—" && !balance.isEmpty }
+    let metric: BalanceMetric
+
+    /// Значение для выбранного показателя (или «нет данных»).
+    var value: String {
+        switch metric {
+        case .balance: return (balance.isEmpty || balance == "—") ? "нет данных" : balance
+        case .account: return account.isEmpty ? "нет данных" : account
+        }
+    }
+
+    var label: String { metric == .balance ? "Баланс" : "Лицевой счёт" }
+
+    var hasData: Bool {
+        switch metric {
+        case .balance: return balance != "—" && !balance.isEmpty
+        case .account: return !account.isEmpty
+        }
+    }
+
+    /// Минус — только для баланса (для account неприменимо).
+    var isNegative: Bool {
+        metric == .balance && (balance.hasPrefix("\u{2212}") || balance.hasPrefix("-"))
+    }
 }
 
-struct BalanceProvider: TimelineProvider {
-    private func load() -> BalanceEntry {
+struct BalanceProvider: AppIntentTimelineProvider {
+    typealias Entry = BalanceEntry
+    typealias Intent = BalanceWidgetConfig
+
+    private func load(_ metric: BalanceMetric) -> BalanceEntry {
         let d = UserDefaults(suiteName: appGroup)
         return BalanceEntry(
             date: Date(),
             balance: d?.string(forKey: "balance_text") ?? "—",
-            updated: d?.string(forKey: "balance_updated") ?? ""
-        )
+            account: d?.string(forKey: "account_text") ?? "",
+            updated: d?.string(forKey: "balance_updated") ?? "",
+            metric: metric)
     }
 
     func placeholder(in context: Context) -> BalanceEntry {
-        BalanceEntry(date: Date(), balance: "1 846,03 ₽", updated: "12:00")
+        BalanceEntry(date: Date(), balance: "1 846,03 ₽", account: "504600",
+                     updated: "12:00", metric: .balance)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (BalanceEntry) -> Void) {
-        completion(load())
+    func snapshot(for configuration: BalanceWidgetConfig, in context: Context) async -> BalanceEntry {
+        load(configuration.metric)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<BalanceEntry>) -> Void) {
-        // Данные обновляет само приложение при каждом открытии кабинета;
-        // сами перечитываем раз в полчаса на случай, если проспали пуш.
-        completion(Timeline(entries: [load()], policy: .after(Date().addingTimeInterval(1800))))
+    func timeline(for configuration: BalanceWidgetConfig, in context: Context) async -> Timeline<BalanceEntry> {
+        // Данные обновляет приложение (при открытии) и фоновый рефреш; сами
+        // перечитываем раз в полчаса на случай, если проспали обновление.
+        Timeline(entries: [load(configuration.metric)],
+                 policy: .after(Date().addingTimeInterval(1800)))
     }
 }
 
@@ -63,8 +111,8 @@ private enum Palette {
     static let danger = Color(red: 0xE5 / 255, green: 0x3E / 255, blue: 0x3E / 255)
 }
 
-/// Фон: диагональный фирменный градиент + мягкий световой блик сверху для
-/// объёма. При минусе уводим в тёплый красновато-оранжевый.
+/// Фон: диагональный фирменный градиент + мягкий световой блик для объёма.
+/// При минусе баланса уводим в тёплый красновато-оранжевый.
 private struct WidgetBackground: View {
     let negative: Bool
     var body: some View {
@@ -81,7 +129,6 @@ private struct WidgetBackground: View {
     }
 }
 
-/// Бренд-марка: кружок с волной Wi-Fi.
 private struct BrandMark: View {
     var size: CGFloat = 26
     var body: some View {
@@ -123,11 +170,11 @@ private struct SmallBalanceView: View {
                 RefreshButton(size: 24)
             }
             Spacer(minLength: 6)
-            Text("Баланс".uppercased())
+            Text(entry.label.uppercased())
                 .font(.system(size: 10, weight: .semibold))
                 .tracking(0.6)
                 .foregroundColor(.white.opacity(0.75))
-            Text(entry.hasData ? entry.balance : "нет данных")
+            Text(entry.value)
                 .font(.system(size: 27, weight: .heavy, design: .rounded))
                 .foregroundColor(.white)
                 .minimumScaleFactor(0.5)
@@ -163,11 +210,11 @@ private struct MediumBalanceView: View {
                         .foregroundColor(.white)
                 }
                 Spacer(minLength: 8)
-                Text("Баланс".uppercased())
+                Text(entry.label.uppercased())
                     .font(.system(size: 11, weight: .semibold))
                     .tracking(0.8)
                     .foregroundColor(.white.opacity(0.75))
-                Text(entry.hasData ? entry.balance : "нет данных")
+                Text(entry.value)
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.5)
@@ -182,19 +229,18 @@ private struct MediumBalanceView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Правый столбик: статус-«таблетка» и крупная кнопка обновления.
             VStack(alignment: .trailing, spacing: 10) {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(entry.isNegative ? Color.white : Color.white)
-                        .frame(width: 6, height: 6)
-                    Text(entry.isNegative ? "Пополните" : "Активен")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white)
+                if entry.metric == .balance {
+                    HStack(spacing: 5) {
+                        Circle().fill(Color.white).frame(width: 6, height: 6)
+                        Text(entry.isNegative ? "Пополните" : "Активен")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.white.opacity(0.18)))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Color.white.opacity(0.18)))
                 Spacer()
                 RefreshButton(size: 40)
             }
@@ -205,12 +251,11 @@ private struct MediumBalanceView: View {
 
 // MARK: - Экран блокировки / Пункт управления (accessory)
 
-/// Кружок на локскрине: короткая сумма без «₽» (мало места).
 private struct AccessoryCircularView: View {
     let entry: BalanceEntry
     var body: some View {
         Gauge(value: 0) { EmptyView() } currentValueLabel: {
-            Text(entry.hasData ? shortNumber(entry.balance) : "—")
+            Text(entry.hasData ? shortValue(entry.value) : "—")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .minimumScaleFactor(0.5)
         }
@@ -218,24 +263,21 @@ private struct AccessoryCircularView: View {
     }
 }
 
-/// Строка в Пункте управления / над часами: «Интерра · 1 846 ₽».
 private struct AccessoryInlineView: View {
     let entry: BalanceEntry
     var body: some View {
-        Label(entry.hasData ? entry.balance : "нет данных",
-              systemImage: "wifi")
+        Label(entry.value, systemImage: "wifi")
     }
 }
 
-/// Прямоугольник: подпись + сумма.
 private struct AccessoryRectangularView: View {
     let entry: BalanceEntry
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Label("Интерра", systemImage: "wifi")
+            Label(entry.label, systemImage: "wifi")
                 .font(.system(size: 12, weight: .semibold))
                 .widgetAccentable()
-            Text(entry.hasData ? entry.balance : "нет данных")
+            Text(entry.value)
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .minimumScaleFactor(0.5)
             if !entry.updated.isEmpty {
@@ -249,7 +291,7 @@ private struct AccessoryRectangularView: View {
 }
 
 /// «1 846,03 ₽» → «1 846» — для тесного кружка на локскрине.
-private func shortNumber(_ s: String) -> String {
+private func shortValue(_ s: String) -> String {
     let cut = s.split(separator: ",").first.map(String.init) ?? s
     return cut.replacingOccurrences(of: " ₽", with: "")
         .trimmingCharacters(in: .whitespaces)
@@ -291,11 +333,15 @@ struct BalanceWidgetView: View {
 
 struct BalanceWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "BalanceWidget", provider: BalanceProvider()) { entry in
+        AppIntentConfiguration(
+            kind: "BalanceWidget",
+            intent: BalanceWidgetConfig.self,
+            provider: BalanceProvider()
+        ) { entry in
             BalanceWidgetView(entry: entry)
         }
-        .configurationDisplayName("Баланс Интерры")
-        .description("Баланс лицевого счёта с быстрым обновлением")
+        .configurationDisplayName("Интерра")
+        .description("Баланс или лицевой счёт с быстрым обновлением")
         .supportedFamilies([
             .systemSmall, .systemMedium,
             .accessoryCircular, .accessoryRectangular, .accessoryInline,
