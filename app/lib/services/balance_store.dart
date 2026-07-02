@@ -57,11 +57,11 @@ class BalanceStore {
     await _pushToWidget(info, account);
   }
 
-  /// Отдаёт баланс виджету домашнего экрана (пока только iOS).
+  /// Отдаёт баланс виджету домашнего экрана и плитке (iOS и Android).
   static Future<void> _pushToWidget(BalanceInfo info, String? account) async {
-    if (kIsWeb || !Platform.isIOS) return;
+    if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return;
     try {
-      await HomeWidget.setAppGroupId(_appGroup);
+      if (Platform.isIOS) await HomeWidget.setAppGroupId(_appGroup);
       await HomeWidget.saveWidgetData('balance_text', format(info.amount));
       final t = info.updatedAt;
       final hh = t.hour.toString().padLeft(2, '0');
@@ -71,10 +71,10 @@ class BalanceStore {
         await HomeWidget.saveWidgetData('account_text', account);
       }
       // Токен биллинга — для кнопки «Обновить» на виджете и интента Сири:
-      // они запрашивают баланс нативно, без запуска Dart. App group доступен
-      // только приложениям с нашей подписью.
+      // они запрашивают баланс нативно, без запуска Dart (только iOS).
       await HomeWidget.saveWidgetData('bbb_token', await AuthStore().appToken);
-      await HomeWidget.updateWidget(iOSName: _widgetKind);
+      await HomeWidget.updateWidget(
+          iOSName: _widgetKind, androidName: 'BalanceWidgetProvider');
     } catch (e) {
       debugPrint('Виджет баланса не обновлён: $e');
     }
@@ -91,14 +91,15 @@ class BalanceStore {
     } catch (e) {
       debugPrint('BalanceStore.clear: $e');
     }
-    if (kIsWeb || !Platform.isIOS) return;
+    if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return;
     try {
-      await HomeWidget.setAppGroupId(_appGroup);
+      if (Platform.isIOS) await HomeWidget.setAppGroupId(_appGroup);
       await HomeWidget.saveWidgetData('balance_text', '—');
       await HomeWidget.saveWidgetData('balance_updated', '');
       await HomeWidget.saveWidgetData('account_text', '');
       await HomeWidget.saveWidgetData('bbb_token', null);
-      await HomeWidget.updateWidget(iOSName: _widgetKind);
+      await HomeWidget.updateWidget(
+          iOSName: _widgetKind, androidName: 'BalanceWidgetProvider');
     } catch (e) {
       debugPrint('Виджет баланса не очищен: $e');
     }

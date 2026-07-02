@@ -29,3 +29,31 @@ jobs:
 
       - name: Tests
         run: flutter test
+
+  android-build:
+    name: Build Android APK (debug)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.4"
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      # Debug-сборка компилирует нативный Android-код (виджет, плитка,
+      # манифест, ресурсы) без релизной подписи — проверка компиляции.
+      - name: Build APK
+        run: flutter build apk --debug
