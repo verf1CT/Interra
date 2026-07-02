@@ -1,87 +1,61 @@
 # Приложение «ЛК Интерра» (Flutter)
 
-WebView-обёртка над `stat.interra.ru` с авто-логином в UTM5, защищённым
-хранением учётных данных и push-уведомлениями (FCM).
+Личный кабинет абонента: кабинет UTM5 в WebView + нативные баланс, уведомления,
+безопасность и платформенные фишки iOS/Android. Единая светлая тема в фирменных
+цветах Интерры (синий `#3C98D4`, оранжевый `#F4752D`).
 
-> Перед началом установите окружение: [`../docs/INSTALL_FLUTTER.md`](../docs/INSTALL_FLUTTER.md).
+## Суть
 
-В репозитории лежат только `lib/` и `pubspec.yaml` — платформенные папки
-(`android/`, `ios/`) генерируются командой `flutter create` локально.
+Приложение авторизуется в биллинге по номеру телефона и SMS-коду (CGI `bbb`
+UTM5), хранит выданный токен в защищённом хранилище и по нему при каждом запуске
+получает свежую ссылку на кабинет. Кабинет рендерится в WebView, а баланс и
+номер лицевого счёта вычитываются со страницы и показываются нативно.
 
-## Шаги настройки
+## Структура `lib/`
 
-### 1. Сгенерировать платформенные папки
+| Путь | Назначение |
+|------|------------|
+| `main.dart` | Точка входа: UI показывается сразу, Firebase/телеметрия/push поднимаются в фоне (чтобы не блокировать первый кадр) |
+| `config.dart` | Адреса биллинга/бэкенда, контакты поддержки, версия |
+| `theme.dart` | Фирменная палитра и тема Material 3 |
+| `screens/register_screen.dart` | Вход: телефон → SMS-код (антиспам-кулдаун, автоподстановка кода) |
+| `screens/webview_screen.dart` | Кабинет в WebView: авто-получение ссылки, офлайн-кэш, pull-to-refresh, чип баланса |
+| `screens/settings_screen.dart` | Аккаунт, категории уведомлений, безопасность, задержка автоблокировки |
+| `screens/support_screen.dart` | Связь с провайдером, диагностика, проверка скорости |
+| `screens/diagnostics_screen.dart` | Пошаговая диагностика сети с вердиктом |
+| `screens/speedtest_screen.dart` | Замер скорости (пинг/загрузка/отдача) |
+| `screens/biometric_gate.dart`, `pin_setup_screen.dart` | Замок: Face ID/отпечаток и код-пароль |
+| `services/` | Логика без UI (см. ниже) |
+| `widgets/` | `privacy_shield` (заслонка в переключателе задач), `cabinet_skeleton`, `pin_pad` |
+| `utils/phone.dart` | Нормализация и форматирование телефона (покрыто тестами) |
 
-```bash
-cd app
-flutter create --org ru.interra --project-name lk_interra .
-```
+### Ключевые сервисы (`lib/services/`)
 
-> `flutter create` может перезаписать `pubspec.yaml` и `lib/main.dart` своими
-> шаблонами. Сразу верните наши версии:
-> ```bash
-> git checkout -- pubspec.yaml lib/main.dart
-> ```
+- `billing_api.dart` — штатный API UTM5 `bbb` (регистрация по SMS, ссылка на кабинет).
+- `secure_http.dart` — HTTP-клиент с **пиннингом** корней Let's Encrypt для запросов к биллингу/бэкенду.
+- `auth_store.dart` — токен и телефон в Keychain / EncryptedSharedPreferences.
+- `balance_store.dart` — распарсенный баланс: кэш, форматирование, отдача в виджеты/часы.
+- `push_service.dart`, `notify_prefs.dart`, `api_client.dart` — FCM, категории уведомлений, регистрация устройства на бэкенде.
+- `biometric.dart`, `pin_lock.dart` — биометрия с настраиваемой задержкой и код-пароль (хеш+соль, антиперебор).
+- `net_diagnostics.dart`, `speed_test.dart`, `speed_live_activity.dart` — диагностика, спидтест и его Live Activity.
+- `analytics.dart` — Firebase Analytics/Crashlytics (лениво, чтобы не ронять первый кадр).
+- `quick_actions_service.dart`, `update_check.dart`, `page_cache.dart` — быстрые действия, проверка новой версии, офлайн-снимок кабинета.
 
-### 2. Установить зависимости
+## Нативные части `ios/`
 
-```bash
-flutter pub get
-```
+- **Runner** (приложение): `AppDelegate` (мост к часам, фоновое обновление `BGTaskScheduler`, регистрация фраз Siri), `BalanceIntents.swift` (интент Siri «баланс»), `WatchSync.swift`, `LiveActivityBridge.swift`.
+- **Shared/** — общий Swift для приложения и расширений: `BalanceCore.swift` (нативный запрос баланса), `SpeedActivityAttributes.swift`.
+- **BalanceWidget/** (расширение): виджеты домашнего и экрана блокировки, кнопка в Пункте управления (настраиваемые через App Intents) и Live Activity спидтеста.
+- **InterraWatch/** — приложение для Apple Watch (баланс на запястье, данные через WatchConnectivity).
 
-### 3. Подключить Firebase (для push)
+## Нативные части `android/`
 
-Самый простой путь — FlutterFire CLI:
+- `BalanceWidgetProvider.kt` — виджет баланса на домашнем экране.
+- `BalanceTileService.kt` — плитка «Быстрых настроек» с балансом.
+- `res/xml/shortcuts.xml` — ярлык «Проверить баланс» (long-press иконки).
 
-```bash
-dart pub global activate flutterfire_cli
-flutterfire configure
-```
+## Данные, которыми делятся нативные части
 
-Команда создаст `lib/firebase_options.dart`, `android/app/google-services.json`
-и (для iOS) `GoogleService-Info.plist`, привязав приложение к вашему
-Firebase-проекту. Используйте **тот же проект**, что и бэкенд (`server/`).
-
-> Если используете `flutterfire configure`, замените в `lib/main.dart`
-> `Firebase.initializeApp()` на
-> `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)`
-> и добавьте `import 'firebase_options.dart';`.
-
-### 4. Указать адрес бэкенда
-
-В `lib/config.dart` поле `backendBaseUrl` — поставьте реальный домен сервера.
-Для отладки на эмуляторе Android локальный сервер доступен по `http://10.0.2.2:8080`.
-
-### 5. Android: разрешения
-
-В `android/app/src/main/AndroidManifest.xml` добавьте (если нет):
-
-```xml
-<uses-permission android:name="android.permission.INTERNET"/>
-<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-```
-
-Минимальный `minSdkVersion` — 21 (требование firebase_messaging / webview).
-
-### 6. Запуск
-
-```bash
-flutter devices         # убедиться, что телефон/эмулятор виден
-flutter run             # запуск в режиме отладки
-flutter build apk --release   # сборка APK
-```
-
-## Как это работает
-
-| Файл                          | Назначение                                              |
-|-------------------------------|---------------------------------------------------------|
-| `lib/main.dart`               | Инициализация Firebase/push, выбор экрана по наличию логина |
-| `lib/screens/login_screen.dart`   | Ввод и сохранение логина/пароля                     |
-| `lib/screens/webview_screen.dart` | WebView + авто-логин (подстановка `user`/`pass`)    |
-| `lib/screens/settings_screen.dart`| Уведомления, выход из аккаунта                       |
-| `lib/services/auth_store.dart`    | Защищённое хранилище учётных данных                  |
-| `lib/services/push_service.dart`  | FCM: токен, разрешения, показ уведомлений            |
-| `lib/services/api_client.dart`    | Регистрация устройства на бэкенде                    |
-
-Авто-логин использует реальные имена полей формы UTM5: `user` (логин) и
-`pass` (пароль) на странице `…/cgi-bin/utm5/aaa`.
+Приложение пишет баланс, номер счёта и токен в общий контейнер (iOS — App Group
+`group.ru.interra.lkInterra`, Android — `HomeWidgetPreferences`), откуда их
+читают виджеты, плитка, Siri и часы.
