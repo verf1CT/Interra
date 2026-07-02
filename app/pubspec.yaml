@@ -45,6 +45,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/splash_logo.png
+    - assets/certs/
 
 # Нативная заставка (убирает белую вспышку при запуске). Логотип на белом фоне.
 flutter_native_splash:

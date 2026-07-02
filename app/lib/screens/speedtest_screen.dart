@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
 import '../services/speed_test.dart';
+import '../services/speed_live_activity.dart';
 
 /// Экран «Проверка скорости»: пинг, загрузка, отдача.
 class SpeedTestScreen extends StatefulWidget {
@@ -21,12 +22,23 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
       _phase == SpeedPhase.download ||
       _phase == SpeedPhase.upload;
 
+  DateTime _lastLive = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static String _phaseName(SpeedPhase p) => switch (p) {
+        SpeedPhase.ping => 'Пинг',
+        SpeedPhase.download => 'Загрузка',
+        SpeedPhase.upload => 'Отдача',
+        SpeedPhase.done => 'Готово',
+        _ => 'Замер',
+      };
+
   Future<void> _run() async {
     if (_running) return;
     setState(() {
       _result = const SpeedResult();
       _progress = 0;
     });
+    await SpeedLiveActivity.start();
     final test = SpeedTest(onUpdate: (phase, sofar, progress) {
       if (!mounted) return;
       setState(() {
@@ -34,8 +46,26 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
         _result = sofar;
         _progress = progress;
       });
+      // Live Activity обновляем не чаще ~2.5 раз в секунду, чтобы не упереться
+      // в системный троттлинг частых обновлений.
+      final now = DateTime.now();
+      if (now.difference(_lastLive).inMilliseconds > 400) {
+        _lastLive = now;
+        SpeedLiveActivity.update(
+          phase: _phaseName(phase),
+          download: sofar.downloadMbps ?? 0,
+          upload: sofar.uploadMbps ?? 0,
+          ping: sofar.pingMs ?? 0,
+          progress: progress,
+        );
+      }
     });
     final r = await test.run();
+    await SpeedLiveActivity.end(
+      download: r.downloadMbps ?? 0,
+      upload: r.uploadMbps ?? 0,
+      ping: r.pingMs ?? 0,
+    );
     Analytics.log('speedtest_done', {
       if (r.pingMs != null) 'ping_ms': r.pingMs!,
       if (r.downloadMbps != null) 'down_mbps': r.downloadMbps!.round(),
