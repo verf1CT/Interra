@@ -197,28 +197,44 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Достаёт баланс из текста живой страницы кабинета («Баланс 1846.03 руб.»)
-  /// и кладёт в [BalanceStore]. Страницы без баланса (отчёты и т.п.) просто
-  /// не совпадут с шаблоном — значение останется прежним.
+  /// Достаёт баланс и номер лицевого счёта из текста живой страницы кабинета
+  /// и кладёт в [BalanceStore]. Страницы без нужных полей (отчёты и т.п.) просто
+  /// не совпадут с шаблоном — значения останутся прежними.
   Future<void> _extractBalance() async {
     try {
-      final res = await _controller.runJavaScriptReturningResult(r'''
+      final res = await _controller.runJavaScriptReturningResult(r"""
         (function(){
           try{
-            var m = (document.body.innerText || '')
-              .match(/Баланс[\s:]*(-?[\d  ]+(?:[.,]\d+)?)\s*руб/);
-            return m ? m[1] : '';
-          }catch(e){ return ''; }
+            var t = document.body.innerText || '';
+            var b = t.match(/Баланс[\s:]*(-?[\d\s ]+(?:[.,]\d+)?)\s*руб/);
+            var a = t.match(/(?:Электронный|Лицевой)\s+счёт[\s:]*([0-9]{3,})/);
+            return JSON.stringify({b: b ? b[1] : '', a: a ? a[1] : ''});
+          }catch(e){ return '{}'; }
         })();
-      ''');
-      var s = res is String ? res : res.toString();
-      if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
-        s = s.substring(1, s.length - 1);
+      """);
+      final map = _decodeJsResult(res);
+      final amount = BalanceStore.parseAmount((map['b'] ?? '').toString());
+      final account = (map['a'] ?? '').toString();
+      if (amount != null) {
+        await BalanceStore.update(amount,
+            account: account.isEmpty ? null : account);
       }
-      final amount = BalanceStore.parseAmount(s);
-      if (amount != null) await BalanceStore.update(amount);
     } catch (e) {
       debugPrint('Баланс не извлечён: $e');
+    }
+  }
+
+  /// Разбирает результат runJavaScriptReturningResult в Map. iOS отдаёт JSON-
+  /// строку как есть, Android — в кавычках с экранированием (нужен повторный
+  /// decode).
+  Map<String, dynamic> _decodeJsResult(Object? res) {
+    try {
+      var s = res is String ? res : res.toString();
+      dynamic decoded = jsonDecode(s);
+      if (decoded is String) decoded = jsonDecode(decoded);
+      return decoded is Map ? decoded.cast<String, dynamic>() : {};
+    } catch (_) {
+      return {};
     }
   }
 

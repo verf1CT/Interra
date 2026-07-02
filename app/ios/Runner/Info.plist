@@ -81,11 +81,17 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
-		<!-- Фоновый приём push-уведомлений (FCM/APNs) -->
+		<!-- Фоновый приём push-уведомлений (FCM/APNs) + фоновое обновление баланса -->
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
 			<string>fetch</string>
+			<string>processing</string>
+		</array>
+		<!-- Идентификатор фоновой задачи обновления баланса (BGTaskScheduler) -->
+		<key>BGTaskSchedulerPermittedIdentifiers</key>
+		<array>
+			<string>ru.interra.balance.refresh</string>
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>

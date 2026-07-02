@@ -43,7 +43,8 @@ class BalanceStore {
   }
 
   /// Обновляет баланс (из парсинга страницы) и сохраняет на диск.
-  static Future<void> update(double amount) async {
+  /// [account] — номер лицевого счёта (для настраиваемого виджета); необязателен.
+  static Future<void> update(double amount, {String? account}) async {
     final info = BalanceInfo(amount, DateTime.now());
     notifier.value = info;
     try {
@@ -53,11 +54,11 @@ class BalanceStore {
     } catch (e) {
       debugPrint('BalanceStore.update: не сохранилось: $e');
     }
-    await _pushToWidget(info);
+    await _pushToWidget(info, account);
   }
 
   /// Отдаёт баланс виджету домашнего экрана (пока только iOS).
-  static Future<void> _pushToWidget(BalanceInfo info) async {
+  static Future<void> _pushToWidget(BalanceInfo info, String? account) async {
     if (kIsWeb || !Platform.isIOS) return;
     try {
       await HomeWidget.setAppGroupId(_appGroup);
@@ -66,6 +67,9 @@ class BalanceStore {
       final hh = t.hour.toString().padLeft(2, '0');
       final mm = t.minute.toString().padLeft(2, '0');
       await HomeWidget.saveWidgetData('balance_updated', '$hh:$mm');
+      if (account != null && account.isNotEmpty) {
+        await HomeWidget.saveWidgetData('account_text', account);
+      }
       // Токен биллинга — для кнопки «Обновить» на виджете и интента Сири:
       // они запрашивают баланс нативно, без запуска Dart. App group доступен
       // только приложениям с нашей подписью.
@@ -92,6 +96,7 @@ class BalanceStore {
       await HomeWidget.setAppGroupId(_appGroup);
       await HomeWidget.saveWidgetData('balance_text', '—');
       await HomeWidget.saveWidgetData('balance_updated', '');
+      await HomeWidget.saveWidgetData('account_text', '');
       await HomeWidget.saveWidgetData('bbb_token', null);
       await HomeWidget.updateWidget(iOSName: _widgetKind);
     } catch (e) {
