@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
-import 'package:http/http.dart' as http;
 import '../config.dart';
+import 'secure_http.dart';
 
 /// Клиент нашего бэкенда (server/): регистрация устройства для push-рассылок.
 class ApiClient {
@@ -14,7 +14,7 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/register');
     try {
-      final res = await http
+      final res = await SecureHttp
           .post(
             uri,
             headers: {'Content-Type': 'application/json'},
@@ -38,7 +38,7 @@ class ApiClient {
   static Future<void> unregisterDevice(String token) async {
     final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/unregister');
     try {
-      await http
+      await SecureHttp
           .post(
             uri,
             headers: {'Content-Type': 'application/json'},

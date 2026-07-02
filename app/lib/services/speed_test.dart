@@ -100,18 +100,20 @@ class SpeedTest {
         Uint8List.fromList(List.generate(64 * 1024, (_) => rnd.nextInt(256)));
     final chunks = _uploadBytes ~/ chunk.length;
 
+    final total = chunks * chunk.length;
     final sw = Stopwatch()..start();
     var sent = 0;
     final req = http.StreamedRequest('POST', Uri.parse(_up))
-      ..contentLength = chunks * chunk.length;
-    // Кормим тело порциями, попутно репортя прогресс.
+      ..contentLength = total;
+    // Кормим тело порциями, попутно репортя прогресс. Обязательно отправляем
+    // РОВНО contentLength байт — иначе запрос падает по несовпадению длины;
+    // общую продолжительность ограничивает таймаут ниже.
     unawaited(() async {
       for (var i = 0; i < chunks; i++) {
         req.sink.add(chunk);
         sent += chunk.length;
         onUpdate(SpeedPhase.upload,
-            sofar.copyWith(uploadMbps: _mbps(sent, sw)), sent / _uploadBytes);
-        if (sw.elapsed > _cap) break;
+            sofar.copyWith(uploadMbps: _mbps(sent, sw)), sent / total);
       }
       await req.sink.close();
     }());

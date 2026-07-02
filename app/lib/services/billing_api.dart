@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import '../config.dart';
+import 'secure_http.dart';
 
 /// Результат запроса к биллингу `bbb`.
 ///
@@ -53,7 +53,8 @@ class BillingApi {
       if (num != null) 'num': num,
     });
     try {
-      final res = await http.get(uri).timeout(const Duration(seconds: 20));
+      final res =
+          await SecureHttp.get(uri).timeout(const Duration(seconds: 20));
       return BbbResponse.parse(res.body);
     } catch (e) {
       debugPrint('BillingApi.$cmd сетевой сбой: $e');

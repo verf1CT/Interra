@@ -203,24 +203,84 @@ private struct MediumBalanceView: View {
     }
 }
 
+// MARK: - Экран блокировки / Пункт управления (accessory)
+
+/// Кружок на локскрине: короткая сумма без «₽» (мало места).
+private struct AccessoryCircularView: View {
+    let entry: BalanceEntry
+    var body: some View {
+        Gauge(value: 0) { EmptyView() } currentValueLabel: {
+            Text(entry.hasData ? shortNumber(entry.balance) : "—")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.5)
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+    }
+}
+
+/// Строка в Пункте управления / над часами: «Интерра · 1 846 ₽».
+private struct AccessoryInlineView: View {
+    let entry: BalanceEntry
+    var body: some View {
+        Label(entry.hasData ? entry.balance : "нет данных",
+              systemImage: "wifi")
+    }
+}
+
+/// Прямоугольник: подпись + сумма.
+private struct AccessoryRectangularView: View {
+    let entry: BalanceEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Label("Интерра", systemImage: "wifi")
+                .font(.system(size: 12, weight: .semibold))
+                .widgetAccentable()
+            Text(entry.hasData ? entry.balance : "нет данных")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.5)
+            if !entry.updated.isEmpty {
+                Text("обновлено \(entry.updated)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// «1 846,03 ₽» → «1 846» — для тесного кружка на локскрине.
+private func shortNumber(_ s: String) -> String {
+    let cut = s.split(separator: ",").first.map(String.init) ?? s
+    return cut.replacingOccurrences(of: " ₽", with: "")
+        .trimmingCharacters(in: .whitespaces)
+}
+
 struct BalanceWidgetView: View {
     @Environment(\.widgetFamily) private var family
     var entry: BalanceEntry
 
     var body: some View {
-        Group {
-            switch family {
-            case .systemMedium: MediumBalanceView(entry: entry)
-            default: SmallBalanceView(entry: entry)
-            }
-        }
-        .containerBackground(for: .widget) {
-            WidgetBackground(negative: entry.isNegative && entry.hasData)
+        switch family {
+        case .accessoryCircular:
+            AccessoryCircularView(entry: entry)
+        case .accessoryInline:
+            AccessoryInlineView(entry: entry)
+        case .accessoryRectangular:
+            AccessoryRectangularView(entry: entry)
+        case .systemMedium:
+            MediumBalanceView(entry: entry)
+                .containerBackground(for: .widget) {
+                    WidgetBackground(negative: entry.isNegative && entry.hasData)
+                }
+        default:
+            SmallBalanceView(entry: entry)
+                .containerBackground(for: .widget) {
+                    WidgetBackground(negative: entry.isNegative && entry.hasData)
+                }
         }
     }
 }
 
-@main
 struct BalanceWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "BalanceWidget", provider: BalanceProvider()) { entry in
@@ -228,6 +288,36 @@ struct BalanceWidget: Widget {
         }
         .configurationDisplayName("Баланс Интерры")
         .description("Баланс лицевого счёта с быстрым обновлением")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
+    }
+}
+
+/// Кнопка в Пункте управления (iOS 18): обновить баланс, не открывая приложение.
+@available(iOS 18.0, *)
+struct BalanceControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "BalanceControl") {
+            ControlWidgetButton(action: RefreshBalanceIntent()) {
+                Label("Обновить баланс Интерры", systemImage: "wifi")
+            }
+        }
+        .displayName("Баланс Интерры")
+        .description("Обновить баланс лицевого счёта")
+    }
+}
+
+@main
+struct InterraWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        BalanceWidget()
+        if #available(iOS 16.2, *) {
+            SpeedLiveActivity()
+        }
+        if #available(iOS 18.0, *) {
+            BalanceControl()
+        }
     }
 }
