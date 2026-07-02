@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   bool _pinSet = false;
+  int _lockDelayMs = Biometric.defaultLockDelayMs;
   final Map<String, bool> _categories = {}; // ключ категории → включена
 
   @override
@@ -46,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bioAvail = await Biometric.isAvailable;
     final bioOn = await Biometric.isEnabled;
     final pinSet = await PinLock.isSet;
+    final lockDelay = await Biometric.lockDelayMs;
     final cats = <String, bool>{};
     for (final c in NotifyPrefs.categories) {
       cats[c.key] = await NotifyPrefs.isEnabled(c.key);
@@ -56,6 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
       _pinSet = pinSet;
+      _lockDelayMs = lockDelay;
       _categories
         ..clear()
         ..addAll(cats);
@@ -89,6 +92,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) setState(() => _pinSet = false);
       }
     }
+  }
+
+  /// Выбор задержки автоблокировки — простой диалог с вариантами.
+  Future<void> _pickLockDelay() async {
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Запрашивать вход'),
+        children: [
+          for (final o in Biometric.lockDelayOptions)
+            ListTile(
+              title: Text(o.$2),
+              trailing: o.$1 == _lockDelayMs
+                  ? const Icon(Icons.check_rounded, color: AppColors.brand)
+                  : null,
+              onTap: () => Navigator.of(ctx).pop(o.$1),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await Biometric.setLockDelayMs(picked);
+    if (mounted) setState(() => _lockDelayMs = picked);
   }
 
   Future<void> _changePin() async {
@@ -327,6 +353,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing:
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: _changePin,
+                  ),
+                ],
+                // Задержка автоблокировки — только если защита включена.
+                if (_biometricEnabled || _pinSet) ...[
+                  const Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 68,
+                      color: AppColors.line),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    leading: const Icon(Icons.timer_outlined),
+                    title: const Text('Запрашивать вход'),
+                    subtitle: const Text('Как часто спрашивать при возврате'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(Biometric.lockDelayLabel(_lockDelayMs),
+                            style: const TextStyle(
+                                color: AppColors.brand,
+                                fontWeight: FontWeight.w600)),
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                      ],
+                    ),
+                    onTap: _pickLockDelay,
                   ),
                 ],
               ],

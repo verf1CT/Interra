@@ -10,11 +10,37 @@ class Biometric {
   static final _auth = LocalAuthentication();
   static const _kEnabled = 'biometric_enabled';
   static const _kLastUnlock = 'lock_last_unlock_ms';
+  static const _kLockDelay = 'lock_delay_ms';
 
-  /// Льготный период: после успешной разблокировки повторно не спрашиваем
-  /// полчаса. Баланс — данные личные, но не банковские; каждый вход
-  /// запрашивать — слишком назойливо.
-  static const Duration gracePeriod = Duration(minutes: 30);
+  /// Спецзначение задержки: «никогда» — после разблокировки не спрашиваем
+  /// при возврате из фона вообще (только при холодном старте).
+  static const int lockDelayNever = -1;
+
+  /// Значение по умолчанию — 30 минут. Баланс — данные личные, но не
+  /// банковские; спрашивать при каждом переключении приложений назойливо.
+  static const int defaultLockDelayMs = 30 * 60 * 1000;
+
+  /// Варианты для настроек: (значение в мс, подпись).
+  static const List<(int, String)> lockDelayOptions = [
+    (0, 'Сразу'),
+    (60 * 1000, 'Через 1 минуту'),
+    (defaultLockDelayMs, 'Через 30 минут'),
+    (lockDelayNever, 'Никогда'),
+  ];
+
+  static Future<int> get lockDelayMs async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kLockDelay) ?? defaultLockDelayMs;
+  }
+
+  static Future<void> setLockDelayMs(int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kLockDelay, value);
+  }
+
+  static String lockDelayLabel(int ms) => lockDelayOptions
+      .firstWhere((o) => o.$1 == ms, orElse: () => lockDelayOptions[2])
+      .$2;
 
   /// Отмечает успешную разблокировку (биометрией или PIN) — от этого момента
   /// отсчитывается льготный период.
@@ -25,12 +51,15 @@ class Biometric {
 
   /// true — льготный период ещё действует, замок можно не показывать.
   static Future<bool> get withinGracePeriod async {
+    final delay = await lockDelayMs;
+    if (delay == lockDelayNever) return true; // никогда не перезапрашивать
+    if (delay == 0) return false; // всегда спрашивать при возврате
     final prefs = await SharedPreferences.getInstance();
     final last = prefs.getInt(_kLastUnlock);
     if (last == null) return false;
     final elapsed = DateTime.now().millisecondsSinceEpoch - last;
     // Отрицательное elapsed (перевод часов назад) считаем истёкшим.
-    return elapsed >= 0 && elapsed < gracePeriod.inMilliseconds;
+    return elapsed >= 0 && elapsed < delay;
   }
 
   /// Доступна ли биометрия на устройстве.
