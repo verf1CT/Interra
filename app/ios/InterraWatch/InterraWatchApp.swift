@@ -1,12 +1,12 @@
 import SwiftUI
 import WatchConnectivity
 
-/// Приложение «Интерра» для Apple Watch: баланс на запястье.
+/// приложение «Интерра» для Apple Watch: баланс на запястье.
 ///
 /// Данные (баланс + токен биллинга) приходят с телефона через
 /// WatchConnectivity (applicationContext) и кэшируются в UserDefaults часов.
 /// Кнопка обновления запрашивает баланс напрямую из биллинга через
-/// [BalanceCore] — часы умеют в сеть сами (через телефон или Wi-Fi).
+/// [BalanceCore] - часы умеют в сеть сами (через телефон или Wi-Fi)
 @main
 struct InterraWatchApp: App {
     var body: some Scene {

@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<!--
-	  Только app group для обмена данными с виджетом баланса.
-	  НЕ добавлять сюда aps-environment, пока аккаунт бесплатный —
-	  см. Runner.entitlements и docs/IOS_PUSH_SETUP.md.
+	  только app group для обмена данными с виджетом баланса.
+	  НЕ добавлять сюда aps-environment, пока аккаунт бесплатный -
+	  см. runner.entitlements и docs/IOS_PUSH_SETUP.md
 	-->
 	<key>com.apple.security.application-groups</key>
 	<array>

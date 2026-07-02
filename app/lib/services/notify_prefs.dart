@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Категория push-уведомлений: ключ хранения = сегмент на бэкенде.
+/// категория push-уведомлений: ключ хранения = сегмент на бэкенде
 class NotifyCategory {
   final String key; // сегмент, по которому оператор таргетирует рассылку
   final String title;
@@ -8,12 +8,12 @@ class NotifyCategory {
   const NotifyCategory(this.key, this.title, this.subtitle);
 }
 
-/// Пользовательские категории уведомлений.
+/// пользовательские категории уведомлений.
 ///
 /// Включённые категории уходят на бэкенд как `segments` при регистрации
-/// устройства — оператор шлёт `target: {type:'segment', value:'news'}` и
+/// устройства - оператор шлёт `target: {type:'segment', value:'news'}` и
 /// рассылка приходит только подписанным. `prefs` дублирует полную карту
-/// выборов (для аналитики/отладки на сервере).
+/// выборов (для аналитики/отладки на сервере)
 class NotifyPrefs {
   static const categories = [
     NotifyCategory('outage', 'Аварии и работы', 'Сбои и плановые работы сети'),
@@ -23,7 +23,7 @@ class NotifyPrefs {
 
   static String _prefKey(String key) => 'notify_$key';
 
-  /// Все категории включены по умолчанию.
+  /// все категории включены по умолчанию
   static Future<bool> isEnabled(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_prefKey(key)) ?? true;
@@ -34,7 +34,7 @@ class NotifyPrefs {
     await prefs.setBool(_prefKey(key), value);
   }
 
-  /// Список включённых категорий — сегменты для registerDevice.
+  /// список включённых категорий - сегменты для registerDevice
   static Future<List<String>> enabledSegments() async {
     final result = <String>[];
     for (final c in categories) {
@@ -43,7 +43,7 @@ class NotifyPrefs {
     return result;
   }
 
-  /// Полная карта выборов — поле prefs для registerDevice.
+  /// полная карта выборов - поле prefs для registerDevice
   static Future<Map<String, bool>> prefsMap() async {
     final result = <String, bool>{};
     for (final c in categories) {

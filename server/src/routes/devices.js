@@ -3,8 +3,8 @@ import { upsertDevice, deleteDevice } from '../db.js';
 
 export const devicesRouter = Router();
 
-// Простой антиспам: не больше N запросов с одного IP за окно. Защищает базу
-// токенов от заваливания без внешних зависимостей (для одного инстанса).
+// простой антиспам: не больше N запросов с одного IP за окно. защищает базу
+// токенов от заваливания без внешних зависимостей (для одного инстанса)
 const RATE_MAX = 30;
 const RATE_WINDOW_MS = 60_000;
 const hits = new Map(); // ip -> { count, resetAt }
@@ -24,7 +24,7 @@ function rateLimit(req, res, next) {
   next();
 }
 
-// Периодически чистим старые записи, чтобы Map не рос бесконечно.
+// периодически чистим старые записи, чтобы Map не рос бесконечно
 setInterval(() => {
   const now = Date.now();
   for (const [ip, rec] of hits) if (now > rec.resetAt) hits.delete(ip);
@@ -33,7 +33,7 @@ setInterval(() => {
 /**
  * POST /api/devices/register
  * Тело: { token, clientLogin?, platform?, appVersion?, segments?, prefs? }
- * Вызывается приложением при запуске и при смене токена/логина.
+ * Вызывается приложением при запуске и при смене токена/логина
  */
 devicesRouter.post('/register', rateLimit, (req, res) => {
   const { token, clientLogin, platform, appVersion, segments, prefs } = req.body || {};
@@ -51,7 +51,7 @@ devicesRouter.post('/register', rateLimit, (req, res) => {
 /**
  * POST /api/devices/unregister
  * Тело: { token }
- * Вызывается при выходе из аккаунта / отключении уведомлений.
+ * Вызывается при выходе из аккаунта / отключении уведомлений
  */
 devicesRouter.post('/unregister', (req, res) => {
   const { token } = req.body || {};

@@ -21,12 +21,12 @@ Future<void> main() async {
     debugPrint('Чтение регистрации не удалось: $e');
   }
 
-  // Интерфейс показываем ПЕРВЫМ ДЕЛОМ — ничто не должно блокировать первый кадр.
-  // Биометрический замок навешивает BiometricGate (через MaterialApp.builder).
+  // интерфейс показываем ПЕРВЫМ ДЕЛОМ - ничто не должно блокировать первый кадр.
+  // Биометрический замок навешивает BiometricGate (через MaterialApp.builder)
   runApp(InterraApp(loggedIn: registered));
 
-  // Firebase, телеметрия и push — полностью в фоне и с таймаутом, чтобы
-  // инициализация (особенно на iOS без APNs) никогда не подвешивала запуск.
+  // firebase, телеметрия и push - полностью в фоне и с таймаутом, чтобы
+  // инициализация (особенно на iOS без APNs) никогда не подвешивала запуск
   _initServices();
 }
 
@@ -39,9 +39,9 @@ Future<void> _initServices() async {
   } catch (e) {
     debugPrint('Firebase/телеметрия/push не инициализированы (ок без конфигурации): $e');
   }
-  // Быстрые действия от Firebase не зависят — настраиваем отдельно.
+  // быстрые действия от Firebase не зависят - настраиваем отдельно
   await QuickActionsService.init();
-  // Проверка новой версии (пока обновляемся не через сторы).
+  // проверка новой версии (пока обновляемся не через сторы)
   UpdateCheck.run();
 }
 
@@ -57,8 +57,8 @@ class InterraApp extends StatelessWidget {
       theme: buildAppTheme(),
       navigatorKey: QuickActionsService.navigatorKey,
       navigatorObservers: [Analytics.observer],
-      // Порядок важен: PrivacyShield снаружи — закрывает в том числе экран
-      // блокировки, когда приложение уходит в фон (снимок переключателя задач).
+      // порядок важен: PrivacyShield снаружи - закрывает в том числе экран
+      // блокировки, когда приложение уходит в фон (снимок переключателя задач)
       builder: (context, child) => PrivacyShield(
         child: BiometricGate(child: child ?? const SizedBox.shrink()),
       ),

@@ -6,15 +6,15 @@ import 'auth_store.dart';
 import 'api_client.dart';
 import 'notify_prefs.dart';
 
-/// Обработчик push в фоне/при закрытом приложении. Должен быть top-level.
+/// обработчик push в фоне/при закрытом приложении. должен быть top-level
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  // Системный трей сам покажет notification-сообщения; здесь дополнительная
-  // обработка не требуется.
+  // системный трей сам покажет notification-сообщения; здесь дополнительная
+  // обработка не требуется
 }
 
-/// Сервис push-уведомлений (FCM) + показ локальных уведомлений на переднем плане.
+/// сервис push-уведомлений (FCM) + показ локальных уведомлений на переднем плане
 class PushService {
   static final _local = FlutterLocalNotificationsPlugin();
 
@@ -25,15 +25,15 @@ class PushService {
     importance: Importance.high,
   );
 
-  /// Инициализация: вызывать один раз после Firebase.initializeApp().
-  /// Никогда не бросает — безопасно вызывать без await.
+  /// инициализация: вызывать один раз после Firebase.initializeApp().
+  /// Никогда не бросает - безопасно вызывать без await
   static Future<void> init() async {
     try {
       final messaging = FirebaseMessaging.instance;
 
       await messaging.requestPermission(alert: true, badge: true, sound: true);
 
-      // Локальные уведомления (для показа push, пришедших на переднем плане)
+      // локальные уведомления (для показа push, пришедших на переднем плане)
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosInit = DarwinInitializationSettings();
       await _local.initialize(
@@ -45,11 +45,11 @@ class PushService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_channel);
 
-      // Push на переднем плане показываем сами через local notifications
+      // push на переднем плане показываем сами через local notifications
       FirebaseMessaging.onMessage.listen(_showForeground);
       FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
-      // Регистрируем устройство и реагируем на обновление токена
+      // регистрируем устройство и реагируем на обновление токена
       await registerCurrentToken();
       messaging.onTokenRefresh.listen((_) => registerCurrentToken());
     } catch (e) {
@@ -57,8 +57,8 @@ class PushService {
     }
   }
 
-  /// Получает текущий FCM-токен и регистрирует его на бэкенде вместе с логином.
-  /// На iOS без APNs getToken может висеть/падать — оборачиваем в timeout/try.
+  /// получает текущий FCM-токен и регистрирует его на бэкенде вместе с логином.
+  /// На iOS без APNs getToken может висеть/падать - оборачиваем в timeout/try
   static Future<void> registerCurrentToken() async {
     try {
       final token = await FirebaseMessaging.instance

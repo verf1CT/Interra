@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import '../theme.dart';
 import '../services/pin_lock.dart';
 
-/// Цифровая клавиатура с точками ввода PIN.
+/// цифровая клавиатура с точками ввода PIN.
 ///
-/// [onSubmit] вызывается при наборе [PinLock.length] цифр; вернуть false —
-/// ввод неверный: точки встряхиваются и очищаются. [onBiometric] — необязательная
-/// кнопка Face ID / отпечатка в нижнем ряду.
+/// [onSubmit] вызывается при наборе [PinLock.length] цифр; вернуть false -
+/// ввод неверный: точки встряхиваются и очищаются. [onBiometric] - необязательная
+/// кнопка Face ID / отпечатка в нижнем ряду
 class PinPad extends StatefulWidget {
   final String title;
   final String? subtitle;
@@ -49,7 +49,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
     setState(() => _busy = true);
     final ok = await widget.onSubmit(_entered);
     if (!mounted) return;
-    if (ok) return; // экран сверху закроют/разблокируют — сбрасывать нечего
+    if (ok) return; // экран сверху закроют/разблокируют - сбрасывать нечего
     HapticFeedback.vibrate();
     await _shake.forward(from: 0);
     if (!mounted) return;
@@ -82,7 +82,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
         AnimatedBuilder(
           animation: _shake,
           builder: (context, child) {
-            // Затухающее знакопеременное смещение — «неверный код».
+            // затухающее знакопеременное смещение - «неверный код»
             final t = _shake.value;
             final dx = (1 - t) * 10 * (t * 40).truncate().isEven.toSign();
             return Transform.translate(offset: Offset(dx, 0), child: child);

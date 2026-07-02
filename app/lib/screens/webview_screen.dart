@@ -15,12 +15,12 @@ import 'diagnostics_screen.dart';
 import 'register_screen.dart';
 import 'settings_screen.dart';
 
-/// Главный экран — WebView с веб-кабинетом Интерра.
+/// главный экран - WebView с веб-кабинетом Интерра.
 ///
 /// Схема `bbb`: при каждом открытии берём свежую ссылку на ЛК через
-/// `cmd=open&app={token}` и грузим страницу «Основная информация». Ссылка
+/// `cmd=open&app={token}` и грузим страницу «Основная информация». ссылка
 /// живёт ~30 минут, поэтому при возврате из фона и протухшей сессии ссылку
-/// перезапрашиваем автоматически.
+/// перезапрашиваем автоматически
 class WebViewScreen extends StatefulWidget {
   const WebViewScreen({super.key});
 
@@ -35,13 +35,13 @@ class _WebViewScreenState extends State<WebViewScreen>
   bool _firstLoaded = false;
   String? _error;
   bool _offline = false; // показываем кэш-снимок без сети
-  String? _liveUrl; // URL последней «живой» (сетевой) загрузки — для кэша
+  String? _liveUrl; // URL последней «живой» (сетевой) загрузки - для кэша
   DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
 
-  /// Свой хост держим внутри WebView, всё остальное — наружу.
+  /// свой хост держим внутри WebView, всё остальное - наружу
   static const String _host = 'stat.interra.ru';
 
-  /// Ссылку считаем устаревшей через 15 минут — при возврате из фона обновим.
+  /// ссылку считаем устаревшей через 15 минут - при возврате из фона обновим
   static const Duration _staleAfter = Duration(minutes: 15);
 
   @override
@@ -63,8 +63,8 @@ class _WebViewScreenState extends State<WebViewScreen>
               _firstLoaded = true;
             });
             await _injectPullToRefresh();
-            // Снимок для офлайна делаем только с «живой» сетевой страницы,
-            // а не когда сами отрисовали кэш через loadHtmlString.
+            // снимок для офлайна делаем только с «живой» сетевой страницы,
+            // а не когда сами отрисовали кэш через loadHtmlString
             if (!_offline) {
               await _cacheSnapshot();
               await _extractBalance();
@@ -72,7 +72,7 @@ class _WebViewScreenState extends State<WebViewScreen>
             await _recoverIfSessionExpired();
           },
           onWebResourceError: (err) {
-            // Ошибка только основного документа (не вложенных ресурсов).
+            // ошибка только основного документа (не вложенных ресурсов)
             if (err.isForMainFrame ?? true) {
               setState(() {
                 _loading = false;
@@ -95,7 +95,7 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // При возврате из фона освежаем ссылку, если она могла протухнуть.
+    // при возврате из фона освежаем ссылку, если она могла протухнуть
     if (state == AppLifecycleState.resumed) {
       final last = _lastOpenAt;
       if (last == null || DateTime.now().difference(last) > _staleAfter) {
@@ -104,8 +104,8 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Внешние ссылки (`tel:`, `mailto:`, чужие домены с target=_blank)
-  /// открываем в системных приложениях, не внутри WebView.
+  /// внешние ссылки (`tel:`, `mailto:`, чужие домены с target=_blank)
+  /// открываем в системных приложениях, не внутри WebView
   NavigationDecision _handleNavigation(NavigationRequest req) {
     final uri = Uri.tryParse(req.url);
     if (uri == null) return NavigationDecision.navigate;
@@ -130,7 +130,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Запрашивает свежую ссылку на ЛК и грузит «Основную информацию».
+  /// запрашивает свежую ссылку на ЛК и грузит «Основную информацию»
   Future<void> _openCabinet() async {
     setState(() {
       _error = null;
@@ -155,15 +155,15 @@ class _WebViewScreenState extends State<WebViewScreen>
       return;
     }
 
-    // '0' — приложение не зарегистрировано (регистрация потеряна) → регистрация;
-    // '1' — телефон отвязан от ЛК; пусто/сеть — временный сбой.
+    // '0' - приложение не зарегистрировано (регистрация потеряна) → регистрация;
+    // '1' - телефон отвязан от ЛК; пусто/сеть - временный сбой
     if (r.code == '0') {
       await AuthStore().clear();
       _resetToRegister();
       return;
     }
 
-    // Сетевой сбой: если есть кэш-снимок — показываем его в офлайн-режиме.
+    // сетевой сбой: если есть кэш-снимок - показываем его в офлайн-режиме
     if (r.networkError && await _showCachedSnapshot()) return;
 
     setState(() {
@@ -177,7 +177,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     });
   }
 
-  /// Сохраняет снимок текущей «живой» страницы для показа без сети.
+  /// сохраняет снимок текущей «живой» страницы для показа без сети
   Future<void> _cacheSnapshot() async {
     final url = _liveUrl;
     if (url == null) return;
@@ -185,11 +185,11 @@ class _WebViewScreenState extends State<WebViewScreen>
       final res = await _controller
           .runJavaScriptReturningResult('document.documentElement.outerHTML');
       var html = res is String ? res : res.toString();
-      // Android отдаёт JSON-строку (в кавычках с экранированием) — раскодируем.
+      // android отдаёт JSON-строку (в кавычках с экранированием) - раскодируем
       if (html.length >= 2 && html.startsWith('"') && html.endsWith('"')) {
         try {
           html = jsonDecode(html) as String;
-        } catch (_) {/* iOS отдаёт сырой HTML — оставляем как есть */}
+        } catch (_) {/* iOS отдаёт сырой HTML - оставляем как есть */}
       }
       if (html.contains('<')) await PageCache.save(html, url);
     } catch (e) {
@@ -197,9 +197,9 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Достаёт баланс и номер лицевого счёта из текста живой страницы кабинета
-  /// и кладёт в [BalanceStore]. Страницы без нужных полей (отчёты и т.п.) просто
-  /// не совпадут с шаблоном — значения останутся прежними.
+  /// достаёт баланс и номер лицевого счёта из текста живой страницы кабинета
+  /// и кладёт в [BalanceStore]. страницы без нужных полей (отчёты и т.п.) просто
+  /// не совпадут с шаблоном - значения останутся прежними
   Future<void> _extractBalance() async {
     try {
       final res = await _controller.runJavaScriptReturningResult(r"""
@@ -224,9 +224,9 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Разбирает результат runJavaScriptReturningResult в Map. iOS отдаёт JSON-
-  /// строку как есть, Android — в кавычках с экранированием (нужен повторный
-  /// decode).
+  /// разбирает результат runJavaScriptReturningResult в Map. iOS отдаёт JSON-
+  /// строку как есть, Android - в кавычках с экранированием (нужен повторный
+  /// decode)
   Map<String, dynamic> _decodeJsResult(Object? res) {
     try {
       var s = res is String ? res : res.toString();
@@ -238,7 +238,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
-  /// Показывает кэш-снимок в офлайн-режиме. true — снимок был и отрисован.
+  /// показывает кэш-снимок в офлайн-режиме. true - снимок был и отрисован
   Future<bool> _showCachedSnapshot() async {
     final cached = await PageCache.load();
     if (cached == null || !mounted) return false;
@@ -250,8 +250,8 @@ class _WebViewScreenState extends State<WebViewScreen>
     return true;
   }
 
-  /// Если UTM5 уронил сессию и показал форму входа по паролю — токен-ссылка
-  /// протухла; молча перезапрашиваем свежую через `cmd=open`.
+  /// если UTM5 уронил сессию и показал форму входа по паролю - токен-ссылка
+  /// протухла; молча перезапрашиваем свежую через `cmd=open`
   Future<void> _recoverIfSessionExpired() async {
     try {
       final res = await _controller.runJavaScriptReturningResult('''
@@ -262,19 +262,19 @@ class _WebViewScreenState extends State<WebViewScreen>
         })();
       ''');
       if (res.toString().contains('1')) {
-        // Защита от цикла: обновляем не чаще раза в несколько секунд.
+        // защита от цикла: обновляем не чаще раза в несколько секунд
         final last = _lastOpenAt;
         if (last == null ||
             DateTime.now().difference(last) > const Duration(seconds: 5)) {
           _openCabinet();
         }
       }
-    } catch (_) {/* страница могла уже смениться — не критично */}
+    } catch (_) {/* страница могла уже смениться - не критично */}
   }
 
-  /// Pull-to-refresh: в самом верху страницы тянем вниз — вся страница уезжает
+  /// pull-to-refresh: в самом верху страницы тянем вниз - вся страница уезжает
   /// вниз, сверху появляется значок и поворачивается по мере вытягивания; за
-  /// порогом он крутится непрерывно и кабинет перезагружается.
+  /// порогом он крутится непрерывно и кабинет перезагружается
   Future<void> _injectPullToRefresh() async {
     try {
       await _controller.runJavaScript(r'''
@@ -476,15 +476,15 @@ class _WebViewScreenState extends State<WebViewScreen>
     );
   }
 
-  /// Чип с нативным балансом в шапке. Обновляется после каждой живой загрузки
+  /// чип с нативным балансом в шапке. обновляется после каждой живой загрузки
   /// кабинета; при старте показывает последнее сохранённое значение (офлайн).
-  /// Тап — обновить кабинет (и баланс вместе с ним).
+  /// Тап - обновить кабинет (и баланс вместе с ним)
   Widget _balanceChip() => ValueListenableBuilder<BalanceInfo?>(
         valueListenable: BalanceStore.notifier,
         builder: (context, info, _) {
           if (info == null) return const SizedBox.shrink();
-          // Шапка синяя — чип делаем белым, сумму фирменным оранжевым
-          // (минус — красным), иначе цвет тонет на синем фоне.
+          // шапка синяя - чип делаем белым, сумму фирменным оранжевым
+          // (минус - красным), иначе цвет тонет на синем фоне
           final color = info.amount < 0 ? AppColors.danger : AppColors.accent;
           return Center(
             child: GestureDetector(
@@ -526,7 +526,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         },
       );
 
-  /// Кнопка нижней панели: иконка + подпись.
+  /// кнопка нижней панели: иконка + подпись
   Widget _navButton({
     required IconData icon,
     required String label,
@@ -557,7 +557,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     );
   }
 
-  /// Полоска-уведомление о работе в офлайне (показаны кэшированные данные).
+  /// полоска-уведомление о работе в офлайне (показаны кэшированные данные)
   Widget _offlineBanner() => Material(
         color: const Color(0xFFFFF4E5),
         child: SafeArea(
@@ -588,7 +588,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         ),
       );
 
-  /// Брендовый экран ошибки/офлайна с мягким появлением.
+  /// брендовый экран ошибки/офлайна с мягким появлением
   Widget _errorOverlay() => Container(
         color: AppColors.bg,
         alignment: Alignment.center,

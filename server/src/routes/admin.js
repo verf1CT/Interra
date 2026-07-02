@@ -6,7 +6,7 @@ import { sendToTokens, fcmEnabled } from '../fcm.js';
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
 
-/** GET /api/admin/stats — сводка по устройствам и последние рассылки. */
+/** GET /api/admin/stats - сводка по устройствам и последние рассылки. */
 adminRouter.get('/stats', (req, res) => {
   res.json({
     fcmEnabled: fcmEnabled(),

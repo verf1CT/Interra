@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-/// Скелетон-заглушка кабинета на время загрузки: серые «плашки» баланса,
-/// тарифа и списка с мягким шиммером — ощущение скорости вместо спиннера.
+/// скелетон-заглушка кабинета на время загрузки: серые «плашки» баланса,
+/// тарифа и списка с мягким шиммером - ощущение скорости вместо спиннера
 class CabinetSkeleton extends StatefulWidget {
   const CabinetSkeleton({super.key});
 
@@ -85,7 +85,7 @@ class _CabinetSkeletonState extends State<CabinetSkeleton>
       );
 }
 
-/// Сдвигает градиент по горизонтали для эффекта бегущего блика.
+/// сдвигает градиент по горизонтали для эффекта бегущего блика
 class _SlidingGradient extends GradientTransform {
   final double slide; // -1..1
   const _SlidingGradient(this.slide);

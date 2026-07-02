@@ -2,25 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Биометрический вход (Face ID / Touch ID / отпечаток).
+/// биометрический вход (Face ID / Touch ID / отпечаток).
 ///
-/// Опционален: включается пользователем в настройках. Если устройство не
-/// поддерживает биометрию — переключатель недоступен, а гейт пропускается.
+/// Опционален: включается пользователем в настройках. если устройство не
+/// поддерживает биометрию - переключатель недоступен, а гейт пропускается
 class Biometric {
   static final _auth = LocalAuthentication();
   static const _kEnabled = 'biometric_enabled';
   static const _kLastUnlock = 'lock_last_unlock_ms';
   static const _kLockDelay = 'lock_delay_ms';
 
-  /// Спецзначение задержки: «никогда» — после разблокировки не спрашиваем
-  /// при возврате из фона вообще (только при холодном старте).
+  /// спецзначение задержки: «никогда» - после разблокировки не спрашиваем
+  /// при возврате из фона вообще (только при холодном старте)
   static const int lockDelayNever = -1;
 
-  /// Значение по умолчанию — 30 минут. Баланс — данные личные, но не
-  /// банковские; спрашивать при каждом переключении приложений назойливо.
+  /// значение по умолчанию - 30 минут. баланс - данные личные, но не
+  /// банковские; спрашивать при каждом переключении приложений назойливо
   static const int defaultLockDelayMs = 30 * 60 * 1000;
 
-  /// Варианты для настроек: (значение в мс, подпись).
+  /// варианты для настроек: (значение в мс, подпись)
   static const List<(int, String)> lockDelayOptions = [
     (0, 'Сразу'),
     (60 * 1000, 'Через 1 минуту'),
@@ -42,14 +42,14 @@ class Biometric {
       .firstWhere((o) => o.$1 == ms, orElse: () => lockDelayOptions[2])
       .$2;
 
-  /// Отмечает успешную разблокировку (биометрией или PIN) — от этого момента
-  /// отсчитывается льготный период.
+  /// отмечает успешную разблокировку (биометрией или PIN) - от этого момента
+  /// отсчитывается льготный период
   static Future<void> markUnlocked() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kLastUnlock, DateTime.now().millisecondsSinceEpoch);
   }
 
-  /// true — льготный период ещё действует, замок можно не показывать.
+  /// true - льготный период ещё действует, замок можно не показывать
   static Future<bool> get withinGracePeriod async {
     final delay = await lockDelayMs;
     if (delay == lockDelayNever) return true; // никогда не перезапрашивать
@@ -58,11 +58,11 @@ class Biometric {
     final last = prefs.getInt(_kLastUnlock);
     if (last == null) return false;
     final elapsed = DateTime.now().millisecondsSinceEpoch - last;
-    // Отрицательное elapsed (перевод часов назад) считаем истёкшим.
+    // отрицательное elapsed (перевод часов назад) считаем истёкшим
     return elapsed >= 0 && elapsed < delay;
   }
 
-  /// Доступна ли биометрия на устройстве.
+  /// доступна ли биометрия на устройстве
   static Future<bool> get isAvailable async {
     try {
       return (await _auth.isDeviceSupported()) &&
@@ -83,7 +83,7 @@ class Biometric {
     await prefs.setBool(_kEnabled, value);
   }
 
-  /// Запрашивает подтверждение. true — успех или биометрия не требуется.
+  /// запрашивает подтверждение. true - успех или биометрия не требуется
   static Future<bool> authenticate() async {
     try {
       return await _auth.authenticate(

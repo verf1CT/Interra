@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import '../config.dart';
 import 'secure_http.dart';
 
-/// Результат запроса к биллингу `bbb`.
+/// результат запроса к биллингу `bbb`.
 ///
 /// Ответы приходят как JSON-строка в двойных кавычках (например `"178…"`),
-/// поэтому кавычки снимаются. Полезная нагрузка (токен `app` или ссылка
-/// `?login=…`) лежит в [data]; коды ошибок `0`/`1` — в [code]; пустое тело
-/// (общая ошибка данных/синтаксиса) — [empty]; сетевой сбой — [networkError].
+/// поэтому кавычки снимаются. полезная нагрузка (токен `app` или ссылка
+/// `?login=…`) лежит в [data]; коды ошибок `0`/`1` - в [code]; пустое тело
+/// (общая ошибка данных/синтаксиса) - [empty]; сетевой сбой - [networkError]
 class BbbResponse {
   final String? data;
   final String? code; // '0' или '1'
@@ -24,8 +24,8 @@ class BbbResponse {
 
   bool get isOk => data != null;
 
-  /// Разбирает тело ответа `bbb`. Снимает обрамляющие кавычки и пробелы
-  /// (`"178…"` → `178…`); `0`/`1` — коды ошибок; пустое тело — [empty].
+  /// разбирает тело ответа `bbb`. снимает обрамляющие кавычки и пробелы
+  /// (`"178…"` → `178…`); `0`/`1` - коды ошибок; пустое тело - [empty]
   factory BbbResponse.parse(String body) {
     var s = body.trim();
     if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
@@ -37,8 +37,8 @@ class BbbResponse {
   }
 }
 
-/// Клиент штатного API биллинга UTM5 (`bbb`): регистрация приложения по SMS
-/// один раз и получение ссылки на личный кабинет при каждом открытии.
+/// клиент штатного API биллинга UTM5 (`bbb`): регистрация приложения по SMS
+/// один раз и получение ссылки на личный кабинет при каждом открытии
 class BillingApi {
   static final _rnd = Random.secure();
 
@@ -70,34 +70,34 @@ class BillingApi {
     return b.toString();
   }
 
-  /// Шаг 1 — первичная регистрация: `cmd=set&app={15 случайных цифр}`.
-  /// Возвращает 24-значный токен приложения (`app`) или null при ошибке.
+  /// шаг 1 - первичная регистрация: `cmd=set&app={15 случайных цифр}`.
+  /// Возвращает 24-значный токен приложения (`app`) или null при ошибке
   static Future<String?> registerPrimary() async {
     final r = await _call(cmd: 'set', app: _random15());
     return r.isOk ? r.data : null;
   }
 
-  /// Шаг 2 — запрос SMS: `cmd=get&num={телефон}&app={app}`.
-  /// isOk — код отправлен; code '1' — нет привязанного телефона в биллинге;
-  /// code '0' — нет первичной регистрации.
+  /// шаг 2 - запрос SMS: `cmd=get&num={телефон}&app={app}`.
+  /// isOk - код отправлен; code '1' - нет привязанного телефона в биллинге;
+  /// code '0' - нет первичной регистрации
   static Future<BbbResponse> requestSms(String phone, String app) =>
       _call(cmd: 'get', num: phone, app: app);
 
-  /// Шаг 3 — подтверждение кодом: `cmd=set&num={код}&app={app}`.
-  /// isOk — приложение занесено в базу; code '1' — нет первичной регистрации;
-  /// code '0' — код не совпал.
+  /// шаг 3 - подтверждение кодом: `cmd=set&num={код}&app={app}`.
+  /// isOk - приложение занесено в базу; code '1' - нет первичной регистрации;
+  /// code '0' - код не совпал
   static Future<BbbResponse> confirmSms(String code, String app) =>
       _call(cmd: 'set', num: code, app: app);
 
-  /// Удаление регистрации: `cmd=del&app={app}`. Best-effort, ошибку не проверяет.
+  /// удаление регистрации: `cmd=del&app={app}`. best-effort, ошибку не проверяет
   static Future<void> deleteApp(String app) async {
     await _call(cmd: 'del', app: app);
   }
 
-  /// Получение ссылки на ЛК: `cmd=open&app={app}`.
-  /// isOk — data содержит `?login=…` (ссылка живёт ~30 минут);
-  /// code '1' — телефон приложения отвязан от ЛК; code '0' — приложение
-  /// не зарегистрировано в биллинге.
+  /// получение ссылки на ЛК: `cmd=open&app={app}`.
+  /// isOk - data содержит `?login=…` (ссылка живёт ~30 минут);
+  /// code '1' - телефон приложения отвязан от ЛК; code '0' - приложение
+  /// не зарегистрировано в биллинге
   static Future<BbbResponse> openCabinet(String app) =>
       _call(cmd: 'open', app: app);
 }

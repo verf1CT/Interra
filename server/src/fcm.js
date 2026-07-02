@@ -23,8 +23,8 @@ if (config.firebaseServiceAccount && fs.existsSync(config.firebaseServiceAccount
 export const fcmEnabled = () => enabled;
 
 /**
- * Рассылает push на список токенов. Возвращает {successCount, failureCount}.
- * Невалидные/отписавшиеся токены автоматически удаляются из БД.
+ * рассылает push на список токенов. возвращает {successCount, failureCount}.
+ * Невалидные/отписавшиеся токены автоматически удаляются из БД
  */
 export async function sendToTokens(tokens, { title, body, data }) {
   const unique = [...new Set(tokens)].filter(Boolean);
