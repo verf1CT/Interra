@@ -1,9 +1,9 @@
 import Foundation
 import WatchConnectivity
 
-/// Синхронизация с Apple Watch: отправляет на часы баланс и токен биллинга
-/// (из app group, куда их пишет Dart-слой) через applicationContext —
-/// доставится даже когда часы не рядом (при следующем контакте).
+/// синхронизация с Apple Watch: отправляет на часы баланс и токен биллинга
+/// (из app group, куда их пишет Dart-слой) через applicationContext -
+/// доставится даже когда часы не рядом (при следующем контакте)
 final class WatchSync: NSObject, WCSessionDelegate {
     static let shared = WatchSync()
 
@@ -14,15 +14,15 @@ final class WatchSync: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    /// Публикует текущие данные на часы. Вызывать при уходе в фон и после
-    /// активации сессии. Повтор одинакового контекста система сама глотает.
+    /// публикует текущие данные на часы. вызывать при уходе в фон и после
+    /// активации сессии. повтор одинакового контекста система сама глотает
     func push() {
         let session = WCSession.default
         guard session.activationState == .activated, session.isPaired else { return }
         let d = UserDefaults(suiteName: BalanceCore.appGroup)
-        // Отправляем ВСЕ ключи (пустая строка, если значения нет), чтобы часы
+        // отправляем ВСЕ ключи (пустая строка, если значения нет), чтобы часы
         // могли и очиститься после выхода из аккаунта, а не только получить
-        // обновление. applicationContext перезаписывает предыдущий целиком.
+        // обновление. applicationContext перезаписывает предыдущий целиком
         var ctx: [String: Any] = [:]
         for key in ["balance_text", "balance_updated", "bbb_token"] {
             ctx[key] = d?.string(forKey: key) ?? ""
@@ -44,7 +44,7 @@ final class WatchSync: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    /// Часы могут запросить данные явно (messages) — отдаём то же самое.
+    /// часы могут запросить данные явно (messages) - отдаём то же самое
     func session(_ session: WCSession,
                  didReceiveMessage message: [String: Any],
                  replyHandler: @escaping ([String: Any]) -> Void) {

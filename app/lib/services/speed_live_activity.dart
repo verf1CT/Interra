@@ -2,8 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Мост к нативной Live Activity замера скорости (iOS 16.2+).
-/// На других платформах — молча ничего не делает.
+/// мост к нативной Live Activity замера скорости (iOS 16.2+).
+/// На других платформах - молча ничего не делает
 class SpeedLiveActivity {
   static const _ch = MethodChannel('ru.interra/liveactivity');
 

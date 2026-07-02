@@ -3,9 +3,9 @@ import 'dart:io' show Platform;
 import '../config.dart';
 import 'secure_http.dart';
 
-/// Клиент нашего бэкенда (server/): регистрация устройства для push-рассылок.
+/// клиент нашего бэкенда (server/): регистрация устройства для push-рассылок
 class ApiClient {
-  /// Привязывает push-токен к устройству и (опционально) к логину абонента.
+  /// привязывает push-токен к устройству и (опционально) к логину абонента
   static Future<bool> registerDevice({
     required String token,
     String? clientLogin,
@@ -30,7 +30,7 @@ class ApiClient {
           .timeout(const Duration(seconds: 15));
       return res.statusCode == 200;
     } catch (_) {
-      // Сеть недоступна — не критично, попробуем при следующем запуске.
+      // сеть недоступна - не критично, попробуем при следующем запуске
       return false;
     }
   }

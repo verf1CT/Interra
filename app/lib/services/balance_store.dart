@@ -4,11 +4,11 @@ import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_store.dart';
 
-/// Нативный баланс абонента, извлечённый из страницы кабинета.
+/// нативный баланс абонента, извлечённый из страницы кабинета.
 ///
-/// Источник — текст страницы «Основная информация» (`aaainfo`), которую и так
-/// грузит WebView: отдельного API баланса у биллинга нет. Значение кэшируем в
-/// SharedPreferences, чтобы показывать его сразу при старте и в офлайне.
+/// Источник - текст страницы «Основная информация» (`aaainfo`), которую и так
+/// грузит WebView: отдельного API баланса у биллинга нет. значение кэшируем в
+/// SharedPreferences, чтобы показывать его сразу при старте и в офлайне
 class BalanceInfo {
   final double amount;
   final DateTime updatedAt;
@@ -19,15 +19,15 @@ class BalanceStore {
   static const _kAmount = 'balance_amount';
   static const _kUpdatedAt = 'balance_updated_at';
 
-  // Виджет домашнего экрана (iOS, WidgetKit): данные уходят в общий
-  // UserDefaults app group, читает их ios/BalanceWidget/BalanceWidget.swift.
+  // виджет домашнего экрана (iOS, WidgetKit): данные уходят в общий
+  // UserDefaults app group, читает их ios/BalanceWidget/BalanceWidget.swift
   static const _appGroup = 'group.ru.interra.lkInterra';
   static const _widgetKind = 'BalanceWidget';
 
-  /// Текущее значение для UI. null — баланс ещё ни разу не извлекали.
+  /// текущее значение для UI. null - баланс ещё ни разу не извлекали
   static final ValueNotifier<BalanceInfo?> notifier = ValueNotifier(null);
 
-  /// Поднимает сохранённое значение (вызывать один раз при старте экрана).
+  /// поднимает сохранённое значение (вызывать один раз при старте экрана)
   static Future<void> restore() async {
     if (notifier.value != null) return;
     try {
@@ -42,8 +42,8 @@ class BalanceStore {
     }
   }
 
-  /// Обновляет баланс (из парсинга страницы) и сохраняет на диск.
-  /// [account] — номер лицевого счёта (для настраиваемого виджета); необязателен.
+  /// обновляет баланс (из парсинга страницы) и сохраняет на диск.
+  /// [account] - номер лицевого счёта (для настраиваемого виджета); необязателен
   static Future<void> update(double amount, {String? account}) async {
     final info = BalanceInfo(amount, DateTime.now());
     notifier.value = info;
@@ -57,7 +57,7 @@ class BalanceStore {
     await _pushToWidget(info, account);
   }
 
-  /// Отдаёт баланс виджету домашнего экрана и плитке (iOS и Android).
+  /// отдаёт баланс виджету домашнего экрана и плитке (iOS и Android)
   static Future<void> _pushToWidget(BalanceInfo info, String? account) async {
     if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return;
     try {
@@ -70,8 +70,8 @@ class BalanceStore {
       if (account != null && account.isNotEmpty) {
         await HomeWidget.saveWidgetData('account_text', account);
       }
-      // Токен биллинга — для кнопки «Обновить» на виджете и интента Сири:
-      // они запрашивают баланс нативно, без запуска Dart (только iOS).
+      // токен биллинга - для кнопки «Обновить» на виджете и интента Сири:
+      // они запрашивают баланс нативно, без запуска Dart (только iOS)
       await HomeWidget.saveWidgetData('bbb_token', await AuthStore().appToken);
       await HomeWidget.updateWidget(
           iOSName: _widgetKind, androidName: 'BalanceWidgetProvider');
@@ -80,8 +80,8 @@ class BalanceStore {
     }
   }
 
-  /// Сброс при выходе из аккаунта: чистим память, диск и виджет,
-  /// чтобы баланс не оставался видимым после logout.
+  /// сброс при выходе из аккаунта: чистим память, диск и виджет,
+  /// чтобы баланс не оставался видимым после logout
   static Future<void> clear() async {
     notifier.value = null;
     try {
@@ -105,13 +105,13 @@ class BalanceStore {
     }
   }
 
-  /// Разбирает строку вида `1846.03`, `1 846,03`, `-12.5` в число.
+  /// разбирает строку вида `1846.03`, `1 846,03`, `-12.5` в число
   static double? parseAmount(String raw) {
     final s = raw.replaceAll(RegExp(r'[\s ]'), '').replaceAll(',', '.');
     return double.tryParse(s);
   }
 
-  /// «1 846,03 ₽» — формат для чипа в шапке.
+  /// «1 846,03 ₽» - формат для чипа в шапке
   static String format(double amount) {
     final sign = amount < 0 ? '−' : '';
     final abs = amount.abs();

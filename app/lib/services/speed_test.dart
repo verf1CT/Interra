@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 
-/// Результаты замера скорости.
+/// результаты замера скорости
 class SpeedResult {
   final int? pingMs;
   final double? downloadMbps;
@@ -19,20 +19,20 @@ class SpeedResult {
       );
 }
 
-/// Этап замера — для подписи под индикатором.
+/// этап замера - для подписи под индикатором
 enum SpeedPhase { idle, ping, download, upload, done, error }
 
-/// Замер скорости соединения: пинг до биллинга Интерры, скачивание и отдача
+/// замер скорости соединения: пинг до биллинга Интерры, скачивание и отдача
 /// через тестовые эндпоинты Cloudflare (стабильные, без ключей, гоняют мусор).
 ///
-/// Числа — оценка «как быстро работает интернет с этого телефона сейчас»
-/// (Wi-Fi/LTE влияет), а не паспортная скорость тарифа.
+/// Числа - оценка «как быстро работает интернет с этого телефона сейчас»
+/// (Wi-Fi/LTE влияет), а не паспортная скорость тарифа
 class SpeedTest {
   static const _down = 'https://speed.cloudflare.com/__down?bytes=';
   static const _up = 'https://speed.cloudflare.com/__up';
 
-  /// Сколько байт качаем/льём. 20 МБ вниз и 8 МБ вверх достаточно для оценки
-  /// и не съедает мобильный трафик впустую.
+  /// сколько байт качаем/льём. 20 МБ вниз и 8 МБ вверх достаточно для оценки
+  /// и не съедает мобильный трафик впустую
   static const int _downloadBytes = 20 * 1000 * 1000;
   static const int _uploadBytes = 8 * 1000 * 1000;
   static const Duration _cap = Duration(seconds: 12);
@@ -63,8 +63,8 @@ class SpeedTest {
     }
   }
 
-  /// Медиана HTTP-round-trip до биллинга. Первый запрос выбрасываем — в нём
-  /// TLS-хендшейк; остальные идут по уже открытому соединению.
+  /// медиана HTTP-round-trip до биллинга. первый запрос выбрасываем - в нём
+  /// TLS-хендшейк; остальные идут по уже открытому соединению
   Future<int> _ping(http.Client client) async {
     final uri = Uri.parse(AppConfig.bbbUrl);
     final samples = <int>[];
@@ -94,7 +94,7 @@ class SpeedTest {
   }
 
   Future<double> _upload(http.Client client, SpeedResult sofar) async {
-    // Псевдослучайный мусор, чтобы транспорт ничего не сжал по пути.
+    // псевдослучайный мусор, чтобы транспорт ничего не сжал по пути
     final rnd = Random(42);
     final chunk =
         Uint8List.fromList(List.generate(64 * 1024, (_) => rnd.nextInt(256)));
@@ -105,9 +105,9 @@ class SpeedTest {
     var sent = 0;
     final req = http.StreamedRequest('POST', Uri.parse(_up))
       ..contentLength = total;
-    // Кормим тело порциями, попутно репортя прогресс. Обязательно отправляем
-    // РОВНО contentLength байт — иначе запрос падает по несовпадению длины;
-    // общую продолжительность ограничивает таймаут ниже.
+    // кормим тело порциями, попутно репортя прогресс. обязательно отправляем
+    // РОВНО contentLength байт - иначе запрос падает по несовпадению длины;
+    // общую продолжительность ограничивает таймаут ниже
     unawaited(() async {
       for (var i = 0; i < chunks; i++) {
         req.sink.add(chunk);

@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// Код-пароль (PIN из 4 цифр) — альтернатива биометрии.
+/// код-пароль (PIN из 4 цифр) - альтернатива биометрии.
 ///
 /// Храним не сам PIN, а его SHA-256 с солью, в защищённом хранилище системы
-/// (Keychain / EncryptedSharedPreferences) — как и токен биллинга в AuthStore.
+/// (Keychain / EncryptedSharedPreferences) - как и токен биллинга в AuthStore
 class PinLock {
-  // v10: шифрование на Android включено по умолчанию, параметр не нужен.
+  // v10: шифрование на Android включено по умолчанию, параметр не нужен
   static const _storage = FlutterSecureStorage();
 
   static const _kHash = 'pin_hash';
@@ -18,19 +18,19 @@ class PinLock {
 
   static const int length = 4;
 
-  /// Защита от перебора: после [maxAttempts] неверных вводов подряд —
-  /// пауза [cooldown], в течение которой любой ввод отклоняется.
+  /// защита от перебора: после [maxAttempts] неверных вводов подряд -
+  /// пауза [cooldown], в течение которой любой ввод отклоняется
   static const int maxAttempts = 5;
   static const Duration cooldown = Duration(seconds: 30);
 
   static String _hash(String pin, String salt) =>
       sha256.convert(utf8.encode('$salt:$pin')).toString();
 
-  /// Установлен ли PIN.
+  /// установлен ли PIN
   static Future<bool> get isSet async =>
       (await _storage.read(key: _kHash)) != null;
 
-  /// Устанавливает (или меняет) PIN.
+  /// устанавливает (или меняет) PIN
   static Future<void> setPin(String pin) async {
     final rnd = Random.secure();
     final salt =
@@ -39,7 +39,7 @@ class PinLock {
     await _storage.write(key: _kHash, value: _hash(pin, salt));
   }
 
-  /// Сколько осталось ждать до следующей попытки (Duration.zero — можно вводить).
+  /// сколько осталось ждать до следующей попытки (Duration.zero - можно вводить)
   static Future<Duration> get cooldownRemaining async {
     final raw = await _storage.read(key: _kLockUntil);
     final until = int.tryParse(raw ?? '');
@@ -48,7 +48,7 @@ class PinLock {
     return left > 0 ? Duration(milliseconds: left) : Duration.zero;
   }
 
-  /// Проверяет введённый PIN (с учётом паузы после серии неверных вводов).
+  /// проверяет введённый PIN (с учётом паузы после серии неверных вводов)
   static Future<bool> verify(String pin) async {
     if ((await cooldownRemaining) > Duration.zero) return false;
     final hash = await _storage.read(key: _kHash);
@@ -76,7 +76,7 @@ class PinLock {
     return false;
   }
 
-  /// Убирает PIN (выход из аккаунта / отключение в настройках).
+  /// убирает PIN (выход из аккаунта / отключение в настройках)
   static Future<void> clear() async {
     await _storage.delete(key: _kHash);
     await _storage.delete(key: _kSalt);

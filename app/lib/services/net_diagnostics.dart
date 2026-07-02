@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-/// Статус одного шага диагностики.
+/// статус одного шага диагностики
 enum StepStatus { pending, running, ok, fail }
 
-/// Итоговый вердикт: где проблема и что делать.
+/// итоговый вердикт: где проблема и что делать
 enum Verdict {
   allOk, // всё работает
-  noInternet, // нет сети вообще — роутер/Wi-Fi/кабель
+  noInternet, // нет сети вообще - роутер/Wi-Fi/кабель
   providerIssue, // интернет есть, а сервисы Интерры недоступны
   billingIssue, // сайт жив, лежит только биллинг (кабинет)
 }
@@ -22,12 +22,12 @@ class DiagStep {
   DiagStep(this.title, this.probe);
 }
 
-/// Диагностика соединения: последовательные проверки от «есть ли интернет»
+/// диагностика соединения: последовательные проверки от «есть ли интернет»
 /// до «жив ли кабинет», с замером времени ответа.
 ///
-/// Все проверки — чистый Dart (DNS + HTTPS), без нативных плагинов. До шлюза
+/// Все проверки - чистый Dart (DNS + HTTPS), без нативных плагинов. до шлюза
 /// (роутера) без нативного кода не достучаться, поэтому «нет интернета»
-/// диагностируем по совокупности: не резолвится DNS и не отвечают внешние узлы.
+/// диагностируем по совокупности: не резолвится DNS и не отвечают внешние узлы
 class NetDiagnostics {
   static const _timeout = Duration(seconds: 6);
 
@@ -48,7 +48,7 @@ class NetDiagnostics {
     ]);
   }
 
-  /// Прогоняет все шаги по очереди. Возвращает вердикт.
+  /// прогоняет все шаги по очереди. возвращает вердикт
   Future<Verdict> run() async {
     _internetOk = _siteOk = _billingOk = false;
     for (final s in steps) {
@@ -78,8 +78,8 @@ class NetDiagnostics {
     return Verdict.allOk;
   }
 
-  /// Внешний интернет: лёгкий эндпоинт Google (204 без тела). Если он вдруг
-  /// заблокирован — пробуем Яндекс.
+  /// внешний интернет: лёгкий эндпоинт Google (204 без тела). если он вдруг
+  /// заблокирован - пробуем Яндекс
   Future<void> _probeInternet() async {
     try {
       await http
@@ -103,7 +103,7 @@ class NetDiagnostics {
   }
 
   Future<void> _probeBilling() async {
-    // Корень биллинга; важно не «200», а что сервер вообще отвечает.
+    // корень биллинга; важно не «200», а что сервер вообще отвечает
     final res = await http.get(Uri.parse('https://stat.interra.ru/'));
     if (res.statusCode >= 500) throw Exception('HTTP ${res.statusCode}');
     _billingOk = true;

@@ -9,7 +9,7 @@ import '../services/push_service.dart';
 import '../services/analytics.dart';
 import 'webview_screen.dart';
 
-/// Форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр).
+/// форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр)
 class _RuPhoneInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -22,8 +22,8 @@ class _RuPhoneInputFormatter extends TextInputFormatter {
   }
 }
 
-/// Регистрация приложения в биллинге по схеме `bbb`:
-/// телефон → SMS-код → один раз получаем и храним токен приложения.
+/// регистрация приложения в биллинге по схеме `bbb`:
+/// телефон → SMS-код → один раз получаем и храним токен приложения
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -42,8 +42,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _error;
   String? _appToken; // токен из первичной регистрации (для шага подтверждения)
 
-  // Антиспам повторной отправки SMS: после успешного запроса кода блокируем
-  // повторную отправку на 60 секунд и показываем обратный отсчёт.
+  // антиспам повторной отправки SMS: после успешного запроса кода блокируем
+  // повторную отправку на 60 секунд и показываем обратный отсчёт
   Timer? _resendTimer;
   int _resendLeft = 0;
 
@@ -69,7 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return normalizeRuPhone(_phone.text);
   }
 
-  /// Шаг телефона: первичная регистрация (один раз) + запрос SMS.
+  /// шаг телефона: первичная регистрация (один раз) + запрос SMS
   Future<void> _submitPhone() async {
     final phone = _normalizedPhone;
     if (phone.length < 11) {
@@ -81,8 +81,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
 
-    // Переиспользуем токен, если первичная регистрация уже была (например,
-    // приложение закрыли между шагами).
+    // переиспользуем токен, если первичная регистрация уже была (например,
+    // приложение закрыли между шагами)
     var token = await AuthStore().appToken;
     if (token == null) {
       token = await BillingApi.registerPrimary();
@@ -106,8 +106,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
       _startResendCooldown();
     } else {
-      // '0' — биллинг не знает наш токен (первичная регистрация потеряна).
-      // Сбрасываем его, иначе каждая следующая попытка упрётся в тот же отказ.
+      // '0' - биллинг не знает наш токен (первичная регистрация потеряна).
+      // Сбрасываем его, иначе каждая следующая попытка упрётся в тот же отказ
       if (r.code == '0') {
         await AuthStore().clear();
         _appToken = null;
@@ -126,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// Шаг кода: подтверждаем SMS-код, сохраняем телефон, входим.
+  /// шаг кода: подтверждаем SMS-код, сохраняем телефон, входим
   Future<void> _submitCode() async {
     final code = _code.text.replaceAll(RegExp(r'\D'), '');
     final token = _appToken;
@@ -151,8 +151,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => const WebViewScreen()),
       );
     } else {
-      // '1' — первичная регистрация утеряна: токен мёртв, сбрасываем и
-      // возвращаем на шаг телефона, чтобы регистрация началась заново.
+      // '1' - первичная регистрация утеряна: токен мёртв, сбрасываем и
+      // возвращаем на шаг телефона, чтобы регистрация началась заново
       if (r.code == '1') {
         await AuthStore().clear();
         _appToken = null;
@@ -172,7 +172,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  /// Повторная отправка SMS тем же токеном (кнопка активна только после отсчёта).
+  /// повторная отправка SMS тем же токеном (кнопка активна только после отсчёта)
   Future<void> _resendCode() async {
     final token = _appToken;
     if (token == null) return _backToPhone();
@@ -320,7 +320,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _code,
           keyboardType: TextInputType.number,
           autofocus: true,
-          // iOS/Android подставят код из SMS прямо над клавиатурой.
+          // iOS/Android подставят код из SMS прямо над клавиатурой
           autofillHints: const [AutofillHints.oneTimeCode],
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: const InputDecoration(

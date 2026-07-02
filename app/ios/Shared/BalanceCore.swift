@@ -1,9 +1,9 @@
 import Foundation
 import WidgetKit
 
-/// Общий нативный код баланса — используется и приложением (интент Сири),
-/// и виджетом (кнопка «Обновить»). Дублирует минимум логики Dart-слоя:
-/// bbb cmd=open → aaainfo → регулярка «Баланс … руб.».
+/// общий нативный код баланса - используется и приложением (интент Сири),
+/// и виджетом (кнопка «Обновить»). дублирует минимум логики Dart-слоя:
+/// bbb cmd=open → aaainfo → регулярка «Баланс … руб.»
 enum BalanceCore {
     static let appGroup = "group.ru.interra.lkInterra"
     static let widgetKind = "BalanceWidget"
@@ -11,8 +11,8 @@ enum BalanceCore {
 
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
 
-    /// Сессия с коротким таймаутом: интенты Сири и обновление виджета жёстко
-    /// ограничены по времени, дефолтные 60 сек URLSession недопустимы.
+    /// сессия с коротким таймаутом: интенты Сири и обновление виджета жёстко
+    /// ограничены по времени, дефолтные 60 сек URLSession недопустимы
     private static var session: URLSession {
         let cfg = URLSessionConfiguration.ephemeral
         cfg.timeoutIntervalForRequest = 8
@@ -21,14 +21,14 @@ enum BalanceCore {
         return URLSession(configuration: cfg)
     }
 
-    /// Последний сохранённый баланс («1 846,03 ₽») или nil.
+    /// последний сохранённый баланс («1 846,03 ₽») или nil
     static var cachedText: String? {
         let t = defaults?.string(forKey: "balance_text")
         return (t == nil || t == "—" || t!.isEmpty) ? nil : t
     }
 
-    /// Свежий баланс из биллинга. Токен приложения зеркалируется Dart-слоем
-    /// в app group (доступен только нашим подписанным приложениям).
+    /// свежий баланс из биллинга. токен приложения зеркалируется Dart-слоем
+    /// в app group (доступен только нашим подписанным приложениям)
     static func fetchFresh() async -> Double? {
         guard let token = defaults?.string(forKey: "bbb_token"), !token.isEmpty,
               let openURL = URL(string: "\(billingBase)/bbb?cmd=open&app=\(token)")
@@ -44,9 +44,9 @@ enum BalanceCore {
 
             let (d2, _) = try await session.data(from: infoURL)
             guard let html = String(data: d2, encoding: .utf8) else { return nil }
-            // «…Баланс…1846.03 руб.» — ищем число перед «руб» после слова Баланс.
-            // Внимание: в шаблоне ICU неразрывный пробел —   (ровно 4 hex),
-            // НЕ swift-синтаксис \u{00a0}, иначе регулярка не компилируется.
+            // «…баланс…1846.03 руб.» - ищем число перед «руб» после слова Баланс.
+            // Внимание: в шаблоне ICU неразрывный пробел -   (ровно 4 hex),
+            // НЕ swift-синтаксис \u{00a0}, иначе регулярка не компилируется
             let re = try NSRegularExpression(
                 pattern: "Баланс[\\s\\S]{0,200}?(-?[\\d\\u00a0 ]+(?:[.,]\\d+)?)\\s*руб",
                 options: [])
@@ -63,7 +63,7 @@ enum BalanceCore {
         }
     }
 
-    /// «1 846,03 ₽» — формат как в приложении (BalanceStore.format).
+    /// «1 846,03 ₽» - формат как в приложении (BalanceStore.format)
     static func format(_ amount: Double) -> String {
         let sign = amount < 0 ? "\u{2212}" : ""
         let abs = Swift.abs(amount)
@@ -80,7 +80,7 @@ enum BalanceCore {
         return "\(sign)\(grouped)\(frac) ₽"
     }
 
-    /// Сохраняет свежее значение для виджета/Сири и перерисовывает виджет.
+    /// сохраняет свежее значение для виджета/Сири и перерисовывает виджет
     static func store(_ amount: Double) {
         let d = defaults
         d?.set(format(amount), forKey: "balance_text")
@@ -90,7 +90,7 @@ enum BalanceCore {
         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
     }
 
-    /// Обновить и вернуть текст баланса (для интентов). nil — не получилось.
+    /// обновить и вернуть текст баланса (для интентов). nil - не получилось
     @discardableResult
     static func refresh() async -> String? {
         guard let amount = await fetchFresh() else { return nil }

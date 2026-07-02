@@ -6,8 +6,8 @@ import '../services/analytics.dart';
 import 'diagnostics_screen.dart';
 import 'speedtest_screen.dart';
 
-/// Экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
-/// на сайте) и версия приложения. Контакты — из [AppConfig].
+/// экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
+/// на сайте) и версия приложения. контакты - из [AppConfig]
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
@@ -116,7 +116,7 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  /// Шапка: чистая карточка со значком поддержки и подсказкой (без градиента).
+  /// шапка: чистая карточка со значком поддержки и подсказкой (без градиента)
   Widget _hero() => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),

@@ -18,7 +18,7 @@ import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
 
-/// Экран настроек: аккаунт, уведомления, выход.
+/// экран настроек: аккаунт, уведомления, выход
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -66,8 +66,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
-    // Включение защищаем проверкой биометрии — чтобы случайный человек
-    // не включил замок чужим лицом/пальцем.
+    // включение защищаем проверкой биометрии - чтобы случайный человек
+    // не включил замок чужим лицом/пальцем
     if (value && !await Biometric.authenticate()) return;
     await Biometric.setEnabled(value);
     if (!mounted) return;
@@ -82,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ));
       if (ok == true && mounted) setState(() => _pinSet = true);
     } else {
-      // Отключение защищаем вводом текущего кода.
+      // отключение защищаем вводом текущего кода
       final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
         builder: (_) => const PinVerifyScreen(),
         settings: const RouteSettings(name: 'pin_verify'),
@@ -94,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// Выбор задержки автоблокировки — простой диалог с вариантами.
+  /// выбор задержки автоблокировки - простой диалог с вариантами
   Future<void> _pickLockDelay() async {
     final picked = await showDialog<int>(
       context: context,
@@ -118,7 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _changePin() async {
-    // Смена: сначала текущий код, затем установка нового.
+    // смена: сначала текущий код, затем установка нового
     final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => const PinVerifyScreen(),
       settings: const RouteSettings(name: 'pin_verify'),
@@ -133,14 +133,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', value);
-    // getToken на iOS без APNs может висеть/падать — не блокируем переключатель.
+    // getToken на iOS без APNs может висеть/падать - не блокируем переключатель
     try {
       final token = await FirebaseMessaging.instance
           .getToken()
           .timeout(const Duration(seconds: 5));
       if (token != null) {
         if (value) {
-          // Регистрируем через PushService — он передаёт сегменты категорий.
+          // регистрируем через PushService - он передаёт сегменты категорий
           await PushService.registerCurrentToken();
         } else {
           await ApiClient.unregisterDevice(token);
@@ -156,14 +156,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleCategory(String key, bool value) async {
     await NotifyPrefs.setEnabled(key, value);
     if (mounted) setState(() => _categories[key] = value);
-    // Обновляем сегменты на бэкенде (best-effort, сеть может отсутствовать).
+    // обновляем сегменты на бэкенде (best-effort, сеть может отсутствовать)
     PushService.registerCurrentToken();
   }
 
   Future<void> _logout() async {
-    // Удаление push-токена и регистрации в биллинге — best-effort: на iOS без
+    // удаление push-токена и регистрации в биллинге - best-effort: на iOS без
     // APNs getToken/сеть могут висеть или падать, но выход должен срабатывать
-    // ВСЕГДА. Поэтому удалённые операции не блокируют локальную очистку и переход.
+    // ВСЕГДА. поэтому удалённые операции не блокируют локальную очистку и переход
     try {
       final token = await FirebaseMessaging.instance
           .getToken()
@@ -181,8 +181,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await AuthStore().clear();
     await Biometric.setEnabled(false); // снимаем биометрический замок при выходе
     await PinLock.clear(); // и код-пароль
-    // Персональные данные не должны переживать выход: снимок кабинета
-    // (ФИО, адрес, баланс) и баланс в приложении/виджете.
+    // персональные данные не должны переживать выход: снимок кабинета
+    // (ФИО, адрес, баланс) и баланс в приложении/виджете
     await PageCache.clear();
     await BalanceStore.clear();
     if (!mounted) return;
@@ -199,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Плашка о доступном обновлении (обновляемся пока не через сторы).
+          // плашка о доступном обновлении (обновляемся пока не через сторы)
           ValueListenableBuilder<String?>(
             valueListenable: UpdateCheck.available,
             builder: (context, latest, _) {
@@ -230,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          // Карточка аккаунта
+          // карточка аккаунта
           _card(
             child: Row(
               children: [
@@ -355,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: _changePin,
                   ),
                 ],
-                // Задержка автоблокировки — только если защита включена.
+                // задержка автоблокировки - только если защита включена
                 if (_biometricEnabled || _pinSet) ...[
                   const Divider(
                       height: 1,
@@ -427,7 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// Бейдж статуса приложения: регистрация в биллинге активна.
+  /// бейдж статуса приложения: регистрация в биллинге активна
   Widget _statusChip() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(

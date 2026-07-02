@@ -4,7 +4,7 @@ import '../services/analytics.dart';
 import '../services/speed_test.dart';
 import '../services/speed_live_activity.dart';
 
-/// Экран «Проверка скорости»: пинг, загрузка, отдача.
+/// экран «Проверка скорости»: пинг, загрузка, отдача
 class SpeedTestScreen extends StatefulWidget {
   const SpeedTestScreen({super.key});
 
@@ -46,8 +46,8 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
         _result = sofar;
         _progress = progress;
       });
-      // Live Activity обновляем не чаще ~2.5 раз в секунду, чтобы не упереться
-      // в системный троттлинг частых обновлений.
+      // live Activity обновляем не чаще ~2.5 раз в секунду, чтобы не упереться
+      // в системный троттлинг частых обновлений
       final now = DateTime.now();
       if (now.difference(_lastLive).inMilliseconds > 400) {
         _lastLive = now;
@@ -125,7 +125,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
     return mbps >= 100 ? mbps.round().toString() : mbps.toStringAsFixed(1);
   }
 
-  /// Главная карточка — скорость скачивания крупно + прогресс.
+  /// главная карточка - скорость скачивания крупно + прогресс
   Widget _bigCard() => Container(
         padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
         decoration: BoxDecoration(

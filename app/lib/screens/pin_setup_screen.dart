@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/pin_lock.dart';
 import '../widgets/pin_pad.dart';
 
-/// Установка (или смена) код-пароля: ввод нового PIN и повтор для проверки.
-/// Возвращает true через Navigator.pop, если PIN сохранён.
+/// установка (или смена) код-пароля: ввод нового PIN и повтор для проверки.
+/// Возвращает true через Navigator.pop, если PIN сохранён
 class PinSetupScreen extends StatefulWidget {
   const PinSetupScreen({super.key});
 
@@ -12,7 +12,7 @@ class PinSetupScreen extends StatefulWidget {
 }
 
 class _PinSetupScreenState extends State<PinSetupScreen> {
-  String? _first; // первый ввод; null — ещё на первом шаге
+  String? _first; // первый ввод; null - ещё на первом шаге
 
   Future<bool> _submit(String pin) async {
     if (_first == null) {
@@ -20,7 +20,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       return true; // шаг «повторите код»
     }
     if (pin != _first) {
-      // Не совпало — начинаем заново с встряской.
+      // не совпало - начинаем заново с встряской
       setState(() => _first = null);
       return false;
     }
@@ -38,7 +38,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: PinPad(
-            // Ключ сбрасывает введённые точки при переходе между шагами.
+            // ключ сбрасывает введённые точки при переходе между шагами
             key: ValueKey(repeat),
             title: repeat ? 'Повторите код' : 'Придумайте код',
             subtitle: repeat
@@ -52,8 +52,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   }
 }
 
-/// Проверка текущего кода (например, перед отключением).
-/// Возвращает true через Navigator.pop при верном вводе.
+/// проверка текущего кода (например, перед отключением).
+/// Возвращает true через Navigator.pop при верном вводе
 class PinVerifyScreen extends StatelessWidget {
   const PinVerifyScreen({super.key});
 

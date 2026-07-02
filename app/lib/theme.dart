@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Фирменная палитра Интерры — единственный источник цветов для всего приложения.
+/// фирменная палитра Интерры - единственный источник цветов для всего приложения
 class AppColors {
   static const brand = Color(0xFF3C98D4); // фирменный синий
   static const accent = Color(0xFFF4752D); // фирменный оранжевый
@@ -10,8 +10,8 @@ class AppColors {
   static const ok = Color(0xFF2FA86A); // статус «подключено»
 }
 
-/// Плавный переход между экранами: лёгкое появление + микро-сдвиг снизу.
-/// Применяется ко всем `MaterialPageRoute` через тему.
+/// плавный переход между экранами: лёгкое появление + микро-сдвиг снизу.
+/// Применяется ко всем `MaterialPageRoute` через тему
 class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
   const _FadeSlidePageTransitionsBuilder();
 
@@ -38,7 +38,7 @@ class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// Единые переходы для всех платформ.
+/// единые переходы для всех платформ
 final PageTransitionsTheme appPageTransitions = PageTransitionsTheme(
   builders: {
     for (final platform in TargetPlatform.values)
@@ -46,7 +46,7 @@ final PageTransitionsTheme appPageTransitions = PageTransitionsTheme(
   },
 );
 
-/// Светлая тема приложения.
+/// светлая тема приложения
 ThemeData buildAppTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.brand,
