@@ -116,40 +116,51 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  /// Шапка с фирменным значком и подсказкой.
+  /// Шапка: чистая карточка со значком поддержки и подсказкой (без градиента).
   Widget _hero() => Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.brand, AppColors.accent],
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.brand.withValues(alpha: 0.25),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Column(
+        child: Row(
           children: [
-            Icon(Icons.support_agent_rounded, color: Colors.white, size: 44),
-            SizedBox(height: 12),
-            Text('Мы на связи',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700)),
-            SizedBox(height: 6),
-            Text(
-              'Поможем с подключением, оплатой и настройкой интернета',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.white, fontSize: 13, height: 1.35),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.support_agent_rounded,
+                  color: AppColors.brand, size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Мы на связи',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Поможем с подключением, оплатой и настройкой интернета',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.grey.shade600,
+                        height: 1.35),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

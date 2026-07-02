@@ -212,14 +212,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.brand, AppColors.accent],
-                    ),
+                    color: AppColors.brand.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 28),
+                  child: const Icon(Icons.person_rounded,
+                      color: AppColors.brand, size: 26),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

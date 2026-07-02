@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import AppIntents
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -8,6 +9,11 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     WatchSync.shared.start()
+    // Форсируем регистрацию фраз Сири (App Shortcuts) при каждом запуске —
+    // иначе система может не подхватить их после установки.
+    if #available(iOS 16.0, *) {
+      InterraShortcuts.updateAppShortcutParameters()
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
