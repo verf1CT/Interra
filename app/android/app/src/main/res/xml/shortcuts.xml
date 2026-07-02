@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Статический ярлык (long-press по иконке приложения) «Проверить баланс».
-  Работает локально сразу. Полноценные голосовые App Actions для Google
+  статический ярлык (long-press по иконке приложения) «Проверить баланс».
+  Работает локально сразу. полноценные голосовые App Actions для Google
   Assistant дополнительно требуют публикации приложения в Google Play и
-  верификации capability — включим на этапе релиза.
+  верификации capability - включим на этапе релиза
 -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut

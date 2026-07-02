@@ -5,8 +5,8 @@ import BackgroundTasks
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  /// Идентификатор фоновой задачи обновления баланса (должен совпадать с
-  /// BGTaskSchedulerPermittedIdentifiers в Info.plist).
+  /// идентификатор фоновой задачи обновления баланса (должен совпадать с
+  /// BGTaskSchedulerPermittedIdentifiers в Info.plist)
   private let refreshTaskId = "ru.interra.balance.refresh"
 
   override func application(
@@ -14,8 +14,8 @@ import BackgroundTasks
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     WatchSync.shared.start()
-    // Форсируем регистрацию фраз Сири (App Shortcuts) при каждом запуске —
-    // иначе система может не подхватить их после установки.
+    // форсируем регистрацию фраз Сири (App Shortcuts) при каждом запуске -
+    // иначе система может не подхватить их после установки
     if #available(iOS 16.0, *) {
       InterraShortcuts.updateAppShortcutParameters()
     }
@@ -24,7 +24,7 @@ import BackgroundTasks
   }
 
   override func applicationWillResignActive(_ application: UIApplication) {
-    // Уход в фон — удобный момент отдать часам свежий баланс.
+    // уход в фон - удобный момент отдать часам свежий баланс
     WatchSync.shared.push()
     super.applicationWillResignActive(application)
   }
@@ -51,8 +51,8 @@ import BackgroundTasks
     }
   }
 
-  /// Планирует следующий запуск не раньше чем через ~4 часа (систему решает,
-  /// когда именно, исходя из энергоэффективности и паттерна использования).
+  /// планирует следующий запуск не раньше чем через ~4 часа (систему решает,
+  /// когда именно, исходя из энергоэффективности и паттерна использования)
   private func scheduleBackgroundRefresh() {
     let request = BGAppRefreshTaskRequest(identifier: refreshTaskId)
     request.earliestBeginDate = Date(timeIntervalSinceNow: 4 * 3600)
@@ -60,7 +60,7 @@ import BackgroundTasks
   }
 
   private func handleBackgroundRefresh(_ task: BGAppRefreshTask) {
-    // Сразу ставим следующую задачу в очередь, чтобы цепочка не прерывалась.
+    // сразу ставим следующую задачу в очередь, чтобы цепочка не прерывалась
     scheduleBackgroundRefresh()
 
     let work = Task {
@@ -68,7 +68,7 @@ import BackgroundTasks
       WatchSync.shared.push()         // и синхронизируем часы
       task.setTaskCompleted(success: true)
     }
-    // Если система прерывает задачу (лимит времени) — отменяем работу.
+    // если система прерывает задачу (лимит времени) - отменяем работу
     task.expirationHandler = { work.cancel() }
   }
 }

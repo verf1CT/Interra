@@ -38,8 +38,8 @@ db.exec(`
 `);
 
 /**
- * Создаёт или обновляет устройство по его push-токену.
- * Возвращает строку устройства.
+ * создаёт или обновляет устройство по его push-токену.
+ * Возвращает строку устройства
  */
 export function upsertDevice({ token, clientLogin, platform, appVersion, segments, prefs }) {
   const existing = db.prepare('SELECT * FROM devices WHERE token = ?').get(token);
@@ -84,7 +84,7 @@ export function deleteDevice(token) {
 }
 
 /**
- * Возвращает push-токены устройств по цели рассылки.
+ * возвращает push-токены устройств по цели рассылки.
  * @param {{type: 'all'|'segment'|'login', value?: string}} target
  */
 export function selectTokens(target) {
@@ -98,7 +98,7 @@ export function selectTokens(target) {
       .map((r) => r.token);
   }
   if (target.type === 'segment') {
-    // segments хранится JSON-массивом; ищем вхождение значения.
+    // segments хранится JSON-массивом; ищем вхождение значения
     return db
       .prepare(`SELECT token, segments FROM devices`)
       .all()

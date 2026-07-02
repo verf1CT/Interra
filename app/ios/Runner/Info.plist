@@ -10,8 +10,8 @@
 		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Подтверждение входа в личный кабинет по Face ID</string>
-		<!-- Русский — основной язык: иначе фразы Сири (App Shortcuts) на русском
-		     не распознаются, и Сири «не видит» баланс. -->
+		<!-- русский - основной язык: иначе фразы Сири (App Shortcuts) на русском
+		     не распознаются, и Сири «не видит» баланс-->
 		<key>CFBundleDevelopmentRegion</key>
 		<string>ru</string>
 		<key>CFBundleLocalizations</key>
@@ -81,14 +81,14 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
-		<!-- Фоновый приём push-уведомлений (FCM/APNs) + фоновое обновление баланса -->
+		<!-- фоновый приём push-уведомлений (FCM/APNs) + фоновое обновление баланса -->
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>
 			<string>fetch</string>
 			<string>processing</string>
 		</array>
-		<!-- Идентификатор фоновой задачи обновления баланса (BGTaskScheduler) -->
+		<!-- идентификатор фоновой задачи обновления баланса (BGTaskScheduler) -->
 		<key>BGTaskSchedulerPermittedIdentifiers</key>
 		<array>
 			<string>ru.interra.balance.refresh</string>

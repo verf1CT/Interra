@@ -6,8 +6,8 @@ import '../services/analytics.dart';
 import '../services/net_diagnostics.dart';
 import 'speedtest_screen.dart';
 
-/// Экран «Диагностика сети»: проверяет соединение шаг за шагом и говорит,
-/// на чьей стороне проблема и что делать.
+/// экран «Диагностика сети»: проверяет соединение шаг за шагом и говорит,
+/// на чьей стороне проблема и что делать
 class DiagnosticsScreen extends StatefulWidget {
   const DiagnosticsScreen({super.key});
 

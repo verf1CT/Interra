@@ -4,13 +4,13 @@ import '../services/biometric.dart';
 import '../services/pin_lock.dart';
 import '../widgets/pin_pad.dart';
 
-/// Замок поверх всего приложения: Face ID / отпечаток и/или код-пароль.
+/// замок поверх всего приложения: Face ID / отпечаток и/или код-пароль.
 ///
 /// Показывается при холодном старте и возврате из фона, если защита включена
-/// и льготный период ([Biometric.gracePeriod]) истёк — чтобы не запрашивать
+/// и льготный период ([Biometric.gracePeriod]) истёк - чтобы не запрашивать
 /// разблокировку при каждом переключении приложений.
 /// Размещается через `MaterialApp.builder`, поэтому перекрывает в том числе
-/// вложенные экраны (настройки и т.п.).
+/// вложенные экраны (настройки и т.п.)
 class BiometricGate extends StatefulWidget {
   final Widget child;
   const BiometricGate({super.key, required this.child});
@@ -42,8 +42,8 @@ class _BiometricGateState extends State<BiometricGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Запрос Face ID сам по себе шлёт inactive (не paused), поэтому замок
-    // перезахватываем только после реального ухода в фон — без зацикливания.
+    // запрос Face ID сам по себе шлёт inactive (не paused), поэтому замок
+    // перезахватываем только после реального ухода в фон - без зацикливания
     if (state == AppLifecycleState.paused) {
       _wasPaused = true;
     } else if (state == AppLifecycleState.resumed && _wasPaused) {
@@ -156,8 +156,8 @@ class _LockView extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 if (pinSet)
-                  // Код-пароль установлен: цифровая клавиатура, биометрия —
-                  // кнопкой в нижнем ряду (если включена).
+                  // код-пароль установлен: цифровая клавиатура, биометрия -
+                  // кнопкой в нижнем ряду (если включена)
                   PinPad(
                     title: 'Введите код-пароль',
                     onSubmit: onPin,

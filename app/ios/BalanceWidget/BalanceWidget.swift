@@ -2,8 +2,8 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-/// Интент кнопки «Обновить» на виджете: тянет свежий баланс из биллинга
-/// прямо из процесса виджета (токен зеркалирован в app group).
+/// интент кнопки «Обновить» на виджете: тянет свежий баланс из биллинга
+/// прямо из процесса виджета (токен зеркалирован в app group)
 struct RefreshBalanceIntent: AppIntent {
     static let title: LocalizedStringResource = "Обновить баланс"
     static let description = IntentDescription("Запрашивает актуальный баланс")
@@ -16,7 +16,7 @@ struct RefreshBalanceIntent: AppIntent {
 
 // MARK: - Конфигурация виджета
 
-/// Что показывать в виджете (выбирается долгим тапом → «Редактировать»).
+/// Что показывать в виджете (выбирается долгим тапом → «Редактировать»)
 enum BalanceMetric: String, AppEnum {
     case balance
     case account
@@ -38,7 +38,7 @@ struct BalanceWidgetConfig: WidgetConfigurationIntent {
 // MARK: - Данные
 
 /// Данные пишет приложение через home_widget в общий UserDefaults (app group):
-/// balance_text («1 846,03 ₽»), account_text («504600»), balance_updated («14:05»).
+/// balance_text («1 846,03 ₽»), account_text («504600»), balance_updated («14:05»)
 private let appGroup = "group.ru.interra.lkInterra"
 
 struct BalanceEntry: TimelineEntry {
@@ -48,7 +48,7 @@ struct BalanceEntry: TimelineEntry {
     let updated: String
     let metric: BalanceMetric
 
-    /// Значение для выбранного показателя (или «нет данных»).
+    /// значение для выбранного показателя (или «нет данных»)
     var value: String {
         switch metric {
         case .balance: return (balance.isEmpty || balance == "—") ? "нет данных" : balance
@@ -65,7 +65,7 @@ struct BalanceEntry: TimelineEntry {
         }
     }
 
-    /// Минус — только для баланса (для account неприменимо).
+    /// минус - только для баланса (для account неприменимо)
     var isNegative: Bool {
         metric == .balance && (balance.hasPrefix("\u{2212}") || balance.hasPrefix("-"))
     }
@@ -95,8 +95,8 @@ struct BalanceProvider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: BalanceWidgetConfig, in context: Context) async -> Timeline<BalanceEntry> {
-        // Данные обновляет приложение (при открытии) и фоновый рефреш; сами
-        // перечитываем раз в полчаса на случай, если проспали обновление.
+        // данные обновляет приложение (при открытии) и фоновый рефреш; сами
+        // перечитываем раз в полчаса на случай, если проспали обновление
         Timeline(entries: [load(configuration.metric)],
                  policy: .after(Date().addingTimeInterval(1800)))
     }
@@ -111,8 +111,8 @@ private enum Palette {
     static let danger = Color(red: 0xE5 / 255, green: 0x3E / 255, blue: 0x3E / 255)
 }
 
-/// Фон: диагональный фирменный градиент + мягкий световой блик для объёма.
-/// При минусе баланса уводим в тёплый красновато-оранжевый.
+/// фон: диагональный фирменный градиент + мягкий световой блик для объёма.
+/// При минусе баланса уводим в тёплый красновато-оранжевый
 private struct WidgetBackground: View {
     let negative: Bool
     var body: some View {
@@ -290,7 +290,7 @@ private struct AccessoryRectangularView: View {
     }
 }
 
-/// «1 846,03 ₽» → «1 846» — для тесного кружка на локскрине.
+/// «1 846,03 ₽» → «1 846» - для тесного кружка на локскрине
 private func shortValue(_ s: String) -> String {
     let cut = s.split(separator: ",").first.map(String.init) ?? s
     return cut.replacingOccurrences(of: " ₽", with: "")
@@ -302,7 +302,7 @@ struct BalanceWidgetView: View {
     var entry: BalanceEntry
 
     // containerBackground обязателен для ВСЕХ семейств (iOS 17+), иначе система
-    // рисует заглушку «Please adopt containerBackground API» вместо контента.
+    // рисует заглушку «Please adopt containerBackground API» вместо контента
     var body: some View {
         content.containerBackground(for: .widget) { background }
     }
@@ -349,7 +349,7 @@ struct BalanceWidget: Widget {
     }
 }
 
-/// Кнопка в Пункте управления (iOS 18): обновить баланс, не открывая приложение.
+/// кнопка в Пункте управления (iOS 18): обновить баланс, не открывая приложение
 @available(iOS 18.0, *)
 struct BalanceControl: ControlWidget {
     var body: some ControlWidgetConfiguration {

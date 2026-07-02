@@ -2,8 +2,8 @@ import Foundation
 import ActivityKit
 import Flutter
 
-/// Мост Flutter → ActivityKit для Live Activity замера скорости.
-/// Канал: `ru.interra/liveactivity`, методы start / update / end.
+/// мост Flutter → ActivityKit для Live Activity замера скорости.
+/// Канал: `ru.interra/liveactivity`, методы start / update / end
 enum LiveActivityBridge {
     static func register(messenger: FlutterBinaryMessenger) {
         let channel = FlutterMethodChannel(
@@ -38,7 +38,7 @@ enum SpeedActivityManager {
 
     static func start() {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        // Не плодим активности: если предыдущая жива — переиспользуем.
+        // не плодим активности: если предыдущая жива - переиспользуем
         if activity != nil { return }
         let initial = SpeedTestAttributes.ContentState(
             phase: "Подготовка", download: 0, upload: 0, ping: 0,

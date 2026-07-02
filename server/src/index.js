@@ -6,12 +6,12 @@ import { devicesRouter } from './routes/devices.js';
 import { adminRouter } from './routes/admin.js';
 
 const app = express();
-// За обратным прокси (nginx на push.interra.ru) — доверяем первому хопу,
-// чтобы req.ip отражал реальный адрес клиента (для антиспама регистраций).
+// за обратным прокси (nginx на push.interra.ru) - доверяем первому хопу,
+// чтобы req.ip отражал реальный адрес клиента (для антиспама регистраций)
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '64kb' }));
 
-// Статика админ-панели
+// статика админ-панели
 app.use(express.static(path.join(config.serverRoot, 'public')));
 
 app.get('/health', (req, res) => res.json({ ok: true }));

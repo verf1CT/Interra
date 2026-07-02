@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Кэш последнего успешно загруженного снимка кабинета — для показа без сети.
+/// кэш последнего успешно загруженного снимка кабинета - для показа без сети.
 ///
-/// HTML складываем в файл (страница может быть крупной), исходный URL — в
+/// HTML складываем в файл (страница может быть крупной), исходный URL - в
 /// SharedPreferences, чтобы при отрисовке снимка задать `baseUrl` (относительные
-/// ссылки на ресурсы остаются корректными). Внешние CSS/картинки без сети не
-/// подтянутся, но текстовое содержимое (баланс, тариф) остаётся читаемым.
+/// ссылки на ресурсы остаются корректными). внешние CSS/картинки без сети не
+/// подтянутся, но текстовое содержимое (баланс, тариф) остаётся читаемым
 class PageCache {
   static const _kUrl = 'cabinet_snapshot_url';
   static const _fileName = 'cabinet_snapshot.html';
@@ -28,7 +28,7 @@ class PageCache {
     }
   }
 
-  /// Удаляет снимок (выход из аккаунта: в нём ФИО, адрес и баланс).
+  /// удаляет снимок (выход из аккаунта: в нём ФИО, адрес и баланс)
   static Future<void> clear() async {
     try {
       final f = await _file();
@@ -40,7 +40,7 @@ class PageCache {
     }
   }
 
-  /// Возвращает `(html, baseUrl)` или null, если снимка ещё нет.
+  /// возвращает `(html, baseUrl)` или null, если снимка ещё нет
   static Future<(String, String?)?> load() async {
     try {
       final f = await _file();

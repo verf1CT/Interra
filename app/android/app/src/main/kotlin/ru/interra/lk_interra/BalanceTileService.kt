@@ -5,8 +5,8 @@ import android.graphics.drawable.Icon
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 
-/// Плитка «Быстрых настроек»: показывает баланс, тап открывает приложение.
-/// Данные берём из того же хранилища, что и виджет (home_widget).
+/// плитка «Быстрых настроек»: показывает баланс, тап открывает приложение.
+/// Данные берём из того же хранилища, что и виджет (home_widget)
 class BalanceTileService : TileService() {
 
     override fun onStartListening() {
@@ -15,7 +15,7 @@ class BalanceTileService : TileService() {
         val balance = prefs.getString("balance_text", null)
         qsTile?.apply {
             label = "Баланс Интерры"
-            // Подпись с суммой (API 29+); ниже — просто оставляем label.
+            // подпись с суммой (API 29+); ниже - просто оставляем label
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 subtitle = if (balance.isNullOrEmpty() || balance == "—") "нет данных" else balance
             }

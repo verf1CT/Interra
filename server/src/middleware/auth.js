@@ -1,12 +1,12 @@
 import { timingSafeEqual, createHash } from 'node:crypto';
 import { config } from '../config.js';
 
-// Сравниваем sha256-хеши (одинаковая длина буферов — требование
-// timingSafeEqual), чтобы сравнение шло за постоянное время.
+// сравниваем sha256-хеши (одинаковая длина буферов - требование
+// timingSafeEqual), чтобы сравнение шло за постоянное время
 const sha = (s) => createHash('sha256').update(s, 'utf8').digest();
 
 /**
- * Простая защита админ-эндпоинтов через bearer-токен (ADMIN_TOKEN).
+ * простая защита админ-эндпоинтов через bearer-токен (ADMIN_TOKEN).
  * Заголовок: Authorization: Bearer <ADMIN_TOKEN>
  */
 export function requireAdmin(req, res, next) {

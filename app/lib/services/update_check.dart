@@ -2,19 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 
-/// Проверка новой версии приложения.
+/// проверка новой версии приложения.
 ///
-/// Пока приложения нет в сторах, обновления ставятся вручную — поэтому
+/// Пока приложения нет в сторах, обновления ставятся вручную - поэтому
 /// сравниваем свою версию с `version:` из pubspec.yaml в main-ветке GitHub.
-/// Когда появятся сторы, эту проверку заменит их механизм обновлений.
+/// Когда появятся сторы, эту проверку заменит их механизм обновлений
 class UpdateCheck {
   static const _pubspecUrl =
       'https://raw.githubusercontent.com/verf1CT/Interra/main/app/pubspec.yaml';
 
-  /// Свежая версия из репозитория, если она новее установленной, иначе null.
+  /// свежая версия из репозитория, если она новее установленной, иначе null
   static final ValueNotifier<String?> available = ValueNotifier(null);
 
-  /// Разовая проверка (вызывается при старте, best-effort).
+  /// разовая проверка (вызывается при старте, best-effort)
   static Future<void> run() async {
     try {
       final res = await http
@@ -33,7 +33,7 @@ class UpdateCheck {
     }
   }
 
-  /// true, если [latest] строго новее [current] (сравнение по числам через точку).
+  /// true, если [latest] строго новее [current] (сравнение по числам через точку)
   @visibleForTesting
   static bool isNewer(String latest, String current) {
     final a = latest.split('.').map((p) => int.tryParse(p) ?? 0).toList();

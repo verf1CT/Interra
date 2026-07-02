@@ -2,7 +2,7 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-/// Live Activity замера скорости: плашка на экране блокировки и в Dynamic Island.
+/// live Activity замера скорости: плашка на экране блокировки и в Dynamic Island
 @available(iOS 16.2, *)
 struct SpeedLiveActivity: Widget {
     private var brand: Color { Color(red: 0x3C / 255, green: 0x98 / 255, blue: 0xD4 / 255) }
@@ -10,7 +10,7 @@ struct SpeedLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SpeedTestAttributes.self) { context in
-            // Экран блокировки / баннер.
+            // экран блокировки / баннер
             lockScreen(context.state)
                 .padding(16)
                 .activityBackgroundTint(Color.black.opacity(0.85))

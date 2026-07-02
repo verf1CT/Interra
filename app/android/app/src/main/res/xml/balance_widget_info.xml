@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Метаданные виджета баланса: обновление через приложение (updatePeriodMillis=0). -->
+<!-- метаданные виджета баланса: обновление через приложение (updatePeriodMillis=0)-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"

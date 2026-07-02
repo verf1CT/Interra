@@ -7,8 +7,8 @@ import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 
-/// Виджет баланса на домашнем экране Android. Данные (`balance_text`,
-/// `balance_updated`) пишет приложение через home_widget; тап открывает приложение.
+/// виджет баланса на домашнем экране Android. данные (`balance_text`,
+/// `balance_updated`) пишет приложение через home_widget; тап открывает приложение
 class BalanceWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(
         context: Context,
@@ -27,7 +27,7 @@ class BalanceWidgetProvider : HomeWidgetProvider() {
                     R.id.widget_updated,
                     if (!updated.isNullOrEmpty()) "обновлено $updated" else "откройте приложение",
                 )
-                // Тап по виджету — открыть приложение.
+                // тап по виджету - открыть приложение
                 setOnClickPendingIntent(
                     R.id.widget_root,
                     HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java),

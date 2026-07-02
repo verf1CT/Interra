@@ -1,25 +1,25 @@
 import AppIntents
 
-/// Интент для Сири и приложения «Команды»: «какой у меня баланс».
+/// интент для Сири и приложения «Команды»: «какой у меня баланс».
 /// Пытается получить свежее значение из биллинга, при неудаче отвечает
-/// последним сохранённым.
+/// последним сохранённым
 @available(iOS 16.0, *)
 struct CheckBalanceIntent: AppIntent {
     static let title: LocalizedStringResource = "Баланс Интерры"
     static let description =
         IntentDescription("Сообщает баланс лицевого счёта Интерры")
-    // Работает без открытия приложения.
+    // работает без открытия приложения
     static let openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        // Сири жёстко ограничивает время выполнения интента, поэтому отвечаем
+        // сири жёстко ограничивает время выполнения интента, поэтому отвечаем
         // МГНОВЕННО сохранённым балансом (пишется при каждом открытии приложения
-        // и обновлении виджета), а свежий подтягиваем в фоне для следующего раза.
+        // и обновлении виджета), а свежий подтягиваем в фоне для следующего раза
         if let cached = BalanceCore.cachedText {
             Task.detached { _ = await BalanceCore.refresh() }
             return .result(dialog: "Баланс Интерры: \(cached)")
         }
-        // Кэша ещё нет — пробуем сеть (с коротким таймаутом внутри).
+        // кэша ещё нет - пробуем сеть (с коротким таймаутом внутри)
         if let fresh = await BalanceCore.refresh() {
             return .result(dialog: "Баланс Интерры: \(fresh)")
         }
@@ -28,8 +28,8 @@ struct CheckBalanceIntent: AppIntent {
     }
 }
 
-/// Фразы для Сири. Обязательно содержат название приложения —
-/// «Сири, баланс в ЛК Интерра».
+/// фразы для Сири. обязательно содержат название приложения -
+/// «Сири, баланс в ЛК Интерра»
 @available(iOS 16.0, *)
 struct InterraShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
