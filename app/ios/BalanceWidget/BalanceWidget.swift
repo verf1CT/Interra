@@ -259,24 +259,32 @@ struct BalanceWidgetView: View {
     @Environment(\.widgetFamily) private var family
     var entry: BalanceEntry
 
+    // containerBackground обязателен для ВСЕХ семейств (iOS 17+), иначе система
+    // рисует заглушку «Please adopt containerBackground API» вместо контента.
     var body: some View {
+        content.containerBackground(for: .widget) { background }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch family {
-        case .accessoryCircular:
-            AccessoryCircularView(entry: entry)
+        case .accessoryCircular: AccessoryCircularView(entry: entry)
+        case .accessoryInline: AccessoryInlineView(entry: entry)
+        case .accessoryRectangular: AccessoryRectangularView(entry: entry)
+        case .systemMedium: MediumBalanceView(entry: entry)
+        default: SmallBalanceView(entry: entry)
+        }
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        switch family {
+        case .accessoryCircular, .accessoryRectangular:
+            AccessoryWidgetBackground()
         case .accessoryInline:
-            AccessoryInlineView(entry: entry)
-        case .accessoryRectangular:
-            AccessoryRectangularView(entry: entry)
-        case .systemMedium:
-            MediumBalanceView(entry: entry)
-                .containerBackground(for: .widget) {
-                    WidgetBackground(negative: entry.isNegative && entry.hasData)
-                }
+            Color.clear
         default:
-            SmallBalanceView(entry: entry)
-                .containerBackground(for: .widget) {
-                    WidgetBackground(negative: entry.isNegative && entry.hasData)
-                }
+            WidgetBackground(negative: entry.isNegative && entry.hasData)
         }
     }
 }
