@@ -11,6 +11,16 @@ enum BalanceCore {
 
     static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
 
+    /// Сессия с коротким таймаутом: интенты Сири и обновление виджета жёстко
+    /// ограничены по времени, дефолтные 60 сек URLSession недопустимы.
+    private static var session: URLSession {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 8
+        cfg.timeoutIntervalForResource = 12
+        cfg.waitsForConnectivity = false
+        return URLSession(configuration: cfg)
+    }
+
     /// Последний сохранённый баланс («1 846,03 ₽») или nil.
     static var cachedText: String? {
         let t = defaults?.string(forKey: "balance_text")
@@ -24,7 +34,7 @@ enum BalanceCore {
               let openURL = URL(string: "\(billingBase)/bbb?cmd=open&app=\(token)")
         else { return nil }
         do {
-            let (d1, _) = try await URLSession.shared.data(from: openURL)
+            let (d1, _) = try await session.data(from: openURL)
             var login = String(data: d1, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             login = login.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
@@ -32,7 +42,7 @@ enum BalanceCore {
                   let infoURL = URL(string: "\(billingBase)/aaainfo\(login)&oper=info")
             else { return nil }
 
-            let (d2, _) = try await URLSession.shared.data(from: infoURL)
+            let (d2, _) = try await session.data(from: infoURL)
             guard let html = String(data: d2, encoding: .utf8) else { return nil }
             // «…Баланс…1846.03 руб.» — ищем число перед «руб» после слова Баланс.
             // Внимание: в шаблоне ICU неразрывный пробел —   (ровно 4 hex),

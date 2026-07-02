@@ -12,11 +12,16 @@ struct CheckBalanceIntent: AppIntent {
     static let openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        // Сири жёстко ограничивает время выполнения интента, поэтому отвечаем
+        // МГНОВЕННО сохранённым балансом (пишется при каждом открытии приложения
+        // и обновлении виджета), а свежий подтягиваем в фоне для следующего раза.
+        if let cached = BalanceCore.cachedText {
+            Task.detached { _ = await BalanceCore.refresh() }
+            return .result(dialog: "Баланс Интерры: \(cached)")
+        }
+        // Кэша ещё нет — пробуем сеть (с коротким таймаутом внутри).
         if let fresh = await BalanceCore.refresh() {
             return .result(dialog: "Баланс Интерры: \(fresh)")
-        }
-        if let cached = BalanceCore.cachedText {
-            return .result(dialog: "Баланс Интерры: \(cached) (по последним данным)")
         }
         return .result(dialog:
             "Не удалось узнать баланс. Откройте приложение ЛК Интерра.")
