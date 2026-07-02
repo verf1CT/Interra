@@ -2,4 +2,5 @@
 <resources>
     <string name="shortcut_balance_short">Баланс</string>
     <string name="shortcut_balance_long">Проверить баланс</string>
+    <string name="widget_description">Баланс лицевого счёта Интерры</string>
 </resources>
