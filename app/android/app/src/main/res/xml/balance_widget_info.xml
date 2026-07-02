@@ -9,4 +9,4 @@
     android:initialLayout="@layout/balance_widget"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:description="Баланс лицевого счёта Интерры" />
+    android:description="@string/widget_description" />
