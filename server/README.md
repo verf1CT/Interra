@@ -1,74 +1,48 @@
 # Бэкенд ЛК Интерра
 
-Node.js/Express сервер: регистрация устройств и рассылка push-уведомлений (FCM),
-веб-панель оператора для отправки уведомлений всем / сегменту / конкретному клиенту.
+Node.js/Express: хранит push-токены устройств и рассылает уведомления через
+Firebase Cloud Messaging, плюс веб-панель оператора для отправки.
 
-## Запуск
+## Суть
 
-```bash
-cd server
-npm install
-cp .env.example .env      # на Windows: copy .env.example .env
-# отредактируйте .env: задайте ADMIN_TOKEN
-npm start
-```
+Приложение при запуске регистрирует свой FCM-токен на этом сервере (вместе с
+логином абонента и категориями-тегами). Оператор через панель или API рассылает
+уведомление всем, сегменту (по тегу) или конкретному логину; сервер отдаёт их в
+FCM, а «мёртвые» токены сам вычищает. Без ключа Firebase работает в режиме
+**dry-run** (регистрация и панель работают, реальная отправка — только в лог).
 
-Сервер поднимется на `http://localhost:8080`.
-Админ-панель: `http://localhost:8080/admin.html` (войти по `ADMIN_TOKEN`).
+## Структура `src/`
 
-Без ключа Firebase сервер работает в режиме **dry-run**: регистрация устройств и
-админка функционируют, а push не отправляется (сообщения логируются в консоль).
-Это позволяет разрабатывать и тестировать до подключения Firebase.
-
-## Подключение push (Firebase Cloud Messaging)
-
-1. Создайте проект в [Firebase Console](https://console.firebase.google.com/).
-2. Project settings → Service accounts → **Generate new private key**.
-3. Сохраните файл как `server/serviceAccountKey.json` (он в `.gitignore`).
-4. Убедитесь, что в `.env` указан путь `FIREBASE_SERVICE_ACCOUNT=./serviceAccountKey.json`.
-5. Перезапустите сервер — в логе появится `[fcm] Firebase инициализирован — push включён.`
-
-Тот же Firebase-проект подключается к мобильному приложению (`app/`):
-`google-services.json` (Android) и `GoogleService-Info.plist` (iOS).
+| Файл | Назначение |
+|------|------------|
+| `index.js` | Express-приложение: статика панели, маршруты, обработка ошибок, `trust proxy` |
+| `config.js` | Чтение окружения (порт, `ADMIN_TOKEN`, путь к ключу Firebase, путь к БД) |
+| `db.js` | SQLite (better-sqlite3): таблицы `devices` и `broadcasts`, выборка токенов по цели |
+| `fcm.js` | Инициализация firebase-admin и мультикаст-рассылка с чисткой невалидных токенов |
+| `middleware/auth.js` | Защита админ-маршрутов bearer-токеном (сравнение за постоянное время) |
+| `routes/devices.js` | Регистрация/удаление устройств (+ антиспам по IP) |
+| `routes/admin.js` | Статистика и рассылка |
+| `public/admin.html` | Веб-панель оператора |
 
 ## API
 
 ### Для приложения
 
-| Метод | Путь                       | Тело                                                            |
-|-------|----------------------------|-----------------------------------------------------------------|
-| POST  | `/api/devices/register`    | `{ token, clientLogin?, platform?, appVersion?, segments?, prefs? }` |
-| POST  | `/api/devices/unregister`  | `{ token }`                                                      |
+| Метод | Путь                      | Тело                                                                 |
+|-------|---------------------------|----------------------------------------------------------------------|
+| POST  | `/api/devices/register`   | `{ token, clientLogin?, platform?, appVersion?, segments?, prefs? }` |
+| POST  | `/api/devices/unregister` | `{ token }`                                                          |
 
 ### Для оператора (заголовок `Authorization: Bearer <ADMIN_TOKEN>`)
 
-| Метод | Путь                   | Описание                                                  |
-|-------|------------------------|-----------------------------------------------------------|
-| GET   | `/api/admin/stats`     | Статистика устройств и история рассылок                   |
-| POST  | `/api/admin/broadcast` | Отправка: `{ title, body, target:{type,value?}, data? }` |
+| Метод | Путь                   | Описание                                                   |
+|-------|------------------------|------------------------------------------------------------|
+| GET   | `/api/admin/stats`     | Статистика устройств и история рассылок                    |
+| POST  | `/api/admin/broadcast` | Отправка: `{ title, body, target:{type,value?}, data? }`   |
 
-`target.type`: `all` (всем), `segment` (по тегу), `login` (конкретный логин UTM5).
+`target.type`: `all` (всем), `segment` (по тегу-категории), `login` (логин UTM5).
 
-## Деплой (Docker)
+## Модель данных
 
-```bash
-cd server
-docker build -t interra-backend .
-docker run -d --name interra-backend -p 8080:8080 \
-  -e ADMIN_TOKEN="длинная-случайная-строка" \
-  -e FIREBASE_SERVICE_ACCOUNT=/run/secrets/sa.json \
-  -v /opt/interra/serviceAccountKey.json:/run/secrets/sa.json:ro \
-  -v interra-data:/data \
-  interra-backend
-```
-
-- `serviceAccountKey.json` НЕ зашит в образ — подключается томом во время запуска.
-- БД лежит в томе `/data` и переживает перезапуски.
-- Поставьте перед сервисом обратный прокси (Caddy/Nginx) с HTTPS — приложению
-  нужен `https://`-адрес. Этот адрес затем прописывается в `app/lib/config.dart`
-  (`backendBaseUrl`).
-
-## Дальнейшие шаги
-
-- Автоматические уведомления о скором завершении тарифа и статусах заявок:
-  фоновая задача опрашивает UTM5 и вызывает рассылку (см. план в корневом README).
+- `devices` — токен, логин абонента, платформа, версия, теги-сегменты, prefs, метки времени.
+- `broadcasts` — журнал рассылок: заголовок, текст, цель, число получателей и статусы доставки.
