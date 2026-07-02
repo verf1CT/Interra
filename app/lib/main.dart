@@ -6,6 +6,7 @@ import 'services/push_service.dart';
 import 'services/analytics.dart';
 import 'services/quick_actions_service.dart';
 import 'services/update_check.dart';
+import 'services/connection_monitor.dart';
 import 'screens/biometric_gate.dart';
 import 'screens/register_screen.dart';
 import 'screens/webview_screen.dart';
@@ -43,6 +44,8 @@ Future<void> _initServices() async {
   await QuickActionsService.init();
   // проверка новой версии (пока обновляемся не через сторы)
   UpdateCheck.run();
+  // фоновый монитор качества связи копит историю, пока приложение открыто
+  ConnectionMonitor.start(every: const Duration(minutes: 3));
 }
 
 class InterraApp extends StatelessWidget {
