@@ -137,7 +137,7 @@ class SupportScreen extends StatelessWidget {
   Widget _hero() => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
-        decoration: cardBox(radius: 18),
+        decoration: cardBox(),
         child: Row(
           children: [
             Container(
@@ -145,7 +145,7 @@ class SupportScreen extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 color: AppColors.brand.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.support_agent_rounded,
                   color: AppColors.brand, size: 28),

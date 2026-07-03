@@ -520,7 +520,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         },
       );
 
-  /// кнопка нижней панели: иконка + подпись
+  /// кнопка нижней панели: только иконка (без подписи)
   Widget _navButton({
     required IconData icon,
     required String label,
@@ -535,17 +535,8 @@ class _WebViewScreenState extends State<WebViewScreen>
           HapticFeedback.selectionClick();
           onTap();
         },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: c, size: big ? 28 : 22),
-            const SizedBox(height: 3),
-            Text(label,
-                style: TextStyle(
-                    color: c,
-                    fontSize: 11,
-                    fontWeight: big ? FontWeight.w600 : FontWeight.w500)),
-          ],
+        child: Center(
+          child: Icon(icon, color: c, size: big ? 28 : 24),
         ),
       ),
     );

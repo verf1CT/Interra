@@ -239,7 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 52,
                   decoration: BoxDecoration(
                     color: AppColors.brand.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.person_rounded,
                       color: AppColors.brand, size: 26),
