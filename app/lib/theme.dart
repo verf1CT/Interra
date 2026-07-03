@@ -3,26 +3,25 @@ import 'package:flutter/material.dart';
 /// фирменная палитра Интерры - единственный источник цветов для всего приложения.
 /// стиль «чистый и воздушный»: белый фон, волосяные линии, цвет точечно
 class AppColors {
-  static const brand = Color(0xFF3C98D4); // фирменный синий - главное действие
-  static const brandInk = Color(0xFF1E6FA8); // синий потемнее для текста-акцента
-  static const accent = Color(0xFFF4752D); // фирменный оранжевый - вторичный акцент
+  static const brand = Color(0xFF3A96D6); // фирменный синий
+  static const brandInk = Color(0xFF206FA6); // синий потемнее для текста-акцента
+  static const accent = Color(0xFFF77D31); // фирменный оранжевый
   static const danger = Color(0xFFD8362A); // ошибки
   static const ok = Color(0xFF2FA86A); // успех/статус
 
   static const bg = Color(0xFFFFFFFF); // фон экранов - белый
-  static const surfaceAlt = Color(0xFFF4F7FA); // подложка полей/панелей
-  static const line = Color(0xFFEBEFF3); // волосяные линии и границы
+  static const surfaceAlt = Color(0xFFF3F6F9); // светлая заливка карточек
+  static const line = Color(0xFFE4EAF0); // разделители
 
   static const ink = Color(0xFF12181D); // основной текст
   static const inkMute = Color(0xFF5C6B77); // вторичный текст
   static const inkFaint = Color(0xFF98A4AE); // третичный текст/иконки
 }
 
-/// единая «воздушная» карточка: белый фон + тонкая граница, без тяжёлых теней
+/// единая карточка: светлая заливка без границ и теней
 BoxDecoration cardBox({double radius = 16, Color? color}) => BoxDecoration(
-      color: color ?? AppColors.bg,
+      color: color ?? AppColors.surfaceAlt,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: AppColors.line),
     );
 
 /// плавный переход между экранами: лёгкое появление + микро-сдвиг снизу
@@ -117,7 +116,8 @@ ThemeData buildAppTheme() {
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceAlt,
+      // поля белые - чтобы выделяться внутри карточек со светлой заливкой
+      fillColor: Colors.white,
       hintStyle: const TextStyle(color: AppColors.inkFaint),
       labelStyle: const TextStyle(color: AppColors.inkMute),
       prefixIconColor: AppColors.inkFaint,
