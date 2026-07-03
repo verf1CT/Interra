@@ -212,53 +212,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 88,
-                    height: 88,
+                    width: 76,
+                    height: 76,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.brand.withValues(alpha: 0.35),
-                          blurRadius: 24,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Image.asset(
                       'assets/splash_logo.png',
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
                   const Text(
                     'Интерра',
                     style: TextStyle(
-                      fontSize: 30,
+                      fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF1C1F24),
+                      color: AppColors.ink,
                       letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
+                  const Text(
                     'Личный кабинет',
-                    style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 15, color: AppColors.inkMute),
                   ),
                   const SizedBox(height: 32),
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
+                    decoration: cardBox(radius: 18),
                     child: _step == _Step.phone ? _phoneForm() : _codeForm(),
                   ),
                   if (_error != null) ...[
@@ -275,9 +258,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ? 'Укажите номер телефона, привязанный\nк вашему лицевому счёту Интерры'
                         : 'Мы отправили код подтверждения\nв SMS на $_normalizedPhone',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 12.5,
-                        color: Colors.grey.shade500,
+                        color: AppColors.inkFaint,
                         height: 1.4),
                   ),
                 ],
@@ -342,7 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 : 'Отправить код повторно',
             style: TextStyle(
                 color: _resendLeft > 0
-                    ? Colors.grey.shade400
+                    ? AppColors.inkFaint
                     : AppColors.brand),
           ),
         ),

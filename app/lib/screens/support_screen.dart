@@ -126,7 +126,7 @@ class SupportScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Center(
             child: Text('ЛК Интерра · v${AppConfig.appVersion}',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12)),
           ),
         ],
       ),
@@ -137,17 +137,7 @@ class SupportScreen extends StatelessWidget {
   Widget _hero() => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: cardBox(radius: 18),
         child: Row(
           children: [
             Container(
@@ -169,11 +159,11 @@ class SupportScreen extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     'Поможем с подключением, оплатой и настройкой интернета',
                     style: TextStyle(
                         fontSize: 12.5,
-                        color: Colors.grey.shade600,
+                        color: AppColors.inkMute,
                         height: 1.35),
                   ),
                 ],
@@ -205,22 +195,13 @@ class SupportScreen extends StatelessWidget {
         title: Text(title,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(subtitle),
-        trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.inkFaint),
         onTap: onTap,
       );
 
   Widget _group(List<Widget> children) => Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        clipBehavior: Clip.antiAlias,
+        decoration: cardBox(),
         child: Column(children: children),
       );
 
@@ -231,10 +212,10 @@ class SupportScreen extends StatelessWidget {
         padding: const EdgeInsets.only(left: 6, bottom: 8),
         child: Text(
           text.toUpperCase(),
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
+            color: AppColors.inkFaint,
             letterSpacing: 0.5,
           ),
         ),

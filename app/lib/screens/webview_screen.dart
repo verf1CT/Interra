@@ -459,7 +459,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 _navButton(
                   icon: Icons.home_rounded,
                   label: 'Главная',
-                  color: AppColors.accent,
+                  color: AppColors.brand,
                   big: true,
                   onTap: _openCabinet,
                 ),
@@ -483,9 +483,10 @@ class _WebViewScreenState extends State<WebViewScreen>
         valueListenable: BalanceStore.notifier,
         builder: (context, info, _) {
           if (info == null) return const SizedBox.shrink();
-          // шапка синяя - чип делаем белым, сумму фирменным оранжевым
-          // (минус - красным), иначе цвет тонет на синем фоне
-          final color = info.amount < 0 ? AppColors.danger : AppColors.accent;
+          // на светлой шапке - мягкая тонированная плашка: синий при плюсе,
+          // красный при минусе
+          final negative = info.amount < 0;
+          final color = negative ? AppColors.danger : AppColors.brandInk;
           return Center(
             child: GestureDetector(
               onTap: _openCabinet,
@@ -494,21 +495,14 @@ class _WebViewScreenState extends State<WebViewScreen>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.account_balance_wallet_rounded,
-                        size: 16, color: color),
+                        size: 15, color: color),
                     const SizedBox(width: 6),
                     Text(
                       BalanceStore.format(info.amount),
@@ -534,7 +528,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     Color? color,
     bool big = false,
   }) {
-    final c = color ?? Colors.grey.shade700;
+    final c = color ?? AppColors.inkMute;
     return Expanded(
       child: InkWell(
         onTap: () {
@@ -605,32 +599,21 @@ class _WebViewScreenState extends State<WebViewScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 84,
-                height: 84,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.brand, AppColors.accent],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.brand.withValues(alpha: 0.30),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  color: AppColors.brand.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.wifi_off_rounded,
-                    color: Colors.white, size: 40),
+                    color: AppColors.brand, size: 34),
               ),
               const SizedBox(height: 22),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: Color(0xFF1C1F24),
+                    color: AppColors.ink,
                     fontSize: 15,
                     height: 1.4,
                     fontWeight: FontWeight.w500),

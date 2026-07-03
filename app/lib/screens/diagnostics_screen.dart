@@ -75,17 +75,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   }
 
   Widget _stepsCard() => Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        clipBehavior: Clip.antiAlias,
+        decoration: cardBox(),
         child: Column(
           children: [
             for (var i = 0; i < _diag.steps.length; i++) ...[
@@ -105,13 +96,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         title: Text(s.title, style: const TextStyle(fontSize: 15)),
         trailing: s.latencyMs != null
             ? Text('${s.latencyMs} мс',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12.5))
+                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12.5))
             : null,
       );
 
   Widget _stepIcon(StepStatus st) => switch (st) {
         StepStatus.pending => Icon(Icons.circle_outlined,
-            size: 22, color: Colors.grey.shade300),
+            size: 22, color: AppColors.line),
         StepStatus.running => const Padding(
             padding: EdgeInsets.all(3),
             child: CircularProgressIndicator(
@@ -161,7 +152,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +173,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           const SizedBox(height: 10),
           Text(advice,
               style: const TextStyle(
-                  fontSize: 13.5, height: 1.45, color: Color(0xFF3A3F46))),
+                  fontSize: 13.5, height: 1.45, color: AppColors.inkMute)),
           if (v == Verdict.noInternet || v == Verdict.providerIssue) ...[
             const SizedBox(height: 14),
             OutlinedButton.icon(
