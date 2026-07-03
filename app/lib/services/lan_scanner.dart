@@ -25,11 +25,15 @@ typedef ScanResult = ({List<LanDevice> devices, String? subnet, bool noWifi});
 /// на связи, просто порт закрыт). на iOS первый заход просит доступ к локальной
 /// сети - без него сканирование ничего не найдёт
 class LanScanner {
-  // компактный набор портов: роутер/веб (80,443,7547), ssh (22), windows (445),
-  // apple (62078), принтер (9100), альтернативный веб (8080)
-  static const _ports = [80, 443, 22, 445, 62078, 9100, 7547, 8080];
+  // компактный набор портов: веб (80,443), ssh (22), windows (445),
+  // apple (62078), принтер (9100)
+  static const _ports = [80, 443, 22, 445, 62078, 9100];
   static const _connectTimeout = Duration(milliseconds: 500);
-  static const _batch = 20; // хостов за раз (портов на хост - _ports.length)
+
+  // ограничитель одновременных сокетов: без него batch×ports упирается в лимит
+  // файловых дескрипторов (на iOS ~256) и часть подключений тихо срывается,
+  // теряя устройства
+  static final _Semaphore _sem = _Semaphore(128);
 
   static bool _isPrivate(String ip) {
     final p = ip.split('.');
@@ -82,6 +86,7 @@ class LanScanner {
     final open = <int>[];
     var refused = false;
     await Future.wait(_ports.map((port) async {
+      await _sem.acquire();
       try {
         final s = await Socket.connect(ip, port, timeout: _connectTimeout);
         s.destroy();
@@ -90,7 +95,10 @@ class LanScanner {
         final code = e.osError?.errorCode;
         // ECONNREFUSED: 61 (mac/iOS), 111 (linux/android), 10061 (win)
         if (code == 61 || code == 111 || code == 10061) refused = true;
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        _sem.release();
+      }
     }));
     open.sort();
     return (open, refused);
@@ -103,13 +111,11 @@ class LanScanner {
     if (open.contains(62078)) return DeviceKind.apple;
     if (open.contains(445) || open.contains(139)) return DeviceKind.windows;
     if (open.contains(9100)) return DeviceKind.printer;
-    if (open.contains(7547) && (open.contains(80) || open.contains(443))) {
-      return DeviceKind.router;
-    }
     return DeviceKind.generic;
   }
 
-  /// сканирует подсеть. [onProgress] — доля 0..1
+  /// сканирует подсеть. [onProgress] — доля 0..1. параллелизм сокетов ограничен
+  /// семафором, поэтому запускаем сразу все хосты
   static Future<ScanResult> scan({void Function(double)? onProgress}) async {
     final sub = await _subnet();
     if (sub == null) {
@@ -120,22 +126,18 @@ class LanScanner {
     final found = <LanDevice>[];
     var done = 0;
 
-    for (var start = 1; start <= 254; start += _batch) {
-      final hosts = [
-        for (var h = start; h < start + _batch && h <= 254; h++) '$base.$h'
-      ];
-      final results = await Future.wait(hosts.map((ip) async {
-        final (open, refused) = await _probeHost(ip);
-        return (ip, open, refused);
-      }));
-      for (final (ip, open, refused) in results) {
-        if (open.isNotEmpty || refused || ip == ownIp) {
-          found.add(LanDevice(ip, _classify(ip, open, ownIp, gateway), open));
-        }
-      }
-      done += hosts.length;
-      onProgress?.call(done / 254);
-    }
+    await Future.wait([
+      for (var h = 1; h <= 254; h++)
+        () async {
+          final ip = '$base.$h';
+          final (open, refused) = await _probeHost(ip);
+          if (open.isNotEmpty || refused || ip == ownIp) {
+            found.add(LanDevice(ip, _classify(ip, open, ownIp, gateway), open));
+          }
+          done++;
+          onProgress?.call(done / 254);
+        }()
+    ]);
 
     // свой телефон мог не ответить на собственные подключения - добавим явно
     if (!found.any((d) => d.ip == ownIp)) {
@@ -143,5 +145,30 @@ class LanScanner {
     }
     found.sort((a, b) => a.lastOctet.compareTo(b.lastOctet));
     return (devices: found, subnet: '$base.0/24', noWifi: false);
+  }
+}
+
+/// простой семафор: ограничивает число одновременных операций
+class _Semaphore {
+  int _permits;
+  final _waiters = <Completer<void>>[];
+  _Semaphore(this._permits);
+
+  Future<void> acquire() {
+    if (_permits > 0) {
+      _permits--;
+      return Future.value();
+    }
+    final c = Completer<void>();
+    _waiters.add(c);
+    return c.future;
+  }
+
+  void release() {
+    if (_waiters.isNotEmpty) {
+      _waiters.removeAt(0).complete();
+    } else {
+      _permits++;
+    }
   }
 }
