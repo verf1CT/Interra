@@ -216,7 +216,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     height: 76,
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Image.asset(
                       'assets/splash_logo.png',
@@ -241,7 +241,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 32),
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: cardBox(radius: 18),
+                    decoration: cardBox(),
                     child: _step == _Step.phone ? _phoneForm() : _codeForm(),
                   ),
                   if (_error != null) ...[

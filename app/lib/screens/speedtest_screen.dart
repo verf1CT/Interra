@@ -128,7 +128,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
   /// главная карточка - скорость скачивания крупно + прогресс
   Widget _bigCard() => Container(
         padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-        decoration: cardBox(radius: 20),
+        decoration: cardBox(radius: 14),
         child: Column(
           children: [
             const Text('Загрузка',
