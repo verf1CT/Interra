@@ -12,8 +12,8 @@ class Biometric {
   static const _kLastUnlock = 'lock_last_unlock_ms';
   static const _kLockDelay = 'lock_delay_ms';
 
-  /// спецзначение задержки: «никогда» - после разблокировки не спрашиваем
-  /// при возврате из фона вообще (только при холодном старте)
+  /// спецзначение задержки: «никогда» - после первой разблокировки больше не
+  /// спрашиваем (но первый вход в приложении всё равно под замком)
   static const int lockDelayNever = -1;
 
   /// значение по умолчанию - 30 минут. баланс - данные личные, но не
@@ -52,11 +52,12 @@ class Biometric {
   /// true - льготный период ещё действует, замок можно не показывать
   static Future<bool> get withinGracePeriod async {
     final delay = await lockDelayMs;
-    if (delay == lockDelayNever) return true; // никогда не перезапрашивать
-    if (delay == 0) return false; // всегда спрашивать при возврате
+    if (delay == 0) return false; // всегда спрашивать
     final prefs = await SharedPreferences.getInstance();
     final last = prefs.getInt(_kLastUnlock);
+    // ни разу не разблокировали - замок нужен (даже при «никогда»)
     if (last == null) return false;
+    if (delay == lockDelayNever) return true; // дальше уже не перезапрашиваем
     final elapsed = DateTime.now().millisecondsSinceEpoch - last;
     // отрицательное elapsed (перевод часов назад) считаем истёкшим
     return elapsed >= 0 && elapsed < delay;
