@@ -106,7 +106,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
             'расстояние до него.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12, color: Colors.grey.shade500, height: 1.4),
+                fontSize: 12, color: AppColors.inkFaint, height: 1.4),
           ),
         ],
       ),
@@ -128,44 +128,31 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
   /// главная карточка - скорость скачивания крупно + прогресс
   Widget _bigCard() => Container(
         padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.brand, AppColors.accent],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.brand.withValues(alpha: 0.28),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+        decoration: cardBox(radius: 20),
         child: Column(
           children: [
             const Text('Загрузка',
-                style: TextStyle(color: Colors.white, fontSize: 14)),
+                style: TextStyle(color: AppColors.inkMute, fontSize: 14)),
             const SizedBox(height: 8),
             Text(
               _fmt(_result.downloadMbps) ?? '—',
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.brandInk,
                   fontSize: 56,
                   fontWeight: FontWeight.w800,
-                  height: 1),
+                  height: 1,
+                  letterSpacing: -1),
             ),
             const Text('Мбит/с',
-                style: TextStyle(color: Colors.white70, fontSize: 13)),
+                style: TextStyle(color: AppColors.inkFaint, fontSize: 13)),
             const SizedBox(height: 18),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: _running ? (_progress == 0 ? null : _progress) : 0,
                 minHeight: 6,
-                color: Colors.white,
-                backgroundColor: Colors.white24,
+                color: AppColors.brand,
+                backgroundColor: AppColors.surfaceAlt,
               ),
             ),
           ],
@@ -175,17 +162,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
   Widget _metric(String title, String? value, String unit, IconData icon) =>
       Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: cardBox(),
         child: Column(
           children: [
             Icon(icon, color: AppColors.brand, size: 22),
@@ -194,7 +171,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
                 style: const TextStyle(
                     fontSize: 22, fontWeight: FontWeight.w700)),
             Text('$title, $unit',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: const TextStyle(fontSize: 12, color: AppColors.inkFaint)),
           ],
         ),
       );

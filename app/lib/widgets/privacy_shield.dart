@@ -69,18 +69,11 @@ class _PrivacyView extends StatelessWidget {
       color: AppColors.bg,
       child: Center(
         child: Container(
-          width: 96,
-          height: 96,
+          width: 92,
+          height: 92,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.brand.withValues(alpha: 0.30),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Image.asset('assets/splash_logo.png', fit: BoxFit.cover),
         ),
