@@ -351,7 +351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: const Text('Изменить код-пароль',
                         style: TextStyle(fontSize: 15)),
                     trailing:
-                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                        Icon(Icons.chevron_right, color: AppColors.inkFaint),
                     onTap: _changePin,
                   ),
                 ],
@@ -375,7 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: const TextStyle(
                                 color: AppColors.brand,
                                 fontWeight: FontWeight.w600)),
-                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                        Icon(Icons.chevron_right, color: AppColors.inkFaint),
                       ],
                     ),
                     onTap: _pickLockDelay,
@@ -395,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppColors.brand),
               title: const Text('Поддержка'),
               subtitle: const Text('Звонок, Telegram, помощь на сайте'),
-              trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+              trailing: Icon(Icons.chevron_right, color: AppColors.inkFaint),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const SupportScreen(),
@@ -420,7 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           Center(
             child: Text('ЛК Интерра · v${AppConfig.appVersion}',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12)),
           ),
         ],
       ),
@@ -460,7 +460,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
+            color: AppColors.inkFaint,
             letterSpacing: 0.5,
           ),
         ),
@@ -469,17 +469,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _card({required Widget child, EdgeInsets? padding}) => Container(
         width: double.infinity,
         padding: padding ?? const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        clipBehavior: Clip.antiAlias,
+        decoration: cardBox(),
         child: child,
       );
 }

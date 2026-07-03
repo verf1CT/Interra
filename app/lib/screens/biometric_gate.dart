@@ -144,15 +144,11 @@ class _LockView extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.brand, AppColors.accent],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.brand.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.lock_outline,
-                      color: Colors.white, size: 36),
+                      color: AppColors.brand, size: 34),
                 ),
                 const SizedBox(height: 24),
                 if (pinSet)

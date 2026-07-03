@@ -76,7 +76,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
           const SizedBox(height: 6),
           Text(widget.subtitle!,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              style: const TextStyle(fontSize: 13, color: AppColors.inkMute)),
         ],
         const SizedBox(height: 22),
         AnimatedBuilder(
@@ -111,7 +111,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
                 border: Border.all(
                   color: i < _entered.length
                       ? AppColors.brand
-                      : Colors.grey.shade400,
+                      : AppColors.inkFaint,
                   width: 1.6,
                 ),
               ),
@@ -151,7 +151,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
             key('0'),
             _key(
               child: Icon(Icons.backspace_outlined,
-                  size: 24, color: Colors.grey.shade600),
+                  size: 24, color: AppColors.inkMute),
               onTap: _backspace,
             ),
           ],
@@ -169,16 +169,9 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
             width: 72,
             height: 72,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: AppColors.surfaceAlt,
             ),
             child: child,
           ),
