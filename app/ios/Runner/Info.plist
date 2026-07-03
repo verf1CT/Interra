@@ -10,6 +10,8 @@
 		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Подтверждение входа в личный кабинет по Face ID</string>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Чтобы показать устройства, подключённые к вашему Wi-Fi</string>
 		<!-- русский - основной язык: иначе фразы Сири (App Shortcuts) на русском
 		     не распознаются, и Сири «не видит» баланс-->
 		<key>CFBundleDevelopmentRegion</key>
