@@ -273,7 +273,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Push-уведомления'),
                   subtitle: const Text('Баланс, тариф, статусы заявок'),
                   value: _notifications,
-                  activeThumbColor: AppColors.brand,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   onChanged: _toggleNotifications,
@@ -292,7 +291,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: Text(c.subtitle,
                           style: const TextStyle(fontSize: 12.5)),
                       value: _categories[c.key] ?? true,
-                      activeThumbColor: AppColors.brand,
                       dense: true,
                       contentPadding: const EdgeInsets.only(
                           left: 16, right: 16, top: 2, bottom: 2),
@@ -315,7 +313,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle:
                         const Text('Не чаще, чем раз в 30 минут'),
                     value: _biometricEnabled,
-                    activeThumbColor: AppColors.brand,
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     onChanged: _toggleBiometric,
@@ -333,7 +330,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? 'Запасной вход, если Face ID недоступен'
                       : 'Четырёхзначный код для входа'),
                   value: _pinSet,
-                  activeThumbColor: AppColors.brand,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   onChanged: _togglePin,
