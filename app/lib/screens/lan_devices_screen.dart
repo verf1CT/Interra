@@ -116,7 +116,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
 
   Widget _header(int count) => Container(
         padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-        decoration: cardBox(radius: 20),
+        decoration: cardBox(radius: 14),
         child: Column(
           children: [
             Container(

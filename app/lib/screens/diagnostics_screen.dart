@@ -151,7 +151,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Column(

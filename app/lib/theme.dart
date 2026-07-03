@@ -18,8 +18,8 @@ class AppColors {
   static const inkFaint = Color(0xFF98A4AE); // третичный текст/иконки
 }
 
-/// единая карточка: светлая заливка без границ и теней
-BoxDecoration cardBox({double radius = 16, Color? color}) => BoxDecoration(
+/// единая карточка: светлая заливка без границ и теней, умеренные скругления
+BoxDecoration cardBox({double radius = 12, Color? color}) => BoxDecoration(
       color: color ?? AppColors.surfaceAlt,
       borderRadius: BorderRadius.circular(radius),
     );
@@ -67,7 +67,7 @@ ThemeData buildAppTheme() {
     surface: AppColors.bg,
     onSurface: AppColors.ink,
   );
-  const radius = 14.0;
+  const radius = 12.0;
 
   return ThemeData(
     useMaterial3: true,
@@ -174,7 +174,7 @@ ThemeData buildAppTheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.bg,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
 }
