@@ -70,7 +70,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             for (var i = 0; i < _diag.steps.length; i++) ...[
               if (i > 0)
                 const Divider(
-                    height: 1, thickness: 1, indent: 56, color: AppColors.line),
+                    height: 1, thickness: 1, indent: 56),
               _stepTile(_diag.steps[i]),
             ],
           ],
@@ -84,13 +84,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         title: Text(s.title, style: const TextStyle(fontSize: 15)),
         trailing: s.latencyMs != null
             ? Text('${s.latencyMs} мс',
-                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12.5))
+                style: TextStyle(color: context.p.inkFaint, fontSize: 12.5))
             : null,
       );
 
   Widget _stepIcon(StepStatus st) => switch (st) {
         StepStatus.pending => Icon(Icons.circle_outlined,
-            size: 22, color: AppColors.line),
+            size: 22),
         StepStatus.running => const Padding(
             padding: EdgeInsets.all(3),
             child: CircularProgressIndicator(
@@ -160,8 +160,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           ),
           const SizedBox(height: 10),
           Text(advice,
-              style: const TextStyle(
-                  fontSize: 13.5, height: 1.45, color: AppColors.inkMute)),
+              style: TextStyle(
+                  fontSize: 13.5, height: 1.45, color: context.p.inkMute)),
           if (v == Verdict.noInternet || v == Verdict.providerIssue) ...[
             const SizedBox(height: 14),
             OutlinedButton.icon(

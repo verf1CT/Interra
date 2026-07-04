@@ -95,6 +95,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// выбор оформления (Авто/Светлая/Тёмная)
+  Future<void> _pickTheme() async {
+    final picked = await showDialog<ThemeMode>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Тема'),
+        children: [
+          for (final m in ThemeMode.values)
+            ListTile(
+              title: Text(ThemeController.label(m)),
+              trailing: m == ThemeController.mode.value
+                  ? const Icon(Icons.check_rounded, color: AppColors.brand)
+                  : null,
+              onTap: () => Navigator.of(ctx).pop(m),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await ThemeController.set(picked);
+  }
+
   /// выбор задержки автоблокировки - простой диалог с вариантами
   Future<void> _pickLockDelay() async {
     final picked = await showDialog<int>(
@@ -264,6 +286,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          _sectionTitle('Оформление'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: ValueListenableBuilder<ThemeMode>(
+              valueListenable: ThemeController.mode,
+              builder: (context, mode, _) => ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: const Icon(Icons.brightness_6_outlined),
+                title: const Text('Тема'),
+                subtitle: Text(ThemeController.label(mode)),
+                trailing:
+                    const Icon(Icons.chevron_right, color: AppColors.neutral),
+                onTap: _pickTheme,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           _sectionTitle('Уведомления'),
           _card(
             padding: EdgeInsets.zero,
@@ -283,8 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const Divider(
                         height: 1,
                         thickness: 1,
-                        indent: 68,
-                        color: AppColors.line),
+                        indent: 68),
                     SwitchListTile(
                       secondary: const SizedBox.shrink(),
                       title: Text(c.title,
@@ -322,8 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Divider(
                       height: 1,
                       thickness: 1,
-                      indent: 68,
-                      color: AppColors.line),
+                      indent: 68),
                 SwitchListTile(
                   secondary: const Icon(Icons.pin_outlined),
                   title: const Text('Код-пароль'),
@@ -339,8 +377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Divider(
                       height: 1,
                       thickness: 1,
-                      indent: 68,
-                      color: AppColors.line),
+                      indent: 68),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 0),
@@ -348,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: const Text('Изменить код-пароль',
                         style: TextStyle(fontSize: 15)),
                     trailing:
-                        Icon(Icons.chevron_right, color: AppColors.inkFaint),
+                        Icon(Icons.chevron_right, color: context.p.inkFaint),
                     onTap: _changePin,
                   ),
                 ],
@@ -357,8 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Divider(
                       height: 1,
                       thickness: 1,
-                      indent: 68,
-                      color: AppColors.line),
+                      indent: 68),
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 4),
@@ -372,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: const TextStyle(
                                 color: AppColors.brand,
                                 fontWeight: FontWeight.w600)),
-                        Icon(Icons.chevron_right, color: AppColors.inkFaint),
+                        Icon(Icons.chevron_right, color: context.p.inkFaint),
                       ],
                     ),
                     onTap: _pickLockDelay,
@@ -392,7 +428,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppColors.brand),
               title: const Text('Поддержка'),
               subtitle: const Text('Звонок, Telegram, помощь на сайте'),
-              trailing: Icon(Icons.chevron_right, color: AppColors.inkFaint),
+              trailing: Icon(Icons.chevron_right, color: context.p.inkFaint),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const SupportScreen(),
@@ -417,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           Center(
             child: Text('ЛК Интерра · v${AppConfig.appVersion}',
-                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12)),
+                style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
           ),
         ],
       ),
