@@ -4,8 +4,6 @@
 	<dict>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
-		<key>NSSupportsLiveActivities</key>
-		<true/>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 		<key>NSFaceIDUsageDescription</key>

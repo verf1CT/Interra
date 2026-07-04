@@ -27,10 +27,6 @@
 		BA1A9C000000000000000033 /* BalanceCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000020 /* BalanceCore.swift */; };
 		BA1A9C000000000000000034 /* InterraWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000030 /* InterraWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BA1A9C000000000000000042 /* WatchSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000041 /* WatchSync.swift */; };
-		BA1A9C000000000000000053 /* SpeedActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000050 /* SpeedActivityAttributes.swift */; };
-		BA1A9C000000000000000054 /* SpeedActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000050 /* SpeedActivityAttributes.swift */; };
-		BA1A9C000000000000000055 /* SpeedLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000051 /* SpeedLiveActivity.swift */; };
-		BA1A9C000000000000000056 /* LiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1A9C000000000000000052 /* LiveActivityBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -126,9 +122,6 @@
 		BA1A9C000000000000000031 /* InterraWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterraWatchApp.swift; sourceTree = "<group>"; };
 		EC6A8FC9EC141B981B402868 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		BA1A9C000000000000000041 /* WatchSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSync.swift; sourceTree = "<group>"; };
-		BA1A9C000000000000000050 /* SpeedActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedActivityAttributes.swift; sourceTree = "<group>"; };
-		BA1A9C000000000000000051 /* SpeedLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedLiveActivity.swift; sourceTree = "<group>"; };
-		BA1A9C000000000000000052 /* LiveActivityBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -234,7 +227,6 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				BA1A9C000000000000000021 /* BalanceIntents.swift */,
 				BA1A9C000000000000000041 /* WatchSync.swift */,
-				BA1A9C000000000000000052 /* LiveActivityBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -244,7 +236,6 @@
 			isa = PBXGroup;
 			children = (
 				BA1A9C000000000000000003 /* BalanceWidget.swift */,
-				BA1A9C000000000000000051 /* SpeedLiveActivity.swift */,
 				BA1A9C000000000000000004 /* Info.plist */,
 			);
 			path = BalanceWidget;
@@ -254,7 +245,6 @@
 			isa = PBXGroup;
 			children = (
 				BA1A9C000000000000000020 /* BalanceCore.swift */,
-				BA1A9C000000000000000050 /* SpeedActivityAttributes.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -546,8 +536,6 @@
 				BA1A9C000000000000000022 /* BalanceCore.swift in Sources */,
 				BA1A9C000000000000000024 /* BalanceIntents.swift in Sources */,
 				BA1A9C000000000000000042 /* WatchSync.swift in Sources */,
-				BA1A9C000000000000000053 /* SpeedActivityAttributes.swift in Sources */,
-				BA1A9C000000000000000056 /* LiveActivityBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -557,8 +545,6 @@
 			files = (
 				BA1A9C000000000000000001 /* BalanceWidget.swift in Sources */,
 				BA1A9C000000000000000023 /* BalanceCore.swift in Sources */,
-				BA1A9C000000000000000054 /* SpeedActivityAttributes.swift in Sources */,
-				BA1A9C000000000000000055 /* SpeedLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
