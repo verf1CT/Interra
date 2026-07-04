@@ -14,6 +14,7 @@ import '../services/notify_prefs.dart';
 import '../services/pin_lock.dart';
 import '../services/push_service.dart';
 import '../services/update_check.dart';
+import '../widgets/ui_kit.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
@@ -449,24 +450,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
 
-  Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(left: 6, bottom: 8),
-        child: Text(
-          text.toUpperCase(),
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.inkFaint,
-            letterSpacing: 0.5,
-          ),
-        ),
-      );
+  Widget _sectionTitle(String text) => AppSectionTitle(text);
 
-  Widget _card({required Widget child, EdgeInsets? padding}) => Container(
-        width: double.infinity,
+  Widget _card({required Widget child, EdgeInsets? padding}) => AppCard(
+        clip: true,
         padding: padding ?? const EdgeInsets.all(16),
-        clipBehavior: Clip.antiAlias,
-        decoration: cardBox(),
         child: child,
       );
 }

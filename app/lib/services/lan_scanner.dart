@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:multicast_dns/multicast_dns.dart';
 
 /// тип устройства в сети (грубо угадывается по открытым портам)
 enum DeviceKind { thisPhone, router, apple, windows, printer, generic }
@@ -9,7 +10,11 @@ class LanDevice {
   final String ip;
   final DeviceKind kind;
   final List<int> openPorts;
-  const LanDevice(this.ip, this.kind, this.openPorts);
+
+  /// человекочитаемое имя из mDNS (если удалось узнать), например «iPhone Миши»
+  final String? name;
+
+  const LanDevice(this.ip, this.kind, this.openPorts, {this.name});
 
   int get lastOctet => int.tryParse(ip.split('.').last) ?? 0;
 }
@@ -126,6 +131,9 @@ class LanScanner {
     final found = <LanDevice>[];
     var done = 0;
 
+    // имена по mDNS резолвим параллельно с портовым сканом, чтобы не удлинять
+    final namesFuture = _resolveNames();
+
     await Future.wait([
       for (var h = 1; h <= 254; h++)
         () async {
@@ -143,8 +151,72 @@ class LanScanner {
     if (!found.any((d) => d.ip == ownIp)) {
       found.add(LanDevice(ownIp, DeviceKind.thisPhone, const []));
     }
-    found.sort((a, b) => a.lastOctet.compareTo(b.lastOctet));
-    return (devices: found, subnet: '$base.0/24', noWifi: false);
+
+    // подмешиваем имена из mDNS
+    final names = await namesFuture;
+    final named = [
+      for (final d in found)
+        LanDevice(d.ip, d.kind, d.openPorts, name: names[d.ip])
+    ]..sort((a, b) => a.lastOctet.compareTo(b.lastOctet));
+    return (devices: named, subnet: '$base.0/24', noWifi: false);
+  }
+
+  /// имена устройств через mDNS/Bonjour: ip -> дружелюбное имя. best-effort,
+  /// на iOS требует NSLocalNetworkUsageDescription и NSBonjourServices в plist
+  static Future<Map<String, String>> _resolveNames() async {
+    final map = <String, String>{};
+    final client = MDnsClient();
+    try {
+      await client.start();
+      const services = [
+        '_companion-link._tcp.local', // iPhone/iPad/Mac
+        '_airplay._tcp.local', // Apple TV, колонки
+        '_raop._tcp.local', // AirPlay-аудио
+        '_googlecast._tcp.local', // Chromecast, телевизоры
+        '_smb._tcp.local', // компьютеры/NAS
+        '_ipp._tcp.local', // принтеры
+        '_printer._tcp.local',
+        '_ssh._tcp.local',
+        '_http._tcp.local', // роутеры/NAS
+        '_workstation._tcp.local', // linux/windows-хосты
+      ];
+      await Future.wait(services.map((s) => _browse(client, s, map)))
+          .timeout(const Duration(seconds: 5), onTimeout: () => const []);
+    } catch (e) {
+      debugPrint('mDNS: $e');
+    } finally {
+      client.stop();
+    }
+    return map;
+  }
+
+  static Future<void> _browse(
+      MDnsClient client, String service, Map<String, String> out) async {
+    try {
+      await for (final ptr in client.lookup<PtrResourceRecord>(
+          ResourceRecordQuery.serverPointer(service),
+          timeout: const Duration(seconds: 4))) {
+        final friendly = _instanceName(ptr.domainName);
+        if (friendly.isEmpty) continue;
+        await for (final srv in client.lookup<SrvResourceRecord>(
+            ResourceRecordQuery.service(ptr.domainName),
+            timeout: const Duration(seconds: 3))) {
+          await for (final a in client.lookup<IPAddressResourceRecord>(
+              ResourceRecordQuery.addressIPv4(srv.target),
+              timeout: const Duration(seconds: 3))) {
+            out.putIfAbsent(a.address.address, () => friendly);
+          }
+        }
+      }
+    } catch (_) {/* один сервис не ответил - не критично */}
+  }
+
+  /// «Гостиная._googlecast._tcp.local» -> «Гостиная»
+  static String _instanceName(String domain) {
+    final i = domain.indexOf('._');
+    final label = i > 0 ? domain.substring(0, i) : domain;
+    // mDNS экранирует пробелы как «\ » и точки как «\.»
+    return label.replaceAll(r'\ ', ' ').replaceAll(r'\.', '.').trim();
   }
 }
 
