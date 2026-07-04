@@ -171,7 +171,13 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
             alignment: Alignment.center,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.surfaceAlt,
+              color: AppColors.card,
+              boxShadow: [
+                BoxShadow(
+                    color: Color(0x141B2733),
+                    blurRadius: 10,
+                    offset: Offset(0, 3)),
+              ],
             ),
             child: child,
           ),
