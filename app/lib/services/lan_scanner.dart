@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:multicast_dns/multicast_dns.dart';
+import 'package:nsd/nsd.dart';
 
 /// тип устройства в сети (грубо угадывается по открытым портам)
 enum DeviceKind { thisPhone, router, apple, windows, printer, generic }
@@ -161,62 +161,56 @@ class LanScanner {
     return (devices: named, subnet: '$base.0/24', noWifi: false);
   }
 
-  /// имена устройств через mDNS/Bonjour: ip -> дружелюбное имя. best-effort,
-  /// на iOS требует NSLocalNetworkUsageDescription и NSBonjourServices в plist
+  /// имена устройств через Bonjour/NSD: ip -> дружелюбное имя. используем
+  /// РОДНЫЕ API (NSNetServiceBrowser на iOS, NsdManager на Android) через пакет
+  /// nsd - в отличие от «сырого» mDNS они работают на iOS с обычным разрешением
+  /// локальной сети (NSLocalNetworkUsageDescription + NSBonjourServices),
+  /// без спец-entitlement на multicast. best-effort - если не отвечает, молчим
   static Future<Map<String, String>> _resolveNames() async {
     final map = <String, String>{};
-    final client = MDnsClient();
+    const services = [
+      '_companion-link._tcp', // iPhone/iPad/Mac
+      '_airplay._tcp', // Apple TV, колонки
+      '_raop._tcp', // AirPlay-аудио
+      '_googlecast._tcp', // Chromecast, телевизоры
+      '_smb._tcp', // компьютеры/NAS
+      '_ipp._tcp', // принтеры
+      '_printer._tcp',
+      '_ssh._tcp',
+      '_http._tcp', // роутеры/NAS
+      '_workstation._tcp', // linux/windows-хосты
+    ];
+    final discoveries = <Discovery>[];
     try {
-      await client.start();
-      const services = [
-        '_companion-link._tcp.local', // iPhone/iPad/Mac
-        '_airplay._tcp.local', // Apple TV, колонки
-        '_raop._tcp.local', // AirPlay-аудио
-        '_googlecast._tcp.local', // Chromecast, телевизоры
-        '_smb._tcp.local', // компьютеры/NAS
-        '_ipp._tcp.local', // принтеры
-        '_printer._tcp.local',
-        '_ssh._tcp.local',
-        '_http._tcp.local', // роутеры/NAS
-        '_workstation._tcp.local', // linux/windows-хосты
-      ];
-      await Future.wait(services.map((s) => _browse(client, s, map)))
-          .timeout(const Duration(seconds: 5), onTimeout: () => const []);
-    } catch (e) {
-      debugPrint('mDNS: $e');
-    } finally {
-      client.stop();
-    }
-    return map;
-  }
-
-  static Future<void> _browse(
-      MDnsClient client, String service, Map<String, String> out) async {
-    try {
-      await for (final ptr in client.lookup<PtrResourceRecord>(
-          ResourceRecordQuery.serverPointer(service),
-          timeout: const Duration(seconds: 4))) {
-        final friendly = _instanceName(ptr.domainName);
-        if (friendly.isEmpty) continue;
-        await for (final srv in client.lookup<SrvResourceRecord>(
-            ResourceRecordQuery.service(ptr.domainName),
-            timeout: const Duration(seconds: 3))) {
-          await for (final a in client.lookup<IPAddressResourceRecord>(
-              ResourceRecordQuery.addressIPv4(srv.target),
-              timeout: const Duration(seconds: 3))) {
-            out.putIfAbsent(a.address.address, () => friendly);
+      for (final s in services) {
+        try {
+          discoveries.add(await startDiscovery(s,
+              autoResolve: true, ipLookupType: IpLookupType.v4));
+        } catch (_) {/* сервис недоступен - пропускаем */}
+      }
+      // даём время на обнаружение и резолв адресов
+      await Future.delayed(const Duration(seconds: 4));
+      for (final d in discoveries) {
+        for (final svc in d.services) {
+          final name = svc.name?.trim();
+          if (name == null || name.isEmpty) continue;
+          for (final addr in svc.addresses ?? const <InternetAddress>[]) {
+            if (addr.type == InternetAddressType.IPv4) {
+              map.putIfAbsent(addr.address, () => name);
+            }
           }
         }
       }
-    } catch (_) {/* один сервис не ответил - не критично */}
-  }
-
-  /// «Гостиная._googlecast._tcp.local» -> «Гостиная»
-  static String _instanceName(String domain) {
-    final i = domain.indexOf('._');
-    final label = i > 0 ? domain.substring(0, i) : domain;
-    // mDNS экранирует пробелы как «\ » и точки как «\.»
-    return label.replaceAll(r'\ ', ' ').replaceAll(r'\.', '.').trim();
+    } catch (e) {
+      debugPrint('nsd: $e');
+    } finally {
+      for (final d in discoveries) {
+        try {
+          await stopDiscovery(d);
+        } catch (_) {}
+      }
+    }
+    return map;
   }
 }
 
