@@ -109,16 +109,14 @@ class LanScanner {
     return (open, refused);
   }
 
-  /// грубая догадка ТОЛЬКО по портам (запасной вариант, если mDNS молчит).
-  /// намеренно осторожная: 445 (SMB) есть у NAS/linux/роутеров, поэтому это
-  /// просто «компьютер», а не «Windows»; 62078 - точный признак iOS-устройства
+  /// по портам определяем ТОЛЬКО себя, роутер и принтер (9100 - однозначный
+  /// признак). тип «Apple/компьютер/ТВ» по портам не выдумываем - это ненадёжно
+  /// и раздражает; их даёт только mDNS. остальное - нейтральное «устройство»
   static DeviceKind _classifyByPorts(
       String ip, List<int> open, String ownIp, String gateway) {
     if (ip == ownIp) return DeviceKind.thisPhone;
     if (ip == gateway) return DeviceKind.router;
-    if (open.contains(62078)) return DeviceKind.apple;
     if (open.contains(9100)) return DeviceKind.printer;
-    if (open.contains(445) || open.contains(139)) return DeviceKind.computer;
     return DeviceKind.generic;
   }
 
