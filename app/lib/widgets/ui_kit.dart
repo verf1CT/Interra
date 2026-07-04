@@ -24,7 +24,7 @@ class AppCard extends StatelessWidget {
         width: double.infinity,
         padding: padding,
         clipBehavior: clip ? Clip.antiAlias : Clip.none,
-        decoration: cardBox(radius: radius),
+        decoration: cardBox(context, radius: radius),
         child: child,
       );
 }
@@ -39,10 +39,10 @@ class AppSectionTitle extends StatelessWidget {
         padding: const EdgeInsets.only(left: 6, bottom: 8),
         child: Text(
           text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.inkFaint,
+            color: context.p.inkFaint,
             letterSpacing: 0.5,
           ),
         ),

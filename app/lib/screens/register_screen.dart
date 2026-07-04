@@ -224,24 +224,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'Интерра',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+                      color: context.p.ink,
                       letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Личный кабинет',
-                    style: TextStyle(fontSize: 15, color: AppColors.inkMute),
+                    style: TextStyle(fontSize: 15, color: context.p.inkMute),
                   ),
                   const SizedBox(height: 32),
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: cardBox(),
+                    decoration: cardBox(context),
                     child: _step == _Step.phone ? _phoneForm() : _codeForm(),
                   ),
                   if (_error != null) ...[
@@ -258,9 +258,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ? 'Укажите номер телефона, привязанный\nк вашему лицевому счёту Интерры'
                         : 'Мы отправили код подтверждения\nв SMS на $_normalizedPhone',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.inkFaint,
+                        color: context.p.inkFaint,
                         height: 1.4),
                   ),
                 ],
@@ -325,7 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 : 'Отправить код повторно',
             style: TextStyle(
                 color: _resendLeft > 0
-                    ? AppColors.inkFaint
+                    ? context.p.inkFaint
                     : AppColors.brand),
           ),
         ),

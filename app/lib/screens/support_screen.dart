@@ -28,7 +28,7 @@ class SupportScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _hero(),
+          _hero(context),
           const SizedBox(height: 18),
           _sectionTitle('Связаться'),
           _group([
@@ -110,7 +110,7 @@ class SupportScreen extends StatelessWidget {
           const SizedBox(height: 24),
           Center(
             child: Text('ЛК Интерра · v${AppConfig.appVersion}',
-                style: const TextStyle(color: AppColors.inkFaint, fontSize: 12)),
+                style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
           ),
         ],
       ),
@@ -118,10 +118,10 @@ class SupportScreen extends StatelessWidget {
   }
 
   /// шапка: чистая карточка со значком поддержки и подсказкой (без градиента)
-  Widget _hero() => Container(
+  Widget _hero(BuildContext context) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
-        decoration: cardBox(),
+        decoration: cardBox(context),
         child: Row(
           children: [
             Container(
@@ -143,11 +143,11 @@ class SupportScreen extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Поможем с подключением, оплатой и настройкой интернета',
                     style: TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.inkMute,
+                        color: context.p.inkMute,
                         height: 1.35),
                   ),
                 ],
@@ -173,7 +173,7 @@ class SupportScreen extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.inkFaint),
+        trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       );
 
@@ -181,7 +181,7 @@ class SupportScreen extends StatelessWidget {
       AppCard(clip: true, child: Column(children: children));
 
   Widget _divider() => const Divider(
-      height: 1, thickness: 1, indent: 68, color: AppColors.line);
+      height: 1, thickness: 1, indent: 68);
 
   Widget _sectionTitle(String text) => AppSectionTitle(text);
 }
