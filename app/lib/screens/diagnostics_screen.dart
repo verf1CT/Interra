@@ -4,6 +4,7 @@ import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
 import '../services/net_diagnostics.dart';
+import '../widgets/ui_kit.dart';
 
 /// экран «Диагностика сети»: проверяет соединение шаг за шагом и говорит,
 /// на чьей стороне проблема и что делать
@@ -62,9 +63,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     );
   }
 
-  Widget _stepsCard() => Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: cardBox(),
+  Widget _stepsCard() => AppCard(
+        clip: true,
         child: Column(
           children: [
             for (var i = 0; i < _diag.steps.length; i++) ...[

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
 import '../services/lan_scanner.dart';
+import '../widgets/ui_kit.dart';
 
 /// экран «устройства в сети»: кто подключён к твоему Wi-Fi
 class LanDevicesScreen extends StatefulWidget {
@@ -154,9 +155,8 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
         ),
       );
 
-  Widget _list(List<LanDevice> devices) => Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: cardBox(),
+  Widget _list(List<LanDevice> devices) => AppCard(
+        clip: true,
         child: Column(
           children: [
             for (var i = 0; i < devices.length; i++) ...[
@@ -173,22 +173,18 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
     final m = _meta(d.kind);
     final special =
         d.kind == DeviceKind.thisPhone || d.kind == DeviceKind.router;
+    // если известно имя из mDNS - показываем его, тип уходит в подпись
+    final hasName = d.name != null && d.name!.isNotEmpty;
+    final title = hasName ? d.name! : m.label;
+    final subtitle = hasName ? '${m.label} · ${d.ip}' : d.ip;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: m.color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(m.icon, color: m.color, size: 22),
-      ),
-      title: Text(m.label,
+      leading: IconChip(m.icon, m.color),
+      title: Text(title,
           style: TextStyle(
               fontWeight: special ? FontWeight.w700 : FontWeight.w600,
               fontSize: 15)),
-      subtitle: Text(d.ip),
+      subtitle: Text(subtitle),
       trailing: special
           ? Text(d.kind == DeviceKind.thisPhone ? 'вы' : 'шлюз',
               style: TextStyle(
