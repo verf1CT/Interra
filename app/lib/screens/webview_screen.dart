@@ -234,7 +234,9 @@ class _WebViewScreenState extends State<WebViewScreen>
         (function(){
           if(document.getElementById('interraTheme')) return;
           var css = ""
-          // ── базовая типографика/цвета ──
+          // ── базовая типографика/цвета + защита от переполнения ──
+          + "html,body{max-width:100%;overflow-x:hidden;}"
+          + "*{word-break:break-word;overflow-wrap:anywhere;}"
           + "body{font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif !important;"
           +   "color:#12181D !important;line-height:1.45;background:#ffffff !important;}"
           + "a{color:#206FA6 !important;text-decoration:none;}"
@@ -255,7 +257,8 @@ class _WebViewScreenState extends State<WebViewScreen>
           + ".b-informer a font{color:#206FA6 !important;}"
           // ── таблица аккаунта → белая карточка со строками ──
           + ".b-account{width:100% !important;margin-top:14px;border:1px solid #E4EAF0 !important;"
-          +   "border-radius:14px;border-collapse:separate !important;overflow:hidden;}"
+          +   "border-radius:14px;border-collapse:separate !important;overflow:hidden;"
+          +   "table-layout:fixed;}"
           + ".b-account thead{display:none;}"
           + ".b-account td{padding:13px 14px !important;font-size:15px;"
           +   "border-top:1px solid #F0F3F6;vertical-align:middle;}"
