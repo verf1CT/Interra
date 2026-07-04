@@ -25,8 +25,11 @@ class _CabinetSkeletonState extends State<CabinetSkeleton>
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final base = context.p.line; // цвет «плашек» - под тему
+    final highlight = dark ? const Color(0xFF3A4652) : const Color(0xFFF3F5F7);
     return Container(
-      color: AppColors.bg,
+      color: context.p.bg,
       padding: const EdgeInsets.all(16),
       child: AnimatedBuilder(
         animation: _c,
@@ -37,11 +40,7 @@ class _CabinetSkeletonState extends State<CabinetSkeleton>
               return LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: const [
-                  Color(0xFFE4E7EB),
-                  Color(0xFFF3F5F7),
-                  Color(0xFFE4E7EB),
-                ],
+                colors: [base, highlight, base],
                 stops: const [0.25, 0.5, 0.75],
                 transform: _SlidingGradient(_c.value * 2 - 1),
               ).createShader(rect);
@@ -79,7 +78,7 @@ class _CabinetSkeletonState extends State<CabinetSkeleton>
         height: height,
         width: width ?? double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFE4E7EB),
+          color: context.p.line,
           borderRadius: BorderRadius.circular(radius),
         ),
       );

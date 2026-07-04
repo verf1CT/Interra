@@ -132,7 +132,7 @@ class _LockView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.bg,
+      color: context.p.bg,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(

@@ -66,7 +66,7 @@ class _PrivacyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.bg,
+      color: context.p.bg,
       child: Center(
         child: Container(
           width: 92,

@@ -1,47 +1,120 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// фирменная палитра Интерры - единственный источник цветов для всего приложения.
-/// стиль: светло-серый фон, белые карточки с мягкой тенью, шрифт Manrope,
-/// фирменный синий - на действиях
+/// фирменный шрифт
+const String kFont = 'Manrope';
+
+/// фирменные цвета - ОДИНАКОВЫЕ в светлой и тёмной теме (бренд и акценты)
 class AppColors {
   static const brand = Color(0xFF3A96D6); // фирменный синий
-  static const brandInk = Color(0xFF1F6FA6); // синий потемнее для текста-акцента
+  static const brandInk = Color(0xFF1F6FA6); // синий потемнее для акцент-текста
   static const accent = Color(0xFFF77D31); // фирменный оранжевый
   static const danger = Color(0xFFE23D2E); // ошибки
   static const ok = Color(0xFF23A06A); // успех/статус
-
-  static const bg = Color(0xFFF4F6F9); // фон экранов - светло-серый
-  static const card = Color(0xFFFFFFFF); // карточки - белые
-  static const surfaceAlt = Color(0xFFEEF2F6); // подложка полей/чипов
-  static const line = Color(0xFFE7ECF1); // разделители
-
-  static const ink = Color(0xFF141A1F); // основной текст
-  static const inkMute = Color(0xFF5A6773); // вторичный текст
-  static const inkFaint = Color(0xFF98A5B0); // третичный текст/иконки
-
-  static const _font = 'Manrope';
+  static const neutral = Color(0xFF8A97A2); // нейтральный серый, читаем на обеих темах
 }
 
-/// имя фирменного шрифта (для мест, где нужен явный fontFamily)
-const String kFont = 'Manrope';
+/// цвета поверхностей и текста - РАЗНЫЕ в светлой/тёмной теме.
+/// доступ в виджетах через `context.p` (напр. `context.p.ink`)
+@immutable
+class AppPalette extends ThemeExtension<AppPalette> {
+  final Color bg; // фон экранов
+  final Color card; // карточки
+  final Color surfaceAlt; // подложка полей/чипов
+  final Color line; // разделители/границы
+  final Color ink; // основной текст
+  final Color inkMute; // вторичный текст
+  final Color inkFaint; // третичный текст/иконки
 
-/// единая карточка: белая, с мягкой тенью и умеренным скруглением
-BoxDecoration cardBox({double radius = 16, Color? color}) => BoxDecoration(
-      color: color ?? AppColors.card,
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x0F1B2733), // мягкая, едва заметная тень
-          blurRadius: 20,
-          offset: Offset(0, 8),
-        ),
-        BoxShadow(
-          color: Color(0x0A1B2733),
-          blurRadius: 2,
-          offset: Offset(0, 1),
-        ),
-      ],
+  const AppPalette({
+    required this.bg,
+    required this.card,
+    required this.surfaceAlt,
+    required this.line,
+    required this.ink,
+    required this.inkMute,
+    required this.inkFaint,
+  });
+
+  static const light = AppPalette(
+    bg: Color(0xFFF4F6F9),
+    card: Color(0xFFFFFFFF),
+    surfaceAlt: Color(0xFFEEF2F6),
+    line: Color(0xFFE7ECF1),
+    ink: Color(0xFF141A1F),
+    inkMute: Color(0xFF5A6773),
+    inkFaint: Color(0xFF98A5B0),
+  );
+
+  static const dark = AppPalette(
+    bg: Color(0xFF0F141A),
+    card: Color(0xFF19212A),
+    surfaceAlt: Color(0xFF232E39),
+    line: Color(0xFF2C3742),
+    ink: Color(0xFFEAEEF2),
+    inkMute: Color(0xFF9BA8B4),
+    inkFaint: Color(0xFF6C7A87),
+  );
+
+  @override
+  AppPalette copyWith({
+    Color? bg,
+    Color? card,
+    Color? surfaceAlt,
+    Color? line,
+    Color? ink,
+    Color? inkMute,
+    Color? inkFaint,
+  }) =>
+      AppPalette(
+        bg: bg ?? this.bg,
+        card: card ?? this.card,
+        surfaceAlt: surfaceAlt ?? this.surfaceAlt,
+        line: line ?? this.line,
+        ink: ink ?? this.ink,
+        inkMute: inkMute ?? this.inkMute,
+        inkFaint: inkFaint ?? this.inkFaint,
+      );
+
+  @override
+  AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
+    if (other is! AppPalette) return this;
+    return AppPalette(
+      bg: Color.lerp(bg, other.bg, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      surfaceAlt: Color.lerp(surfaceAlt, other.surfaceAlt, t)!,
+      line: Color.lerp(line, other.line, t)!,
+      ink: Color.lerp(ink, other.ink, t)!,
+      inkMute: Color.lerp(inkMute, other.inkMute, t)!,
+      inkFaint: Color.lerp(inkFaint, other.inkFaint, t)!,
     );
+  }
+}
+
+/// быстрый доступ к палитре текущей темы
+extension PaletteX on BuildContext {
+  AppPalette get p => Theme.of(this).extension<AppPalette>() ?? AppPalette.light;
+}
+
+/// единая карточка: белая с мягкой тенью (светлая тема) либо приподнятая
+/// поверхность с тонкой границей (тёмная - тени на тёмном не видны)
+BoxDecoration cardBox(BuildContext context, {double radius = 16, Color? color}) {
+  final p = context.p;
+  final dark = Theme.of(context).brightness == Brightness.dark;
+  return BoxDecoration(
+    color: color ?? p.card,
+    borderRadius: BorderRadius.circular(radius),
+    border: dark ? Border.all(color: p.line) : null,
+    boxShadow: dark
+        ? null
+        : const [
+            BoxShadow(
+                color: Color(0x0F1B2733), blurRadius: 20, offset: Offset(0, 8)),
+            BoxShadow(
+                color: Color(0x0A1B2733), blurRadius: 2, offset: Offset(0, 1)),
+          ],
+  );
+}
 
 /// плавный переход между экранами: лёгкое появление + микро-сдвиг снизу
 class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
@@ -60,10 +133,8 @@ class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
     return FadeTransition(
       opacity: curved,
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.02),
-          end: Offset.zero,
-        ).animate(curved),
+        position: Tween<Offset>(begin: const Offset(0, 0.02), end: Offset.zero)
+            .animate(curved),
         child: child,
       ),
     );
@@ -77,76 +148,78 @@ final PageTransitionsTheme appPageTransitions = PageTransitionsTheme(
   },
 );
 
-/// светлая тема приложения
-ThemeData buildAppTheme() {
+/// тема приложения для заданной яркости (светлая/тёмная)
+ThemeData buildAppTheme(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  final p = dark ? AppPalette.dark : AppPalette.light;
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.brand,
+    brightness: brightness,
     primary: AppColors.brand,
     secondary: AppColors.accent,
-    surface: AppColors.card,
-    onSurface: AppColors.ink,
+    surface: p.card,
+    onSurface: p.ink,
+    error: AppColors.danger,
   );
   const radius = 12.0;
 
   return ThemeData(
     useMaterial3: true,
-    fontFamily: AppColors._font,
+    brightness: brightness,
+    fontFamily: kFont,
     colorScheme: scheme,
-    scaffoldBackgroundColor: AppColors.bg,
+    scaffoldBackgroundColor: p.bg,
     pageTransitionsTheme: appPageTransitions,
     splashFactory: InkSparkle.splashFactory,
-    dividerColor: AppColors.line,
-    dividerTheme: const DividerThemeData(
-      color: AppColors.line,
-      thickness: 1,
-      space: 1,
-    ),
+    dividerColor: p.line,
+    dividerTheme: DividerThemeData(color: p.line, thickness: 1, space: 1),
+    extensions: [p],
 
     // шапка сливается с фоном (без линии и тени) - крупный заголовок «парит»
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.bg,
-      foregroundColor: AppColors.ink,
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.bg,
+      foregroundColor: p.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
       titleTextStyle: TextStyle(
         fontFamily: kFont,
-        color: AppColors.ink,
+        color: p.ink,
         fontSize: 20,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.4,
       ),
-      iconTheme: IconThemeData(color: AppColors.ink),
+      iconTheme: IconThemeData(color: p.ink),
     ),
 
-    textTheme: const TextTheme(
+    textTheme: TextTheme(
       titleLarge: TextStyle(
-          color: AppColors.ink, fontWeight: FontWeight.w800, letterSpacing: -0.4),
-      titleMedium: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w700),
-      bodyMedium: TextStyle(color: AppColors.ink, height: 1.35),
-      bodySmall: TextStyle(color: AppColors.inkMute, height: 1.35),
-      labelLarge: TextStyle(fontWeight: FontWeight.w700),
+          color: p.ink, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+      titleMedium: TextStyle(color: p.ink, fontWeight: FontWeight.w700),
+      bodyMedium: TextStyle(color: p.ink, height: 1.35),
+      bodySmall: TextStyle(color: p.inkMute, height: 1.35),
+      labelLarge: const TextStyle(fontWeight: FontWeight.w700),
     ),
 
-    listTileTheme: const ListTileThemeData(
-      iconColor: AppColors.inkFaint,
-      textColor: AppColors.ink,
+    listTileTheme: ListTileThemeData(
+      iconColor: p.inkFaint,
+      textColor: p.ink,
       titleTextStyle: TextStyle(
           fontFamily: kFont,
-          color: AppColors.ink,
+          color: p.ink,
           fontSize: 15,
           fontWeight: FontWeight.w600),
-      subtitleTextStyle: TextStyle(
-          fontFamily: kFont, color: AppColors.inkMute, fontSize: 13),
+      subtitleTextStyle:
+          TextStyle(fontFamily: kFont, color: p.inkMute, fontSize: 13),
     ),
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surfaceAlt,
-      hintStyle: const TextStyle(color: AppColors.inkFaint),
-      labelStyle: const TextStyle(color: AppColors.inkMute),
-      prefixIconColor: AppColors.inkFaint,
+      fillColor: p.surfaceAlt,
+      hintStyle: TextStyle(color: p.inkFaint),
+      labelStyle: TextStyle(color: p.inkMute),
+      prefixIconColor: p.inkFaint,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
@@ -170,7 +243,8 @@ ThemeData buildAppTheme() {
         disabledForegroundColor: Colors.white,
         minimumSize: const Size.fromHeight(54),
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
         textStyle: const TextStyle(
             fontFamily: kFont, fontSize: 16, fontWeight: FontWeight.w700),
       ),
@@ -178,11 +252,12 @@ ThemeData buildAppTheme() {
 
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.brandInk,
-        backgroundColor: AppColors.card,
+        foregroundColor: dark ? AppColors.brand : AppColors.brandInk,
+        backgroundColor: p.card,
         minimumSize: const Size.fromHeight(52),
-        side: const BorderSide(color: AppColors.line),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+        side: BorderSide(color: p.line),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
         textStyle: const TextStyle(
             fontFamily: kFont, fontSize: 15, fontWeight: FontWeight.w700),
       ),
@@ -190,8 +265,9 @@ ThemeData buildAppTheme() {
 
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.brandInk,
-        textStyle: const TextStyle(fontFamily: kFont, fontWeight: FontWeight.w700),
+        foregroundColor: dark ? AppColors.brand : AppColors.brandInk,
+        textStyle:
+            const TextStyle(fontFamily: kFont, fontWeight: FontWeight.w700),
       ),
     ),
 
@@ -200,14 +276,44 @@ ThemeData buildAppTheme() {
       trackColor: WidgetStateProperty.resolveWith((s) =>
           s.contains(WidgetState.selected)
               ? AppColors.brand
-              : const Color(0xFFCFD8E0)),
+              : (dark ? const Color(0xFF3A4652) : const Color(0xFFCFD8E0))),
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     ),
 
     dialogTheme: DialogThemeData(
-      backgroundColor: AppColors.card,
+      backgroundColor: p.card,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
   );
+}
+
+/// выбор оформления (Авто/Светлая/Тёмная), сохраняется между запусками
+class ThemeController {
+  static final ValueNotifier<ThemeMode> mode =
+      ValueNotifier<ThemeMode>(ThemeMode.system);
+  static const _key = 'theme_mode';
+
+  static Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    mode.value = _parse(prefs.getString(_key));
+  }
+
+  static Future<void> set(ThemeMode m) async {
+    mode.value = m;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, m.name);
+  }
+
+  static ThemeMode _parse(String? s) => switch (s) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+
+  static String label(ThemeMode m) => switch (m) {
+        ThemeMode.light => 'Светлая',
+        ThemeMode.dark => 'Тёмная',
+        ThemeMode.system => 'Как в системе',
+      };
 }

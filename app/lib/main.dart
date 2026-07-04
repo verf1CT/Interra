@@ -21,6 +21,13 @@ Future<void> main() async {
     debugPrint('Чтение регистрации не удалось: $e');
   }
 
+  // сохранённое оформление (Авто/Светлая/Тёмная) - до первого кадра, без мигания
+  try {
+    await ThemeController.load();
+  } catch (e) {
+    debugPrint('Оформление не прочитано (ок, будет системное): $e');
+  }
+
   // интерфейс показываем ПЕРВЫМ ДЕЛОМ - ничто не должно блокировать первый кадр.
   // Биометрический замок навешивает BiometricGate (через MaterialApp.builder)
   runApp(InterraApp(loggedIn: registered));
@@ -51,18 +58,23 @@ class InterraApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ЛК Интерра',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      navigatorKey: QuickActionsService.navigatorKey,
-      navigatorObservers: [Analytics.observer],
-      // порядок важен: PrivacyShield снаружи - закрывает в том числе экран
-      // блокировки, когда приложение уходит в фон (снимок переключателя задач)
-      builder: (context, child) => PrivacyShield(
-        child: BiometricGate(child: child ?? const SizedBox.shrink()),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.mode,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'ЛК Интерра',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(Brightness.light),
+        darkTheme: buildAppTheme(Brightness.dark),
+        themeMode: mode,
+        navigatorKey: QuickActionsService.navigatorKey,
+        navigatorObservers: [Analytics.observer],
+        // порядок важен: PrivacyShield снаружи - закрывает в том числе экран
+        // блокировки, когда приложение уходит в фон (снимок переключателя задач)
+        builder: (context, child) => PrivacyShield(
+          child: BiometricGate(child: child ?? const SizedBox.shrink()),
+        ),
+        home: loggedIn ? const WebViewScreen() : const RegisterScreen(),
       ),
-      home: loggedIn ? const WebViewScreen() : const RegisterScreen(),
     );
   }
 }

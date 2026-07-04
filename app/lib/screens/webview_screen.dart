@@ -50,6 +50,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ThemeController.mode.addListener(_onThemeChanged);
     BalanceStore.restore(); // показать последний известный баланс сразу
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -95,7 +96,25 @@ class _WebViewScreenState extends State<WebViewScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ThemeController.mode.removeListener(_onThemeChanged);
     super.dispose();
+  }
+
+  /// смена темы приложением - перекрашиваем уже открытую страницу кабинета,
+  /// не дожидаясь перезагрузки
+  void _onThemeChanged() {
+    _controller.runJavaScript(
+        "var d=document.getElementById('interraDark');if(d)d.remove();");
+    if (_cabinetDark) _injectCabinetDark();
+  }
+
+  /// тёмная ли сейчас тема (для CSS кабинета)
+  bool get _cabinetDark {
+    final mode = ThemeController.mode.value;
+    if (mode == ThemeMode.dark) return true;
+    if (mode == ThemeMode.light) return false;
+    return mounted &&
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
   }
 
   @override
@@ -253,6 +272,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   /// частью приложения (шрифт, цвета, отступы, скругления). только визуальные
   /// свойства - вёрстку и работу форм не ломаем. вставляем один раз (по id)
   Future<void> _injectCabinetStyle() async {
+    final dark = _cabinetDark;
     try {
       await _controller.runJavaScript(r'''
         (function(){
@@ -393,7 +413,48 @@ class _WebViewScreenState extends State<WebViewScreen>
           document.head.appendChild(st);
         })();
       ''');
+      if (dark) await _injectCabinetDark();
     } catch (_) {/* страница могла смениться - не критично */}
+  }
+
+  /// тёмная тема для страниц кабинета: перебиваем светлые значения из основной
+  /// инъекции (фон, текст, поверхности). бренд-акценты и оранжевую рамку оставляем
+  Future<void> _injectCabinetDark() async {
+    await _controller.runJavaScript(r'''
+      (function(){
+        if(document.getElementById('interraDark')) return;
+        var css = ""
+        + "html,body{background:#0F141A !important;color:#EAEEF2 !important;}"
+        + "a{color:#5AB0EE !important;}"
+        + "hr{border-top-color:#2C3742 !important;}"
+        // информер: тёмная карточка, оранжевая рамка сохраняется
+        + ".b-informer tr td{background:#241C13 !important;color:#E7D6C4 !important;}"
+        + ".b-informer a,.b-informer a font{color:#F79B5B !important;}"
+        // счёт
+        + ".b-account tr{border-bottom-color:#26313C !important;}"
+        + ".b-account td[align=right]{color:#8A97A2 !important;}"
+        + ".b-account td:not([align=right]),.b-account span,.b-account td font{color:#EAEEF2 !important;}"
+        // вкладки
+        + ".b-tab{border-bottom-color:#2C3742 !important;}"
+        + ".b-tab td.active,.b-tab td a{color:#9BA8B4 !important;}"
+        + ".b-tab td.active{color:#EAEEF2 !important;}"
+        // заголовки
+        + ".t,.font-l,.font-dark{color:#EAEEF2 !important;}"
+        // таблицы данных
+        + "#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) td{border-bottom-color:#26313C !important;}"
+        + "#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) th{color:#8A97A2 !important;}"
+        + "#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) tr:nth-child(even) td{background:#151C24 !important;}"
+        // поля и списки
+        + "input:not([type=submit]):not([type=button]):not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select{background:#19212A !important;color:#EAEEF2 !important;border-color:#2C3742 !important;}"
+        // вход в раздел
+        + ".login-title h2{color:#EAEEF2 !important;}"
+        + "div.btn7{background:#1B242E !important;color:#9BA8B4 !important;}";
+        var st = document.createElement('style');
+        st.id = 'interraDark';
+        st.textContent = css;
+        document.head.appendChild(st);
+      })();
+    ''');
   }
 
   /// разбирает результат runJavaScriptReturningResult в Map. iOS отдаёт JSON-
@@ -620,10 +681,10 @@ class _WebViewScreenState extends State<WebViewScreen>
         bottomNavigationBar: BottomAppBar(
           height: 64,
           padding: EdgeInsets.zero,
-          color: Colors.white,
+          color: context.p.card,
           child: Container(
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.line)),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: context.p.line)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -663,7 +724,11 @@ class _WebViewScreenState extends State<WebViewScreen>
           // на светлой шапке - мягкая тонированная плашка: синий при плюсе,
           // красный при минусе
           final negative = info.amount < 0;
-          final color = negative ? AppColors.danger : AppColors.brandInk;
+          // при плюсе - синий; на тёмной теме берём светлее для контраста
+          final dark = Theme.of(context).brightness == Brightness.dark;
+          final color = negative
+              ? AppColors.danger
+              : (dark ? AppColors.brand : AppColors.brandInk);
           return Center(
             child: GestureDetector(
               onTap: _openCabinet,
@@ -705,7 +770,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     Color? color,
     bool big = false,
   }) {
-    final c = color ?? AppColors.inkMute;
+    final c = color ?? context.p.inkMute;
     return Expanded(
       child: InkWell(
         onTap: () {
@@ -752,7 +817,7 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   /// брендовый экран ошибки/офлайна с мягким появлением
   Widget _errorOverlay() => Container(
-        color: AppColors.bg,
+        color: context.p.bg,
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: TweenAnimationBuilder<double>(
@@ -780,8 +845,8 @@ class _WebViewScreenState extends State<WebViewScreen>
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.ink,
+                style: TextStyle(
+                    color: context.p.ink,
                     fontSize: 15,
                     height: 1.4,
                     fontWeight: FontWeight.w500),

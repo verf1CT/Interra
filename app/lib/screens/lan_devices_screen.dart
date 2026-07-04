@@ -72,12 +72,12 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
         DeviceKind.printer => (
             icon: Icons.print_rounded,
             label: 'Принтер',
-            color: AppColors.inkMute
+            color: AppColors.neutral
           ),
         DeviceKind.generic => (
             icon: Icons.devices_other_rounded,
             label: 'Устройство',
-            color: AppColors.inkMute
+            color: AppColors.neutral
           ),
       };
 
@@ -113,7 +113,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
                   'чужого - смените пароль Wi-Fi на роутере',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      fontSize: 12, color: AppColors.inkFaint, height: 1.4),
+                      fontSize: 12, color: context.p.inkFaint, height: 1.4),
                 ),
               ],
             ),
@@ -122,7 +122,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
 
   Widget _header(int count) => Container(
         padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-        decoration: cardBox(radius: 14),
+        decoration: cardBox(context, radius: 14),
         child: Column(
           children: [
             Container(
@@ -138,12 +138,12 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
             const SizedBox(height: 12),
             Text(
               _scanning ? 'ищем устройства…' : '$count в сети',
-              style: const TextStyle(
-                  color: AppColors.ink, fontSize: 22, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                  color: context.p.ink, fontSize: 22, fontWeight: FontWeight.w800),
             ),
             if (_result.subnet != null)
               Text(_result.subnet!,
-                  style: const TextStyle(color: AppColors.inkFaint, fontSize: 12)),
+                  style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
             if (_scanning) ...[
               const SizedBox(height: 14),
               ClipRRect(
@@ -152,7 +152,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
                   value: _progress == 0 ? null : _progress,
                   minHeight: 5,
                   color: AppColors.brand,
-                  backgroundColor: AppColors.surfaceAlt,
+                  backgroundColor: context.p.surfaceAlt,
                 ),
               ),
             ],
@@ -167,7 +167,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
             for (var i = 0; i < devices.length; i++) ...[
               if (i > 0)
                 const Divider(
-                    height: 1, thickness: 1, indent: 64, color: AppColors.line),
+                    height: 1, thickness: 1, indent: 64),
               _tile(devices[i]),
             ],
           ],
@@ -206,7 +206,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.inkFaint),
+              Icon(Icons.wifi_off_rounded, size: 56, color: context.p.inkFaint),
               const SizedBox(height: 16),
               const Text('Нужен Wi-Fi',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
@@ -215,7 +215,7 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
                 'подключитесь к домашнему Wi-Fi, чтобы увидеть устройства сети. '
                 'по мобильному интернету это не работает',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.inkMute, height: 1.4),
+                style: TextStyle(color: context.p.inkMute, height: 1.4),
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
