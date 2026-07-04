@@ -314,14 +314,40 @@ class _WebViewScreenState extends State<WebViewScreen>
           + "div.btn7{background:#F1F4F8 !important;color:#5A6773 !important;"
           +   "font-weight:500;font-size:13px;line-height:1.5;}"
           + "div.btn7 span{padding:2px 0 !important;display:inline;}"
-          // ── поля и кнопки (Пополнение, Пароль и т.п.) ──
-          + "input,select,textarea{font-size:16px;padding:9px 11px;border:1px solid #E4EAF0;"
-          +   "border-radius:10px;background:#fff;box-sizing:border-box;}"
-          + "input:focus,select:focus{outline:none;border-color:#3A96D6;}"
-          + "input[type=submit],input[type=button],button{background:#3A96D6 !important;"
-          +   "color:#fff !important;border:none !important;border-radius:10px;padding:10px 18px;"
-          +   "font-weight:600;cursor:pointer;}"
-          + "input[type=checkbox],input[type=radio]{width:auto;accent-color:#3A96D6;}";
+          // ── поля ввода: в utm7 у select жёсткий height:28px → текст
+          //    обрезался. сбрасываем высоту, задаём нормальные отступы ──
+          + "input:not([type=submit]):not([type=button]):not([type=checkbox])"
+          +   ":not([type=radio]):not([type=hidden]),textarea{height:auto !important;"
+          +   "min-height:46px !important;line-height:1.3 !important;font-size:16px !important;"
+          +   "padding:12px 14px !important;border:1px solid #E4EAF0 !important;"
+          +   "border-radius:12px !important;background:#fff !important;color:#141A1F !important;"
+          +   "box-sizing:border-box;max-width:100%;margin:6px 0 8px 0;"
+          +   "font-family:-apple-system,sans-serif !important;}"
+          // ── выпадающие списки (год/месяц, пакеты ТВ и т.п.): свой вид,
+          //    кастомная стрелка, высота под шрифт - текст помещается ──
+          + "select{-webkit-appearance:none !important;appearance:none !important;"
+          +   "height:auto !important;min-height:46px !important;line-height:1.3 !important;"
+          +   "font-size:16px !important;padding:12px 42px 12px 14px !important;"
+          +   "border:1px solid #E4EAF0 !important;border-radius:12px !important;"
+          +   "background-color:#fff !important;color:#141A1F !important;max-width:100%;"
+          +   "margin:6px 8px 8px 0;vertical-align:middle;box-sizing:border-box;"
+          +   "font-family:-apple-system,sans-serif !important;background-repeat:no-repeat;"
+          +   "background-position:right 14px center;background-size:15px;"
+          +   "background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27"
+          +   "%20width=%2716%27%20height=%2716%27%20viewBox=%270%200%2024%2024%27%20fill=%27none%27"
+          +   "%20stroke=%27%235A6773%27%20stroke-width=%272.4%27%20stroke-linecap=%27round%27"
+          +   "%20stroke-linejoin=%27round%27%3E%3Cpolyline%20points=%276%209%2012%2015%2018%209%27"
+          +   "/%3E%3C/svg%3E) !important;}"
+          + "input:focus,select:focus,textarea:focus{outline:none;"
+          +   "border-color:#3A96D6 !important;}"
+          // ── кнопки ──
+          + "input[type=submit],input[type=button],button,input.btn{background:#3A96D6 !important;"
+          +   "color:#fff !important;border:none !important;border-radius:12px !important;"
+          +   "min-height:46px !important;line-height:1.2 !important;padding:12px 20px !important;"
+          +   "font-size:15px !important;font-weight:700 !important;cursor:pointer;"
+          +   "font-family:-apple-system,sans-serif !important;margin:6px 0;}"
+          + "input[type=checkbox],input[type=radio]{width:auto;min-height:0 !important;"
+          +   "accent-color:#3A96D6;}";
           var st = document.createElement('style');
           st.id = 'interraTheme';
           st.textContent = css;
