@@ -249,23 +249,31 @@ class _WebViewScreenState extends State<WebViewScreen>
           + ".header{margin-bottom:4px !important;justify-content:flex-end !important;}"
           + ".main{padding:12px 0 !important;}"
           + "#aaatds{padding:0 16px !important;}"
-          // ── информер (телефон/адрес) → мягкая карточка ──
-          + ".b-informer{background:#F3F6F9 !important;border:none !important;"
-          +   "border-radius:12px;padding:14px !important;font-size:13px;line-height:1.5;"
-          +   "color:#5C6B77 !important;}"
-          + ".b-informer td{padding:0 !important;}"
-          + ".b-informer a font{color:#206FA6 !important;}"
-          // ── таблица аккаунта → белая карточка со строками ──
-          + ".b-account{width:100% !important;margin-top:14px;border:1px solid #E4EAF0 !important;"
-          +   "border-radius:14px;border-collapse:separate !important;overflow:hidden;"
-          +   "table-layout:fixed;}"
-          + ".b-account thead{display:none;}"
-          + ".b-account td{padding:13px 14px !important;font-size:15px;"
-          +   "border-top:1px solid #F0F3F6;vertical-align:middle;}"
-          + ".b-account tr:first-child td{border-top:none;}"
-          + ".b-account td[align=right]{color:#5C6B77 !important;white-space:nowrap;}"
-          + ".b-account td[align=right] b{font-weight:500 !important;}"
-          + ".b-account span,.b-account td font{font-weight:700 !important;color:#12181D !important;}"
+          // ── информер (телефон/адрес) → аккуратная карточка с оранжевой
+          //    рамкой ВОКРУГ ВСЕГО блока (в utm7 рамка висит на ячейке) ──
+          + ".b-informer{background:none !important;border:none !important;"
+          +   "margin:0 0 16px 0 !important;max-width:100% !important;}"
+          + ".b-informer tr td{border:1.5px solid #F77D31 !important;border-radius:14px;"
+          +   "padding:14px 16px !important;background:#FFF6EF !important;"
+          +   "font-size:13px !important;line-height:1.55;color:#6B5340 !important;}"
+          + ".b-informer a,.b-informer a font{color:#C8571A !important;font-weight:600;}"
+          // ── счёт → НЕ таблица, а список полей: подпись капсом сверху,
+          //    значение крупно снизу (перебиваем .b-account tr td из utm7) ──
+          + ".b-account{width:100% !important;margin:6px 0 0 0 !important;border:none !important;"
+          +   "border-collapse:collapse !important;background:none !important;table-layout:fixed;}"
+          + ".b-account thead{display:none !important;}"
+          + ".b-account tr{display:block;padding:11px 0;border-bottom:1px solid #EEF1F4;}"
+          + ".b-account tr:last-child{border-bottom:none;}"
+          + ".b-account tr td{display:block !important;border:none !important;"
+          +   "padding:0 !important;text-align:left !important;}"
+          + ".b-account td[align=right]{color:#98A5B0 !important;font-size:11px !important;"
+          +   "font-weight:600 !important;text-transform:uppercase;letter-spacing:.4px;"
+          +   "margin-bottom:3px;}"
+          + ".b-account td[align=right] b{font-weight:600 !important;}"
+          + ".b-account td:not([align=right]){font-size:16px !important;font-weight:700 !important;"
+          +   "color:#141A1F !important;}"
+          + ".b-account span,.b-account td font{font-weight:700 !important;"
+          +   "color:#141A1F !important;font-size:16px !important;}"
           // ── меню разделов (открывается бургером) ──
           + ".nav-link.--active{color:#3A96D6 !important;}"
           // ── поля и кнопки (Пополнение, Пароль и т.п.) ──
