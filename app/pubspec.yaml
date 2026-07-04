@@ -46,6 +46,19 @@ flutter:
   assets:
     - assets/splash_logo.png
     - assets/certs/
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-400.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-600.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
 
 # Нативная заставка (убирает белую вспышку при запуске). Логотип на белом фоне.
 flutter_native_splash:
