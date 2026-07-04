@@ -234,22 +234,45 @@ class _WebViewScreenState extends State<WebViewScreen>
         (function(){
           if(document.getElementById('interraTheme')) return;
           var css = ""
-          + "html{-webkit-text-size-adjust:100%;}"
+          // ── базовая типографика/цвета ──
           + "body{font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif !important;"
           +   "color:#12181D !important;line-height:1.45;background:#ffffff !important;}"
           + "a{color:#206FA6 !important;text-decoration:none;}"
           + "a:active{opacity:.55;}"
-          + "td,th{padding:7px 10px !important;}"
-          + "table{border-color:#E4EAF0 !important;border-collapse:collapse;}"
           + "hr{border:none;border-top:1px solid #E4EAF0;}"
+          + "img{max-width:100%;height:auto;}"
+          // ── шапка кабинета: логотип дублирует шапку приложения - прячем,
+          //    бургер (меню разделов) оставляем ──
+          + ".header-logo{display:none !important;}"
+          + ".header{margin-bottom:4px !important;justify-content:flex-end !important;}"
+          + ".main{padding:12px 0 !important;}"
+          + "#aaatds{padding:0 16px !important;}"
+          // ── информер (телефон/адрес) → мягкая карточка ──
+          + ".b-informer{background:#F3F6F9 !important;border:none !important;"
+          +   "border-radius:12px;padding:14px !important;font-size:13px;line-height:1.5;"
+          +   "color:#5C6B77 !important;}"
+          + ".b-informer td{padding:0 !important;}"
+          + ".b-informer a font{color:#206FA6 !important;}"
+          // ── таблица аккаунта → белая карточка со строками ──
+          + ".b-account{width:100% !important;margin-top:14px;border:1px solid #E4EAF0 !important;"
+          +   "border-radius:14px;border-collapse:separate !important;overflow:hidden;}"
+          + ".b-account thead{display:none;}"
+          + ".b-account td{padding:13px 14px !important;font-size:15px;"
+          +   "border-top:1px solid #F0F3F6;vertical-align:middle;}"
+          + ".b-account tr:first-child td{border-top:none;}"
+          + ".b-account td[align=right]{color:#5C6B77 !important;white-space:nowrap;}"
+          + ".b-account td[align=right] b{font-weight:500 !important;}"
+          + ".b-account span,.b-account td font{font-weight:700 !important;color:#12181D !important;}"
+          // ── меню разделов (открывается бургером) ──
+          + ".nav-link.--active{color:#3A96D6 !important;}"
+          // ── поля и кнопки (Пополнение, Пароль и т.п.) ──
           + "input,select,textarea{font-size:16px;padding:9px 11px;border:1px solid #E4EAF0;"
           +   "border-radius:10px;background:#fff;box-sizing:border-box;}"
           + "input:focus,select:focus{outline:none;border-color:#3A96D6;}"
           + "input[type=submit],input[type=button],button{background:#3A96D6 !important;"
-          +   "color:#fff !important;border:none !important;border-radius:10px;padding:10px 16px;"
+          +   "color:#fff !important;border:none !important;border-radius:10px;padding:10px 18px;"
           +   "font-weight:600;cursor:pointer;}"
-          + "input[type=checkbox],input[type=radio]{width:auto;accent-color:#3A96D6;}"
-          + "img{max-width:100%;height:auto;}";
+          + "input[type=checkbox],input[type=radio]{width:auto;accent-color:#3A96D6;}";
           var st = document.createElement('style');
           st.id = 'interraTheme';
           st.textContent = css;
