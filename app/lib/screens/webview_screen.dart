@@ -37,6 +37,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   bool _offline = false; // показываем кэш-снимок без сети
   String? _liveUrl; // URL последней «живой» (сетевой) загрузки - для кэша
   DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
+  bool _recovering = false; // идёт восстановление сессии (страница входа)
 
   /// свой хост держим внутри WebView, всё остальное - наружу
   static const String _host = 'stat.interra.ru';
@@ -232,6 +233,9 @@ class _WebViewScreenState extends State<WebViewScreen>
     try {
       await _controller.runJavaScript(r'''
         (function(){
+          // убираем рекламный попап «кот» (#parent_bunny) - даже при повторе
+          var pb = document.getElementById('parent_bunny');
+          if (pb) { pb.remove(); }
           if(document.getElementById('interraTheme')) return;
           var css = ""
           // ── базовая типографика/цвета + защита от переполнения ──
@@ -248,7 +252,14 @@ class _WebViewScreenState extends State<WebViewScreen>
           + ".header-logo{display:none !important;}"
           + ".header{margin-bottom:4px !important;justify-content:flex-end !important;}"
           + ".main{padding:12px 0 !important;}"
-          + "#aaatds{padding:0 16px !important;}"
+          // #aaatds: на некоторых страницах (PremiumTV) инлайн-JS насильно
+          //   ставит width/height 250px и фоновую картинку - контент зажимается
+          //   в квадрат. сбрасываем на нормальную ширину
+          + "#aaatds{padding:0 16px !important;width:auto !important;height:auto !important;"
+          +   "min-height:0 !important;background:none !important;background-image:none !important;"
+          +   "display:block;box-sizing:border-box;}"
+          // рекламный попап «кот» (/bunny/rabbit*.js вставляет #parent_bunny) - прячем
+          + "#parent_bunny{display:none !important;}"
           // ── информер (телефон/адрес) → аккуратная карточка с оранжевой
           //    рамкой ВОКРУГ ВСЕГО блока (в utm7 рамка висит на ячейке) ──
           + ".b-informer{background:none !important;border:none !important;"
@@ -276,15 +287,20 @@ class _WebViewScreenState extends State<WebViewScreen>
           +   "color:#141A1F !important;font-size:16px !important;}"
           // ── меню разделов (открывается бургером) ──
           + ".nav-link.--active{color:#3A96D6 !important;}"
-          // ── вкладки внутри раздела (.b-tab) → подчёркнутые ──
-          + ".b-tab{width:100% !important;background:none !important;border:none !important;"
-          +   "border-bottom:1px solid #E7ECF1 !important;border-collapse:collapse !important;"
-          +   "margin:0 0 16px 0 !important;}"
-          + ".b-tab td{padding:0 !important;background:none !important;border:none !important;}"
-          + ".b-tab td.active,.b-tab td a{display:inline-block;padding:10px 1px !important;"
-          +   "margin-right:22px;font-size:14px;font-weight:600;color:#5A6773 !important;"
-          +   "text-decoration:none !important;border-bottom:2px solid transparent;}"
-          + ".b-tab td.active{color:#141A1F !important;border-bottom-color:#3A96D6 !important;}"
+          // ── вкладки внутри раздела (.b-tab, напр. операции/сессии) →
+          //    чёткие подчёркнутые табы (таблицу разворачиваем в строку) ──
+          + ".b-tab,.b-tab tbody,.b-tab tr{display:block !important;background:none !important;"
+          +   "border:none !important;}"
+          + ".b-tab{border-bottom:1px solid #E7ECF1 !important;margin:0 0 18px 0 !important;"
+          +   "white-space:nowrap;}"
+          + ".b-tab td{display:inline-block !important;padding:0 !important;background:none !important;"
+          +   "border:none !important;vertical-align:bottom;}"
+          + ".b-tab td[width='99%']{display:none !important;}"
+          + ".b-tab td.active,.b-tab td a{display:inline-block;padding:11px 3px !important;"
+          +   "margin-right:26px;font-size:15px;font-weight:600;color:#5A6773 !important;"
+          +   "text-decoration:none !important;border-bottom:2.5px solid transparent;}"
+          + ".b-tab td.active{color:#141A1F !important;border-bottom-color:#3A96D6 !important;"
+          +   "font-weight:700 !important;}"
           + ".b-tab td.active b{font-weight:700 !important;}"
           // ── заголовок раздела (.t) ──
           + ".t{display:block;font-size:15px !important;font-weight:700 !important;"
@@ -395,12 +411,14 @@ class _WebViewScreenState extends State<WebViewScreen>
         })();
       ''');
       if (res.toString().contains('1')) {
-        // защита от цикла: обновляем не чаще раза в несколько секунд
-        final last = _lastOpenAt;
-        if (last == null ||
-            DateTime.now().difference(last) > const Duration(seconds: 5)) {
+        // страница входа - переоткрываем со свежим токеном. защита от цикла:
+        // повторно не входим, пока не загрузится нормальная (не-входная) страница
+        if (!_recovering) {
+          _recovering = true;
           _openCabinet();
         }
+      } else {
+        _recovering = false; // здоровая страница - снимаем защиту
       }
     } catch (_) {/* страница могла уже смениться - не критично */}
   }
@@ -599,7 +617,9 @@ class _WebViewScreenState extends State<WebViewScreen>
                 _navButton(
                   icon: Icons.refresh,
                   label: 'Обновить',
-                  onTap: () => _controller.reload(),
+                  // берём свежую ссылку (reload протухшего токена UTM5 кидает
+                  // на страницу входа), поэтому переоткрываем кабинет
+                  onTap: _openCabinet,
                 ),
               ],
             ),
