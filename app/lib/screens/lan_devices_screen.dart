@@ -55,13 +55,18 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
             color: AppColors.accent
           ),
         DeviceKind.apple => (
-            icon: Icons.laptop_mac_rounded,
+            icon: Icons.phone_iphone_rounded,
             label: 'Устройство Apple',
             color: AppColors.brand
           ),
-        DeviceKind.windows => (
+        DeviceKind.tv => (
+            icon: Icons.tv_rounded,
+            label: 'ТВ или приставка',
+            color: AppColors.brand
+          ),
+        DeviceKind.computer => (
             icon: Icons.computer_rounded,
-            label: 'Компьютер Windows',
+            label: 'Компьютер',
             color: AppColors.brand
           ),
         DeviceKind.printer => (
@@ -181,10 +186,12 @@ class _LanDevicesScreenState extends State<LanDevicesScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: IconChip(m.icon, m.color),
       title: Text(title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
               fontWeight: special ? FontWeight.w700 : FontWeight.w600,
               fontSize: 15)),
-      subtitle: Text(subtitle),
+      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: special
           ? Text(d.kind == DeviceKind.thisPhone ? 'вы' : 'шлюз',
               style: TextStyle(

@@ -169,8 +169,10 @@ class SupportScreen extends StatelessWidget {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: IconChip(icon, color),
         title: Text(title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        subtitle: Text(subtitle),
+        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: const Icon(Icons.chevron_right, color: AppColors.inkFaint),
         onTap: onTap,
       );
