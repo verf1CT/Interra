@@ -38,6 +38,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   String? _liveUrl; // URL последней «живой» (сетевой) загрузки - для кэша
   DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
   bool _recovering = false; // идёт восстановление сессии (страница входа)
+  bool _opening = false; // грузим свежую страницу - прячем старый контент
 
   /// свой хост держим внутри WebView, всё остальное - наружу
   static const String _host = 'stat.interra.ru';
@@ -62,6 +63,7 @@ class _WebViewScreenState extends State<WebViewScreen>
             setState(() {
               _loading = false;
               _firstLoaded = true;
+              _opening = false; // свежая страница отрисована - снимаем заглушку
             });
             await _injectCabinetStyle();
             await _injectPullToRefresh();
@@ -79,6 +81,7 @@ class _WebViewScreenState extends State<WebViewScreen>
               setState(() {
                 _loading = false;
                 _firstLoaded = true;
+                _opening = false;
                 _error = 'Не удалось загрузить кабинет. Потяните вниз '
                     'или нажмите «Обновить».';
               });
@@ -133,10 +136,29 @@ class _WebViewScreenState extends State<WebViewScreen>
   }
 
   /// запрашивает свежую ссылку на ЛК и грузит «Основную информацию»
+  /// «Обновить»: на подразделе перезагружаем текущую страницу (остаёмся в нём);
+  /// на главной берём свежую ссылку - reload одноразового токена главной UTM5
+  /// кидает на страницу входа. если reload подраздела всё же протухнет, сработает
+  /// восстановление сессии и вернёт на главную
+  Future<void> _refresh() async {
+    if (_offline || _error != null) {
+      _openCabinet();
+      return;
+    }
+    final url = await _controller.currentUrl();
+    if (url == null || url == _liveUrl || url.contains('oper=info')) {
+      _openCabinet();
+    } else {
+      setState(() => _loading = true);
+      _controller.reload();
+    }
+  }
+
   Future<void> _openCabinet() async {
     setState(() {
       _error = null;
       _loading = true;
+      _opening = true; // прикрываем старую страницу, пока грузится новая
     });
 
     final token = await AuthStore().appToken;
@@ -171,6 +193,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     setState(() {
       _loading = false;
       _firstLoaded = true;
+      _opening = false;
       _error = r.networkError
           ? 'Нет связи с кабинетом. Проверьте интернет и обновите.'
           : r.code == '1'
@@ -588,7 +611,10 @@ class _WebViewScreenState extends State<WebViewScreen>
             if (_offline && _error == null)
               Positioned(top: 0, left: 0, right: 0, child: _offlineBanner()),
             if (_error != null) _errorOverlay(),
-            if (!_firstLoaded) const CabinetSkeleton(),
+            // скелетон прикрывает и первую загрузку, и любое переоткрытие -
+            // иначе на миг виден старый отрендеренный контент WebView
+            if ((!_firstLoaded || _opening) && _error == null)
+              const CabinetSkeleton(),
           ],
         ),
         bottomNavigationBar: BottomAppBar(
@@ -617,9 +643,7 @@ class _WebViewScreenState extends State<WebViewScreen>
                 _navButton(
                   icon: Icons.refresh,
                   label: 'Обновить',
-                  // берём свежую ссылку (reload протухшего токена UTM5 кидает
-                  // на страницу входа), поэтому переоткрываем кабинет
-                  onTap: _openCabinet,
+                  onTap: _refresh,
                 ),
               ],
             ),
