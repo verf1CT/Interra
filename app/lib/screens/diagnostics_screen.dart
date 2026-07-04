@@ -4,7 +4,6 @@ import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
 import '../services/net_diagnostics.dart';
-import 'speedtest_screen.dart';
 
 /// экран «Диагностика сети»: проверяет соединение шаг за шагом и говорит,
 /// на чьей стороне проблема и что делать
@@ -58,17 +57,6 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
             icon: const Icon(Icons.refresh),
             label: Text(_running ? 'Проверяем…' : 'Проверить ещё раз'),
           ),
-          if (_verdict == Verdict.allOk) ...[
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const SpeedTestScreen(),
-                settings: const RouteSettings(name: 'speedtest'),
-              )),
-              icon: const Icon(Icons.speed_rounded, size: 20),
-              label: const Text('Замерить скорость'),
-            ),
-          ],
         ],
       ),
     );

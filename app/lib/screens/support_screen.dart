@@ -4,7 +4,6 @@ import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
 import 'diagnostics_screen.dart';
-import 'speedtest_screen.dart';
 import 'lan_devices_screen.dart';
 
 /// экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
@@ -77,22 +76,6 @@ class SupportScreen extends StatelessWidget {
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const DiagnosticsScreen(),
                     settings: const RouteSettings(name: 'diagnostics'),
-                  ));
-                },
-              ),
-            ),
-            _divider(),
-            Builder(
-              builder: (context) => _tile(
-                icon: Icons.speed_rounded,
-                color: AppColors.brand,
-                title: 'Проверка скорости',
-                subtitle: 'Замерить скорость интернета',
-                onTap: () {
-                  Analytics.supportOpened('speedtest');
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const SpeedTestScreen(),
-                    settings: const RouteSettings(name: 'speedtest'),
                   ));
                 },
               ),

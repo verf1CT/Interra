@@ -367,9 +367,6 @@ struct BalanceControl: ControlWidget {
 struct InterraWidgetBundle: WidgetBundle {
     var body: some Widget {
         BalanceWidget()
-        if #available(iOS 16.2, *) {
-            SpeedLiveActivity()
-        }
         if #available(iOS 18.0, *) {
             BalanceControl()
         }

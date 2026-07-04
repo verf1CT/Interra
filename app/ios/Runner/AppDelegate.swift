@@ -36,9 +36,6 @@ import BackgroundTasks
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "InterraLiveActivity") {
-      LiveActivityBridge.register(messenger: registrar.messenger())
-    }
   }
 
   // MARK: - Фоновое обновление баланса (BGTaskScheduler)
