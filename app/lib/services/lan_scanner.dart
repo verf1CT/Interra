@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:nsd/nsd.dart';
 
-/// тип устройства в сети (грубо угадывается по открытым портам)
-enum DeviceKind { thisPhone, router, apple, windows, printer, generic }
+/// тип устройства в сети (по mDNS-сервису, иначе грубо по открытым портам)
+enum DeviceKind { thisPhone, router, apple, tv, computer, printer, generic }
 
 class LanDevice {
   final String ip;
@@ -109,14 +109,39 @@ class LanScanner {
     return (open, refused);
   }
 
-  static DeviceKind _classify(
+  /// грубая догадка ТОЛЬКО по портам (запасной вариант, если mDNS молчит).
+  /// намеренно осторожная: 445 (SMB) есть у NAS/linux/роутеров, поэтому это
+  /// просто «компьютер», а не «Windows»; 62078 - точный признак iOS-устройства
+  static DeviceKind _classifyByPorts(
       String ip, List<int> open, String ownIp, String gateway) {
     if (ip == ownIp) return DeviceKind.thisPhone;
     if (ip == gateway) return DeviceKind.router;
     if (open.contains(62078)) return DeviceKind.apple;
-    if (open.contains(445) || open.contains(139)) return DeviceKind.windows;
     if (open.contains(9100)) return DeviceKind.printer;
+    if (open.contains(445) || open.contains(139)) return DeviceKind.computer;
     return DeviceKind.generic;
+  }
+
+  /// тип по имени mDNS-сервиса (надёжнее портов)
+  static DeviceKind? _kindFromService(String service) {
+    if (service.contains('companion-link') ||
+        service.contains('rdlink') ||
+        service.contains('apple-mobdev')) {
+      return DeviceKind.apple;
+    }
+    if (service.contains('airplay') || service.contains('raop')) {
+      return DeviceKind.apple; // Apple TV / колонка
+    }
+    if (service.contains('googlecast')) return DeviceKind.tv;
+    if (service.contains('printer') || service.contains('ipp')) {
+      return DeviceKind.printer;
+    }
+    if (service.contains('smb') ||
+        service.contains('workstation') ||
+        service.contains('ssh')) {
+      return DeviceKind.computer;
+    }
+    return null; // _http и прочее - неоднозначно
   }
 
   /// сканирует подсеть. [onProgress] — доля 0..1. параллелизм сокетов ограничен
@@ -131,8 +156,8 @@ class LanScanner {
     final found = <LanDevice>[];
     var done = 0;
 
-    // имена по mDNS резолвим параллельно с портовым сканом, чтобы не удлинять
-    final namesFuture = _resolveNames();
+    // имена и типы по mDNS резолвим параллельно с портовым сканом
+    final mdnsFuture = _resolveNames();
 
     await Future.wait([
       for (var h = 1; h <= 254; h++)
@@ -140,7 +165,8 @@ class LanScanner {
           final ip = '$base.$h';
           final (open, refused) = await _probeHost(ip);
           if (open.isNotEmpty || refused || ip == ownIp) {
-            found.add(LanDevice(ip, _classify(ip, open, ownIp, gateway), open));
+            found.add(LanDevice(
+                ip, _classifyByPorts(ip, open, ownIp, gateway), open));
           }
           done++;
           onProgress?.call(done / 254);
@@ -152,11 +178,19 @@ class LanScanner {
       found.add(LanDevice(ownIp, DeviceKind.thisPhone, const []));
     }
 
-    // подмешиваем имена из mDNS
-    final names = await namesFuture;
+    // подмешиваем имена и уточняем тип по mDNS (он надёжнее портов)
+    final mdns = await mdnsFuture;
     final named = [
       for (final d in found)
-        LanDevice(d.ip, d.kind, d.openPorts, name: names[d.ip])
+        LanDevice(
+          d.ip,
+          // свой телефон и роутер не переопределяем
+          (d.kind == DeviceKind.thisPhone || d.kind == DeviceKind.router)
+              ? d.kind
+              : (mdns[d.ip]?.kind ?? d.kind),
+          d.openPorts,
+          name: mdns[d.ip]?.name,
+        )
     ]..sort((a, b) => a.lastOctet.compareTo(b.lastOctet));
     return (devices: named, subnet: '$base.0/24', noWifi: false);
   }
@@ -166,8 +200,9 @@ class LanScanner {
   /// nsd - в отличие от «сырого» mDNS они работают на iOS с обычным разрешением
   /// локальной сети (NSLocalNetworkUsageDescription + NSBonjourServices),
   /// без спец-entitlement на multicast. best-effort - если не отвечает, молчим
-  static Future<Map<String, String>> _resolveNames() async {
-    final map = <String, String>{};
+  static Future<Map<String, ({String name, DeviceKind? kind})>>
+      _resolveNames() async {
+    final map = <String, ({String name, DeviceKind? kind})>{};
     const services = [
       '_companion-link._tcp', // iPhone/iPad/Mac
       '_airplay._tcp', // Apple TV, колонки
@@ -180,31 +215,37 @@ class LanScanner {
       '_http._tcp', // роутеры/NAS
       '_workstation._tcp', // linux/windows-хосты
     ];
-    final discoveries = <Discovery>[];
+    // держим пару (тип сервиса, discovery), чтобы знать тип каждого устройства
+    final entries = <(String, Discovery)>[];
     try {
       for (final s in services) {
         try {
-          discoveries.add(await startDiscovery(s,
-              autoResolve: true, ipLookupType: IpLookupType.v4));
+          entries.add(
+              (s, await startDiscovery(s, autoResolve: true, ipLookupType: IpLookupType.v4)));
         } catch (_) {/* сервис недоступен - пропускаем */}
       }
       // даём время на обнаружение и резолв адресов
       await Future.delayed(const Duration(seconds: 4));
-      for (final d in discoveries) {
+      for (final (service, d) in entries) {
+        final kind = _kindFromService(service);
         for (final svc in d.services) {
           final name = svc.name?.trim();
           if (name == null || name.isEmpty) continue;
           for (final addr in svc.addresses ?? const <InternetAddress>[]) {
-            if (addr.type == InternetAddressType.IPv4) {
-              map.putIfAbsent(addr.address, () => name);
-            }
+            if (addr.type != InternetAddressType.IPv4) continue;
+            final prev = map[addr.address];
+            // имя ставим первое непустое; тип - первый определённый
+            map[addr.address] = (
+              name: prev?.name ?? name,
+              kind: prev?.kind ?? kind,
+            );
           }
         }
       }
     } catch (e) {
       debugPrint('nsd: $e');
     } finally {
-      for (final d in discoveries) {
+      for (final (_, d) in entries) {
         try {
           await stopDiscovery(d);
         } catch (_) {}
