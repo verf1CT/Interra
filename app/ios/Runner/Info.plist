@@ -10,6 +10,20 @@
 		<string>Подтверждение входа в личный кабинет по Face ID</string>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>Чтобы показать устройства, подключённые к вашему Wi-Fi</string>
+		<!-- сервисы mDNS/Bonjour, которые сканер опрашивает для имён устройств -->
+		<key>NSBonjourServices</key>
+		<array>
+			<string>_companion-link._tcp</string>
+			<string>_airplay._tcp</string>
+			<string>_raop._tcp</string>
+			<string>_googlecast._tcp</string>
+			<string>_smb._tcp</string>
+			<string>_ipp._tcp</string>
+			<string>_printer._tcp</string>
+			<string>_ssh._tcp</string>
+			<string>_http._tcp</string>
+			<string>_workstation._tcp</string>
+		</array>
 		<!-- русский - основной язык: иначе фразы Сири (App Shortcuts) на русском
 		     не распознаются, и Сири «не видит» баланс-->
 		<key>CFBundleDevelopmentRegion</key>

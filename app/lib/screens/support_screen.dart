@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
+import '../widgets/ui_kit.dart';
 import 'diagnostics_screen.dart';
 import 'lan_devices_screen.dart';
 
@@ -166,15 +167,7 @@ class SupportScreen extends StatelessWidget {
       ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
+        leading: IconChip(icon, color),
         title: Text(title,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(subtitle),
@@ -182,25 +175,11 @@ class SupportScreen extends StatelessWidget {
         onTap: onTap,
       );
 
-  Widget _group(List<Widget> children) => Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: cardBox(),
-        child: Column(children: children),
-      );
+  Widget _group(List<Widget> children) =>
+      AppCard(clip: true, child: Column(children: children));
 
   Widget _divider() => const Divider(
       height: 1, thickness: 1, indent: 68, color: AppColors.line);
 
-  Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(left: 6, bottom: 8),
-        child: Text(
-          text.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.inkFaint,
-            letterSpacing: 0.5,
-          ),
-        ),
-      );
+  Widget _sectionTitle(String text) => AppSectionTitle(text);
 }

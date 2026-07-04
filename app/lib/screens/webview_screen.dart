@@ -62,6 +62,7 @@ class _WebViewScreenState extends State<WebViewScreen>
               _loading = false;
               _firstLoaded = true;
             });
+            await _injectCabinetStyle();
             await _injectPullToRefresh();
             // снимок для офлайна делаем только с «живой» сетевой страницы,
             // а не когда сами отрисовали кэш через loadHtmlString
@@ -222,6 +223,40 @@ class _WebViewScreenState extends State<WebViewScreen>
     } catch (e) {
       debugPrint('Баланс не извлечён: $e');
     }
+  }
+
+  /// вживляет фирменные стили в страницу кабинета UTM5, чтобы она выглядела
+  /// частью приложения (шрифт, цвета, отступы, скругления). только визуальные
+  /// свойства - вёрстку и работу форм не ломаем. вставляем один раз (по id)
+  Future<void> _injectCabinetStyle() async {
+    try {
+      await _controller.runJavaScript(r'''
+        (function(){
+          if(document.getElementById('interraTheme')) return;
+          var css = ""
+          + "html{-webkit-text-size-adjust:100%;}"
+          + "body{font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,sans-serif !important;"
+          +   "color:#12181D !important;line-height:1.45;background:#ffffff !important;}"
+          + "a{color:#206FA6 !important;text-decoration:none;}"
+          + "a:active{opacity:.55;}"
+          + "td,th{padding:7px 10px !important;}"
+          + "table{border-color:#E4EAF0 !important;border-collapse:collapse;}"
+          + "hr{border:none;border-top:1px solid #E4EAF0;}"
+          + "input,select,textarea{font-size:16px;padding:9px 11px;border:1px solid #E4EAF0;"
+          +   "border-radius:10px;background:#fff;box-sizing:border-box;}"
+          + "input:focus,select:focus{outline:none;border-color:#3A96D6;}"
+          + "input[type=submit],input[type=button],button{background:#3A96D6 !important;"
+          +   "color:#fff !important;border:none !important;border-radius:10px;padding:10px 16px;"
+          +   "font-weight:600;cursor:pointer;}"
+          + "input[type=checkbox],input[type=radio]{width:auto;accent-color:#3A96D6;}"
+          + "img{max-width:100%;height:auto;}";
+          var st = document.createElement('style');
+          st.id = 'interraTheme';
+          st.textContent = css;
+          document.head.appendChild(st);
+        })();
+      ''');
+    } catch (_) {/* страница могла смениться - не критично */}
   }
 
   /// разбирает результат runJavaScriptReturningResult в Map. iOS отдаёт JSON-
