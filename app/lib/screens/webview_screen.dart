@@ -425,6 +425,19 @@ class _WebViewScreenState extends State<WebViewScreen>
         if(document.getElementById('interraDark')) return;
         var css = ""
         + "html,body{background:#0F141A !important;color:#EAEEF2 !important;}"
+        // глушим ВСЕ белые поверхности сайта UTM (иначе кабинет остаётся белым):
+        // атрибуты bgcolor, боковую панель, меню, обёртки контента
+        + "[bgcolor]{background-color:transparent !important;}"
+        + ".sidebar{background:transparent !important;border-right-color:#2C3742 !important;}"
+        + ".nav{background-color:#131A22 !important;}"
+        + ".nav-wrapper,.main,.grid,.wrapper,.b-content,#aaatds{background-color:transparent !important;}"
+        + ".nav a,.nav-link{color:#C3CDD6 !important;}"
+        + ".nav-link.--active{color:#5AB0EE !important;}"
+        + ".nav-divider .divider{background:#2C3742 !important;border-color:#2C3742 !important;}"
+        + ".nav-footer{border-top-color:#2C3742 !important;}"
+        + ".nav-footer__note,.nav-footer__text,.header-logo__note,.font-s,.font-dark{color:#9BA8B4 !important;}"
+        + ".header-burger__item{background:#C3CDD6 !important;}"
+        + "font[color='black'],font[color='#000000'],font[color='#000']{color:#EAEEF2 !important;}"
         + "a{color:#5AB0EE !important;}"
         + "hr{border-top-color:#2C3742 !important;}"
         // информер: тёмная карточка, оранжевая рамка сохраняется
