@@ -65,6 +65,12 @@ class _WebViewScreenState extends State<WebViewScreen>
             // иначе на миг видна белая страница до применения тёмного CSS
             await _injectCabinetStyle();
             await _injectPullToRefresh();
+            // runJavaScript возвращается, как только стиль добавлен в DOM, но
+            // WebView перерисовывается под тёмный CSS лишь на следующем кадре -
+            // ждём пару кадров, иначе при снятии скелетона мелькнёт белым
+            if (_cabinetDark) {
+              await Future.delayed(const Duration(milliseconds: 110));
+            }
             if (mounted) {
               setState(() {
                 _loading = false;
