@@ -185,6 +185,46 @@ class _WebViewScreenState extends State<WebViewScreen>
     }
   }
 
+  /// открывает раздел «Пополнение счёта» по тапу на баланс в шапке. берём ссылку
+  /// прямо со страницы кабинета (там свежий токен сессии), иначе собираем из
+  /// адреса главной. без сети - просто переоткрываем кабинет
+  Future<void> _openPayment() async {
+    if (_offline || _error != null) {
+      _openCabinet();
+      return;
+    }
+    try {
+      final res = await _controller.runJavaScriptReturningResult('''
+        (function(){
+          var a = document.querySelector("a[href*='oper=syspay']");
+          return a ? a.href : '';
+        })();
+      ''');
+      var href = res is String ? res : res.toString();
+      if (href.startsWith('"') && href.endsWith('"')) {
+        href = jsonDecode(href) as String; // android отдаёт строку в кавычках
+      }
+      if (href.contains('oper=syspay')) {
+        setState(() => _loading = true);
+        await _controller.loadRequest(Uri.parse(href));
+        return;
+      }
+    } catch (e) {
+      debugPrint('ссылка пополнения не найдена: $e');
+    }
+    // запасной вариант: собрать из адреса главной (aaainfo → aaasyspay)
+    final base = _liveUrl;
+    if (base != null && base.contains('aaainfo')) {
+      final url = base
+          .replaceFirst('aaainfo', 'aaasyspay')
+          .replaceFirst('oper=info', 'oper=syspay');
+      setState(() => _loading = true);
+      await _controller.loadRequest(Uri.parse(url));
+    } else {
+      _openCabinet();
+    }
+  }
+
   Future<void> _openCabinet() async {
     setState(() {
       _error = null;
@@ -765,7 +805,7 @@ class _WebViewScreenState extends State<WebViewScreen>
               : (dark ? AppColors.brand : AppColors.brandInk);
           return Center(
             child: GestureDetector(
-              onTap: _openCabinet,
+              onTap: _openPayment,
               child: Container(
                 margin: const EdgeInsets.only(right: 4),
                 padding:
