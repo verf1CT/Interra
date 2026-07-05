@@ -53,6 +53,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ThemeController.mode.addListener(_onThemeChanged);
+    QuickActionsService.homeRequested.addListener(_onHomeRequested);
     QuickActionsService.paymentRequested.addListener(_onPaymentRequested);
     BalanceStore.restore(); // показать последний известный баланс сразу
     _controller = WebViewController()
@@ -115,9 +116,13 @@ class _WebViewScreenState extends State<WebViewScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     ThemeController.mode.removeListener(_onThemeChanged);
+    QuickActionsService.homeRequested.removeListener(_onHomeRequested);
     QuickActionsService.paymentRequested.removeListener(_onPaymentRequested);
     super.dispose();
   }
+
+  /// ярлык иконки «Личный кабинет» - открываем главную (Основную информацию)
+  void _onHomeRequested() => _openCabinet();
 
   /// ярлык иконки «Пополнить» - открываем раздел пополнения
   void _onPaymentRequested() => _openPayment();
