@@ -698,9 +698,11 @@ class _WebViewScreenState extends State<WebViewScreen>
             if (_offline && _error == null)
               Positioned(top: 0, left: 0, right: 0, child: _offlineBanner()),
             if (_error != null) _errorOverlay(),
-            // скелетон прикрывает и первую загрузку, и любое переоткрытие -
-            // иначе на миг виден старый отрендеренный контент WebView
-            if ((!_firstLoaded || _opening) && _error == null)
+            // скелетон прикрывает: первую загрузку, любое переоткрытие, а в
+            // тёмной теме - и переходы между разделами (иначе новая страница
+            // мелькает белым до применения тёмного CSS)
+            if ((!_firstLoaded || _opening || (_loading && _cabinetDark)) &&
+                _error == null)
               const CabinetSkeleton(),
           ],
         ),
