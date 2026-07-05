@@ -28,14 +28,23 @@ class Biometric {
     (lockDelayNever, 'Никогда'),
   ];
 
+  // зеркало значений в памяти - чтобы на возврате из фона решить СИНХРОННО
+  // (без await), показывать ли замок, и не дать кабинету мелькнуть до проверки
+  static int? _lockDelayCache;
+  static int? _lastUnlockCache;
+  static bool _lastUnlockLoaded = false;
+
   static Future<int> get lockDelayMs async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kLockDelay) ?? defaultLockDelayMs;
+    final v = prefs.getInt(_kLockDelay) ?? defaultLockDelayMs;
+    _lockDelayCache = v;
+    return v;
   }
 
   static Future<void> setLockDelayMs(int value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kLockDelay, value);
+    _lockDelayCache = value;
   }
 
   static String lockDelayLabel(int ms) => lockDelayOptions
@@ -45,8 +54,11 @@ class Biometric {
   /// отмечает успешную разблокировку (биометрией или PIN) - от этого момента
   /// отсчитывается льготный период
   static Future<void> markUnlocked() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kLastUnlock, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(_kLastUnlock, now);
+    _lastUnlockCache = now;
+    _lastUnlockLoaded = true;
   }
 
   /// true - льготный период ещё действует, замок можно не показывать
@@ -55,11 +67,28 @@ class Biometric {
     if (delay == 0) return false; // всегда спрашивать
     final prefs = await SharedPreferences.getInstance();
     final last = prefs.getInt(_kLastUnlock);
+    _lastUnlockCache = last;
+    _lastUnlockLoaded = true;
     // ни разу не разблокировали - замок нужен (даже при «никогда»)
     if (last == null) return false;
     if (delay == lockDelayNever) return true; // дальше уже не перезапрашиваем
     final elapsed = DateTime.now().millisecondsSinceEpoch - last;
     // отрицательное elapsed (перевод часов назад) считаем истёкшим
+    return elapsed >= 0 && elapsed < delay;
+  }
+
+  /// синхронная оценка [withinGracePeriod] по кэшу в памяти - для мгновенного
+  /// решения на возврате из фона. если данных ещё нет, консервативно false
+  /// (лучше лишний раз прикрыть кабинет, чем показать баланс до замка).
+  /// Авторитетную проверку всё равно делает асинхронный [withinGracePeriod]
+  static bool withinGracePeriodSync() {
+    final delay = _lockDelayCache;
+    if (delay == null || delay == 0) return false;
+    if (!_lastUnlockLoaded) return false;
+    final last = _lastUnlockCache;
+    if (last == null) return false;
+    if (delay == lockDelayNever) return true;
+    final elapsed = DateTime.now().millisecondsSinceEpoch - last;
     return elapsed >= 0 && elapsed < delay;
   }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../config.dart';
+import 'app_info.dart';
 
 /// проверка новой версии приложения.
 ///
@@ -25,7 +25,7 @@ class UpdateCheck {
           .firstMatch(res.body);
       final latest = m?.group(1);
       if (latest == null) return;
-      if (isNewer(latest, AppConfig.appVersion)) {
+      if (isNewer(latest, AppInfo.version)) {
         available.value = latest;
       }
     } catch (e) {

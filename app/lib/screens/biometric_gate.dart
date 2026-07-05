@@ -26,6 +26,12 @@ class _BiometricGateState extends State<BiometricGate>
   bool _wasPaused = false;
   bool _bioEnabled = false;
   bool _pinSet = false;
+  // последнее известное «защита включена» - чтобы на возврате из фона решить
+  // синхронно, поднимать ли шторку, ещё до асинхронной проверки
+  bool _protectionOn = false;
+  // нейтральная шторка на те миллисекунды, пока идёт асинхронная проверка
+  // замка при возврате из фона: без неё кабинет с балансом мелькает до замка
+  bool _coverForCheck = false;
 
   @override
   void initState() {
@@ -48,6 +54,12 @@ class _BiometricGateState extends State<BiometricGate>
       _wasPaused = true;
     } else if (state == AppLifecycleState.resumed && _wasPaused) {
       _wasPaused = false;
+      // мгновенно (без await) прикрываем кабинет нейтральной шторкой, если
+      // защита включена и льготный период - судя по кэшу - истёк. авторитетно
+      // решит асинхронный _lockIfNeeded ниже, но шторка убирает мелькание
+      if (!_locked && _protectionOn && !Biometric.withinGracePeriodSync()) {
+        setState(() => _coverForCheck = true);
+      }
       _lockIfNeeded();
     }
   }
@@ -56,11 +68,17 @@ class _BiometricGateState extends State<BiometricGate>
     if (_locked) return;
     final bio = await Biometric.isEnabled;
     final pin = await PinLock.isSet;
-    if (!bio && !pin) return;
-    if (await Biometric.withinGracePeriod) return;
+    _protectionOn = bio || pin;
+    final grace = _protectionOn ? await Biometric.withinGracePeriod : false;
     if (!mounted) return;
+    if (!_protectionOn || grace) {
+      // замок не нужен - снимаем синхронную шторку, если поднимали
+      if (_coverForCheck) setState(() => _coverForCheck = false);
+      return;
+    }
     setState(() {
       _locked = true;
+      _coverForCheck = false;
       _bioEnabled = bio;
       _pinSet = pin;
     });
@@ -99,6 +117,9 @@ class _BiometricGateState extends State<BiometricGate>
     return Stack(
       children: [
         widget.child,
+        // нейтральная шторка на время асинхронной проверки замка (без данных)
+        if (_coverForCheck && !_locked)
+          const Positioned.fill(child: _CheckCover()),
         if (_locked)
           Positioned.fill(
             child: _LockView(
@@ -110,6 +131,32 @@ class _BiometricGateState extends State<BiometricGate>
             ),
           ),
       ],
+    );
+  }
+}
+
+/// нейтральная шторка на те миллисекунды, пока идёт асинхронная проверка замка
+/// при возврате из фона. без баланса и личных данных; тот же значок замка, что
+/// и на экране блокировки - переход шторка→замок получается бесшовным
+class _CheckCover extends StatelessWidget {
+  const _CheckCover();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.p.bg,
+      child: Center(
+        child: Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.brand.withValues(alpha: 0.10),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.lock_outline,
+              color: AppColors.brand, size: 34),
+        ),
+      ),
     );
   }
 }
