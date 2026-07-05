@@ -37,5 +37,6 @@
   App Review Information.
 
 ## Сборка релиза
-- ⬜ Поднять `CFBundleShortVersionString`/`appVersion` (сейчас `0.1.0`) и build number.
+- ✅ Версия `1.0.0+2` (`CFBundleShortVersionString`/`appVersion` и build number) —
+  уже задана единым источником `app/pubspec.yaml`.
 - ⬜ Archive в Xcode → загрузка в App Store Connect → TestFlight → внешнее тестирование → релиз.
