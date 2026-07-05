@@ -38,5 +38,9 @@ void main() {
     test('ноль', () {
       expect(BalanceStore.format(0), '0 ₽');
     });
+    test('дробная часть, округляющаяся до 100 копеек, переносится в рубли', () {
+      expect(BalanceStore.format(12.999), '13 ₽');
+      expect(BalanceStore.format(1845.999), '1 846 ₽');
+    });
   });
 }

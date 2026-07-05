@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'theme.dart';
+import 'services/app_info.dart';
 import 'services/auth_store.dart';
 import 'services/push_service.dart';
 import 'services/analytics.dart';
@@ -38,6 +39,9 @@ Future<void> main() async {
 }
 
 Future<void> _initServices() async {
+  // версия из нативного пакета - до регистрации устройства и проверки обновлений,
+  // которым она нужна
+  await AppInfo.load();
   try {
     await Firebase.initializeApp().timeout(const Duration(seconds: 10));
     await Analytics.enable();

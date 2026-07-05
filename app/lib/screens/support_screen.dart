@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 import '../theme.dart';
 import '../services/analytics.dart';
+import '../services/app_info.dart';
 import '../widgets/ui_kit.dart';
 import 'diagnostics_screen.dart';
 import 'lan_devices_screen.dart';
@@ -109,7 +110,7 @@ class SupportScreen extends StatelessWidget {
           ]),
           const SizedBox(height: 24),
           Center(
-            child: Text('ЛК Интерра · v${AppConfig.appVersion}',
+            child: Text('ЛК Интерра · v${AppInfo.version}',
                 style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
           ),
         ],

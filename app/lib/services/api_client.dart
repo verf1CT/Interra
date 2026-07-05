@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
 import '../config.dart';
+import 'app_info.dart';
 import 'secure_http.dart';
 
 /// клиент нашего бэкенда (server/): регистрация устройства для push-рассылок
@@ -22,7 +23,7 @@ class ApiClient {
               'token': token,
               'clientLogin': clientLogin,
               'platform': Platform.isIOS ? 'ios' : 'android',
-              'appVersion': AppConfig.appVersion,
+              'appVersion': AppInfo.version,
               if (segments != null) 'segments': segments,
               if (prefs != null) 'prefs': prefs,
             }),
