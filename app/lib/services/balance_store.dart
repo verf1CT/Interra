@@ -115,8 +115,12 @@ class BalanceStore {
   static String format(double amount) {
     final sign = amount < 0 ? '−' : '';
     final abs = amount.abs();
-    final whole = abs.truncate();
-    final cents = ((abs - whole) * 100).round();
+    // округляем сразу в копейках: иначе при дробной части, округляющейся
+    // до 100 (напр. 12.999), копейки «переполнялись» бы в 100 без переноса
+    // в рубли и выдавали «12,100 ₽»
+    final totalCents = (abs * 100).round();
+    final whole = totalCents ~/ 100;
+    final cents = totalCents % 100;
     final digits = whole.toString();
     final buf = StringBuffer();
     for (var i = 0; i < digits.length; i++) {

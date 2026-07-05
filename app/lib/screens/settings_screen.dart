@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../config.dart';
 import '../theme.dart';
 import '../utils/phone.dart';
+import '../services/app_info.dart';
 import '../services/auth_store.dart';
 import '../services/api_client.dart';
 import '../services/balance_store.dart';
@@ -67,9 +67,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
-    // включение защищаем проверкой биометрии - чтобы случайный человек
-    // не включил замок чужим лицом/пальцем
-    if (value && !await Biometric.authenticate()) return;
+    // и включение, и отключение защищаем проверкой - чтобы посторонний не
+    // поставил замок чужим лицом/пальцем и, что важнее, не СНЯЛ уже
+    // включённый замок, пока телефон разблокирован в руках (паритет с PIN)
+    if (!await Biometric.authenticate()) return;
     await Biometric.setEnabled(value);
     if (!mounted) return;
     setState(() => _biometricEnabled = value);
@@ -452,7 +453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
           Center(
-            child: Text('ЛК Интерра · v${AppConfig.appVersion}',
+            child: Text('ЛК Интерра · v${AppInfo.version}',
                 style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
           ),
         ],
