@@ -10,6 +10,7 @@ import '../services/billing_api.dart';
 import '../services/analytics.dart';
 import '../services/balance_store.dart';
 import '../services/page_cache.dart';
+import '../services/quick_actions_service.dart';
 import '../widgets/cabinet_skeleton.dart';
 import 'diagnostics_screen.dart';
 import 'register_screen.dart';
@@ -39,6 +40,7 @@ class _WebViewScreenState extends State<WebViewScreen>
   DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
   bool _recovering = false; // идёт восстановление сессии (страница входа)
   bool _opening = false; // грузим свежую страницу - прячем старый контент
+  bool _pendingPayment = false; // ярлык «Пополнить» на холодном старте - ждём загрузки
 
   /// свой хост держим внутри WebView, всё остальное - наружу
   static const String _host = 'stat.interra.ru';
@@ -51,6 +53,7 @@ class _WebViewScreenState extends State<WebViewScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ThemeController.mode.addListener(_onThemeChanged);
+    QuickActionsService.paymentRequested.addListener(_onPaymentRequested);
     BalanceStore.restore(); // показать последний известный баланс сразу
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -85,6 +88,11 @@ class _WebViewScreenState extends State<WebViewScreen>
               await _extractBalance();
             }
             await _recoverIfSessionExpired();
+            // отложенное «Пополнить» с холодного старта - теперь главная готова
+            if (_pendingPayment && !_offline && _error == null) {
+              _pendingPayment = false;
+              _openPayment();
+            }
           },
           onWebResourceError: (err) {
             // ошибка только основного документа (не вложенных ресурсов)
@@ -107,8 +115,12 @@ class _WebViewScreenState extends State<WebViewScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     ThemeController.mode.removeListener(_onThemeChanged);
+    QuickActionsService.paymentRequested.removeListener(_onPaymentRequested);
     super.dispose();
   }
+
+  /// ярлык иконки «Пополнить» - открываем раздел пополнения
+  void _onPaymentRequested() => _openPayment();
 
   /// смена темы приложением - перекрашиваем уже открытую страницу кабинета,
   /// не дожидаясь перезагрузки
@@ -190,6 +202,13 @@ class _WebViewScreenState extends State<WebViewScreen>
   /// адреса главной. без сети - просто переоткрываем кабинет
   Future<void> _openPayment() async {
     if (_offline || _error != null) {
+      _openCabinet();
+      return;
+    }
+    // холодный старт по ярлыку: кабинет ещё не загружен - откроем его,
+    // а к пополнению вернёмся, когда главная отрисуется (onPageFinished)
+    if (_liveUrl == null) {
+      _pendingPayment = true;
       _openCabinet();
       return;
     }

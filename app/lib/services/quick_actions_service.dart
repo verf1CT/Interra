@@ -15,10 +15,14 @@ class QuickActionsService {
       GlobalKey<NavigatorState>();
 
   static const _typeHome = 'action_home';
+  static const _typePay = 'action_pay';
   static const _typeSupport = 'action_support';
   static const _typeSettings = 'action_settings';
 
   static const QuickActions _qa = QuickActions();
+
+  /// сигнал «открыть пополнение» - слушает экран кабинета (счётчик-тик)
+  static final ValueNotifier<int> paymentRequested = ValueNotifier<int>(0);
 
   /// действие, пришедшее до готовности навигатора (холодный старт по ярлыку)
   static String? _pending;
@@ -31,6 +35,7 @@ class QuickActionsService {
       // ярлыков достаточно
       await _qa.setShortcutItems(const [
         ShortcutItem(type: _typeHome, localizedTitle: 'Личный кабинет'),
+        ShortcutItem(type: _typePay, localizedTitle: 'Пополнить'),
         ShortcutItem(type: _typeSupport, localizedTitle: 'Поддержка'),
         ShortcutItem(type: _typeSettings, localizedTitle: 'Настройки'),
       ]);
@@ -53,6 +58,11 @@ class QuickActionsService {
       case _typeHome:
         // возврат к корню (кабинету), закрыв вложенные экраны
         nav.popUntil((r) => r.isFirst);
+        break;
+      case _typePay:
+        // к корню (кабинету) и просим открыть раздел пополнения
+        nav.popUntil((r) => r.isFirst);
+        paymentRequested.value++;
         break;
       case _typeSupport:
         nav.push(MaterialPageRoute(
