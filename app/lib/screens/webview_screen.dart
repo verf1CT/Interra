@@ -61,13 +61,17 @@ class _WebViewScreenState extends State<WebViewScreen>
           onNavigationRequest: _handleNavigation,
           onPageStarted: (_) => setState(() => _loading = true),
           onPageFinished: (_) async {
-            setState(() {
-              _loading = false;
-              _firstLoaded = true;
-              _opening = false; // свежая страница отрисована - снимаем заглушку
-            });
+            // СНАЧАЛА красим (в т.ч. тёмная тема), пока скелетон ещё прикрывает -
+            // иначе на миг видна белая страница до применения тёмного CSS
             await _injectCabinetStyle();
             await _injectPullToRefresh();
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _firstLoaded = true;
+                _opening = false; // теперь снимаем заглушку - страница уже покрашена
+              });
+            }
             // снимок для офлайна делаем только с «живой» сетевой страницы,
             // а не когда сами отрисовали кэш через loadHtmlString
             if (!_offline) {
@@ -103,6 +107,8 @@ class _WebViewScreenState extends State<WebViewScreen>
   /// смена темы приложением - перекрашиваем уже открытую страницу кабинета,
   /// не дожидаясь перезагрузки
   void _onThemeChanged() {
+    _controller.setBackgroundColor(
+        _cabinetDark ? const Color(0xFF0F141A) : Colors.white);
     _controller.runJavaScript(
         "var d=document.getElementById('interraDark');if(d)d.remove();");
     if (_cabinetDark) _injectCabinetDark();
@@ -194,6 +200,9 @@ class _WebViewScreenState extends State<WebViewScreen>
       _liveUrl = AppConfig.cabinetFromLoginParam(r.data!);
       setState(() => _offline = false);
       Analytics.cabinetOpened();
+      // фон WebView под тему - чтобы во время загрузки не белел
+      _controller.setBackgroundColor(
+          _cabinetDark ? const Color(0xFF0F141A) : Colors.white);
       await _controller.loadRequest(Uri.parse(_liveUrl!));
       return;
     }
@@ -429,9 +438,13 @@ class _WebViewScreenState extends State<WebViewScreen>
         // атрибуты bgcolor, боковую панель, меню, обёртки контента
         + "[bgcolor]{background-color:transparent !important;}"
         + ".sidebar{background:transparent !important;border-right-color:#2C3742 !important;}"
+        // на мобиле .header/.nav в utm7 имеют background:#fff - глушим
+        + ".header{background-color:transparent !important;}"
         + ".nav{background-color:#131A22 !important;}"
         + ".nav-wrapper,.main,.grid,.wrapper,.b-content,#aaatds{background-color:transparent !important;}"
         + ".nav a,.nav-link{color:#C3CDD6 !important;}"
+        // выбранная/наведённая вкладка меню была светлой (#f4f4f4)
+        + ".nav-link.--active,.nav-link:hover{background-color:#1E2833 !important;}"
         + ".nav-link.--active{color:#5AB0EE !important;}"
         + ".nav-divider .divider{background:#2C3742 !important;border-color:#2C3742 !important;}"
         + ".nav-footer{border-top-color:#2C3742 !important;}"
