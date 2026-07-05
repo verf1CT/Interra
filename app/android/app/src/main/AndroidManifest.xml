@@ -27,10 +27,9 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- статические ярлыки (long-press по иконке): «Проверить баланс»-->
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
+            <!-- ярлыки long-press задаются динамически (quick_actions):
+                 Личный кабинет / Пополнить / Поддержка / Настройки - с иконками.
+                 статический дубль убран, чтобы совпадало с iOS -->
         </activity>
 
         <!-- виджет баланса на домашнем экране-->
