@@ -69,6 +69,7 @@ class _WebViewScreenState extends State<WebViewScreen>
             // иначе на миг видна белая страница до применения тёмного CSS
             await _injectCabinetStyle();
             await _injectPullToRefresh();
+            await _linkifyInformerPhones();
             // runJavaScript возвращается, как только стиль добавлен в DOM, но
             // WebView перерисовывается под тёмный CSS лишь на следующем кадре -
             // ждём пару кадров, иначе при снятии скелетона мелькнёт белым
@@ -714,6 +715,47 @@ class _WebViewScreenState extends State<WebViewScreen>
         })();
       ''');
     } catch (_) {}
+  }
+
+  /// делает телефон в оранжевой карточке-информере (`.b-informer`) кликабельным:
+  /// оборачивает номер в `<a href="tel:…">`, дальше тап перехватывает
+  /// [_handleNavigation] и открывает системный набор. так номер можно не
+  /// переписывать вручную. запускается на каждой загрузке, повторно безопасно
+  Future<void> _linkifyInformerPhones() async {
+    try {
+      await _controller.runJavaScript(r'''
+        (function(){
+          var box = document.querySelector('.b-informer');
+          if(!box || box.__telLinked) return;
+          box.__telLinked = true;
+          // +7/8, затем ещё 10 цифр через любые разделители (пробел, -, –, скобки)
+          var re = /(?:\+7|8)[\s\-–()]*\d(?:[\s\-–()]*\d){9}/g;
+          var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
+          var targets = [];
+          while(walker.nextNode()){
+            var n = walker.currentNode;
+            // пропускаем то, что уже внутри ссылки
+            if(n.parentNode && n.parentNode.closest && n.parentNode.closest('a')) continue;
+            re.lastIndex = 0;
+            if(re.test(n.nodeValue)) targets.push(n);
+          }
+          targets.forEach(function(n){
+            re.lastIndex = 0;
+            var html = n.nodeValue.replace(re, function(m){
+              var d = m.replace(/\D/g,'');
+              if(d.length !== 11) return m;           // не телефон - не трогаем
+              if(d[0] === '8') d = '7' + d.slice(1);   // 8XXXXXXXXXX → 7XXXXXXXXXX
+              return '<a href="tel:+' + d + '">' + m + '</a>';
+            });
+            if(html !== n.nodeValue){
+              var span = document.createElement('span');
+              span.innerHTML = html;
+              n.parentNode.replaceChild(span, n);
+            }
+          });
+        })();
+      ''');
+    } catch (_) {/* страница могла смениться - не критично */}
   }
 
   void _resetToRegister() {
