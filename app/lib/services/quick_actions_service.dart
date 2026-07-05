@@ -21,7 +21,8 @@ class QuickActionsService {
 
   static const QuickActions _qa = QuickActions();
 
-  /// сигнал «открыть пополнение» - слушает экран кабинета (счётчик-тик)
+  /// сигналы экрану кабинета (счётчики-тики): открыть главную / пополнение
+  static final ValueNotifier<int> homeRequested = ValueNotifier<int>(0);
   static final ValueNotifier<int> paymentRequested = ValueNotifier<int>(0);
 
   /// действие, пришедшее до готовности навигатора (холодный старт по ярлыку)
@@ -33,11 +34,19 @@ class QuickActionsService {
       // без кастомных icon: именованные ресурсы пришлось бы класть в каждую
       // платформу, а их отсутствие роняет setShortcutItems. системного вида
       // ярлыков достаточно
+      // иконки: iOS - template-картинки из Assets.xcassets, Android - drawable
       await _qa.setShortcutItems(const [
-        ShortcutItem(type: _typeHome, localizedTitle: 'Личный кабинет'),
-        ShortcutItem(type: _typePay, localizedTitle: 'Пополнить'),
-        ShortcutItem(type: _typeSupport, localizedTitle: 'Поддержка'),
-        ShortcutItem(type: _typeSettings, localizedTitle: 'Настройки'),
+        ShortcutItem(
+            type: _typeHome, localizedTitle: 'Личный кабинет', icon: 'qa_home'),
+        ShortcutItem(type: _typePay, localizedTitle: 'Пополнить', icon: 'qa_pay'),
+        ShortcutItem(
+            type: _typeSupport,
+            localizedTitle: 'Поддержка',
+            icon: 'qa_support'),
+        ShortcutItem(
+            type: _typeSettings,
+            localizedTitle: 'Настройки',
+            icon: 'qa_settings'),
       ]);
     } catch (e) {
       debugPrint('QuickActions.init пропущен: $e');
@@ -56,8 +65,9 @@ class QuickActionsService {
     Analytics.log('quick_action', {'type': type});
     switch (type) {
       case _typeHome:
-        // возврат к корню (кабинету), закрыв вложенные экраны
+        // к корню и открыть главную (Основную информацию), а не последний раздел
         nav.popUntil((r) => r.isFirst);
+        homeRequested.value++;
         break;
       case _typePay:
         // к корню (кабинету) и просим открыть раздел пополнения
