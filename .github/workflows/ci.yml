@@ -53,15 +53,16 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # Debug-сборка компилирует нативный Android-код (виджет, плитка,
-      # манифест, ресурсы) без релизной подписи — проверка компиляции.
+      # Release-сборка: компилирует нативный Android-код и даёт компактный APK.
+      # без key.properties подписывается debug-ключом (см. build.gradle.kts) -
+      # ставится на телефон для теста.
       - name: Build APK
-        run: flutter build apk --debug
+        run: flutter build apk --release
 
       # выкладываем APK артефактом, чтобы можно было скачать и поставить на телефон
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: interra-android-debug
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
+          name: interra-android-release
+          path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
