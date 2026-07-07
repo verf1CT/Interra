@@ -7,7 +7,7 @@
 
 ---
 
-## Статус проекта (на 6 июля 2026)
+## Статус проекта (на 7 июля 2026)
 
 | Что | Состояние |
 |-----|-----------|
@@ -67,7 +67,7 @@
 | `server/` | Бэкенд рассылки уведомлений (Node.js) + веб-панель оператора                   |
 | `deploy/` | Инфраструктура сервера (nginx reverse-proxy + HTTPS, systemd-юнит)             |
 | `docs/`   | Статус релиза, деплой, настройка платформ, материалы для магазинов             |
-| `.github/`| CI (GitHub Actions): анализ, тесты, сборка релизного APK как артефакт          |
+| `.github/`| CI (GitHub Actions): анализ, тесты, сборка APK + AAB и публикация в Releases   |
 
 ## Как работает приложение (подробнее)
 
@@ -79,9 +79,25 @@
   приватности в переключателе задач, сертификат-пиннинг для своих хостов.
 - **Инструменты** — пошаговая диагностика сети и сканер «Устройства в моём Wi-Fi».
 - **Уведомления** — оператор из веб-панели сервера рассылает их всем, сегменту
-  (по категориям) или конкретному абоненту.
+  (по категориям) или конкретному абоненту. Плюс приложение подписано на общий
+  FCM-топик `all` — это канал массовой рассылки «на все Android» напрямую через
+  Firebase, без веб-панели и таргетинга по сегментам (см. ниже).
 
 Подробнее — в [`app/README.md`](app/README.md) и [`server/README.md`](server/README.md).
+
+### Как разослать уведомление на все Android
+
+Не требует поднятого сервера — только `serviceAccountKey.json` проекта Firebase:
+
+```bash
+cd server
+node scripts/send-test-push.js --topic all "Заголовок" "Текст"   # всем, кто на топике
+node scripts/send-test-push.js --token <FCM_TOKEN> "Тест" "Текст" # точечно, на одно устройство
+```
+
+Долетает до устройств, где стоит сборка с подпиской на топик (см. `PushService`) и
+приложение хотя бы раз открывали. Альтернатива — Firebase Console → Messaging →
+**Target = Topic `all`**. Свежие APK/AAB — во вкладке **Releases** (тег `build-<N>`).
 
 ---
 
@@ -99,7 +115,9 @@
 
 - Версия: **`1.0.0+2`** (единый источник — `app/pubspec.yaml`).
 - Качество: `flutter analyze` — 0 замечаний; `flutter test` — 36/36.
-- CI зелёный, релизный APK собирается автоматически (артефакт `interra-android-release`).
+- CI зелёный; на изменения в `app/**` собираются APK + AAB и публикуются в
+  **Releases** (тег `build-<N>`). С ключом из секретов репозитория подпись
+  сторовая, иначе debug. Коммиты в `server/**`/`docs/**` сборку не запускают.
 - Firebase-проект `interra-5a99e` подключён (Analytics / Crashlytics / FCM).
 
 ## Быстрый старт (для разработчика)
@@ -111,9 +129,12 @@ flutter analyze lib test && flutter test          # проверки
 flutter build apk --release                        # Android-сборка (нужен Android SDK)
 flutter build ios  --release                       # iOS-сборка (нужен macOS + Xcode)
 
-# бэкенд
+# бэкенд (нужен Node 18–20: better-sqlite3 не собирается под Node 26+)
 cd server && npm install && npm start              # без ключа Firebase — режим dry-run
 ```
+
+> Локальный запуск проще всего через Docker: `cd server && ./deploy.sh` (Node 20
+> внутри образа). Напрямую — версией Node 18–20, иначе `better-sqlite3` падает.
 
 Установка окружения — [`docs/INSTALL_FLUTTER.md`](docs/INSTALL_FLUTTER.md),
 [`docs/INSTALL_MACOS_IOS.md`](docs/INSTALL_MACOS_IOS.md). Деплой сервера —
