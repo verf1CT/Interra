@@ -52,8 +52,22 @@ class PushService {
       // регистрируем устройство и реагируем на обновление токена
       await registerCurrentToken();
       messaging.onTokenRefresh.listen((_) => registerCurrentToken());
+
+      // подписка на общую тему - канал массовых рассылок «на всех» (через
+      // FCM topic, не зависит от таргетинга по сегментам в консоли Firebase)
+      await _subscribeAll(messaging);
     } catch (e) {
       debugPrint('PushService.init пропущен: $e');
+    }
+  }
+
+  /// подписка на тему массовых рассылок. best-effort: на iOS без APNs
+  /// подписка может падать, поэтому не даём ей ломать остальную инициализацию
+  static Future<void> _subscribeAll(FirebaseMessaging messaging) async {
+    try {
+      await messaging.subscribeToTopic('all');
+    } catch (e) {
+      debugPrint('subscribeToTopic(all) пропущен: $e');
     }
   }
 
