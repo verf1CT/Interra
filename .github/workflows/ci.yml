@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+    # сборку/релиз гоняем только на изменения приложения или самого workflow;
+    # коммиты в server/**, docs/**, README.md не запускают CI впустую
+    paths:
+      - "app/**"
+      - ".github/workflows/ci.yml"
   pull_request:
 
 jobs:
