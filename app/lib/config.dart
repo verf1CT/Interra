@@ -33,9 +33,6 @@ class AppConfig {
   /// тот же телефон в человекочитаемом виде - для показа в интерфейсе
   static const String supportPhoneHuman = '8 800 770-00-10';
 
-  /// новостной канал в Telegram (это канал, писать в него нельзя)
-  static const String supportTelegram = 'tginterra';
-
   /// сообщество ВКонтакте
   static const String supportVkUrl = 'https://vk.com/public172258204';
 
