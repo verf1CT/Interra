@@ -8,8 +8,12 @@
 // Токен устройства берётся с телефона (см. README/инструкцию). Топик работает,
 // только если приложение подписано на него (FirebaseMessaging.subscribeToTopic).
 
-const admin = require('firebase-admin');
-const path = require('path');
+import admin from 'firebase-admin';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const args = process.argv.slice(2);
 const kind = args[0]; // --token | --topic
@@ -22,8 +26,12 @@ if ((kind !== '--token' && kind !== '--topic') || !target) {
   process.exit(1);
 }
 
+const serviceAccount = JSON.parse(
+  readFileSync(path.join(__dirname, '..', 'serviceAccountKey.json'), 'utf8'),
+);
+
 admin.initializeApp({
-  credential: admin.credential.cert(require(path.join(__dirname, '..', 'serviceAccountKey.json'))),
+  credential: admin.credential.cert(serviceAccount),
 });
 
 // notification-сообщение: показывается и на переднем плане (приложение само
