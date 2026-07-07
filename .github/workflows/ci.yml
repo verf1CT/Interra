@@ -31,8 +31,11 @@ jobs:
         run: flutter test
 
   android-build:
-    name: Build Android APK (release)
+    name: Build Android APK/AAB (release)
     runs-on: ubuntu-latest
+    # нужно, чтобы шаг ниже мог создать релиз и залить в него файлы
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: app
@@ -59,10 +62,44 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      # выкладываем APK артефактом, чтобы можно было скачать и поставить на телефон
-      - name: Upload APK
+      # AAB (App Bundle) - формат для загрузки в Google Play.
+      - name: Build AAB
+        run: flutter build appbundle --release
+
+      # выкладываем APK и AAB артефактами сборки (доступны на вкладке Actions)
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: interra-android-release
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      # версия из pubspec (например 1.0.0+2) - для имени тега/релиза
+      - name: Read app version
+        if: github.event_name == 'push'
+        id: ver
+        run: |
+          echo "version=$(grep '^version:' pubspec.yaml | sed 's/version: *//')" >> "$GITHUB_OUTPUT"
+
+      # публикуем релиз на каждый push в main: тег build-<номер запуска>,
+      # к нему прикладываем APK и AAB - их видно на вкладке Releases.
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "Сборка ${{ steps.ver.outputs.version }} (#${{ github.run_number }})"
+          body: |
+            Автосборка из коммита ${{ github.sha }}.
+
+            • `app-release.apk` — установить на телефон для теста
+            • `app-release.aab` — App Bundle для загрузки в Google Play
+
+            Примечание: без ключа подписи в CI сборка подписана debug-ключом.
+          prerelease: true
+          files: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/bundle/release/app-release.aab
+          fail_on_unmatched_files: true

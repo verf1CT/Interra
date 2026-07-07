@@ -155,9 +155,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleNotifications(bool value) async {
+    // переключатель должен реагировать мгновенно - как категории ниже.
+    // сначала обновляем UI и локальную настройку, а работу с push-токеном
+    // (getToken на iOS без APNs может висеть до таймаута) делаем в фоне,
+    // не блокируя переключатель.
+    setState(() => _notifications = value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications_enabled', value);
-    // getToken на iOS без APNs может висеть/падать - не блокируем переключатель
+    _syncPushRegistration(value);
+  }
+
+  /// регистрация/снятие push-токена в фоне (best-effort, сеть может отсутствовать)
+  Future<void> _syncPushRegistration(bool value) async {
     try {
       final token = await FirebaseMessaging.instance
           .getToken()
@@ -173,8 +182,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       debugPrint('toggleNotifications: push-токен пропущен: $e');
     }
-    if (!mounted) return;
-    setState(() => _notifications = value);
   }
 
   Future<void> _toggleCategory(String key, bool value) async {
@@ -428,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               leading: const Icon(Icons.support_agent_rounded,
                   color: AppColors.brand),
               title: const Text('Поддержка'),
-              subtitle: const Text('Звонок, Telegram, помощь на сайте'),
+              subtitle: const Text('Звонок, ВКонтакте, помощь на сайте'),
               trailing: Icon(Icons.chevron_right, color: context.p.inkFaint),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(

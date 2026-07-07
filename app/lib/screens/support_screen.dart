@@ -8,7 +8,7 @@ import '../widgets/ui_kit.dart';
 import 'diagnostics_screen.dart';
 import 'lan_devices_screen.dart';
 
-/// экран «Поддержка»: связь с провайдером (звонок, Telegram, ВКонтакте, помощь
+/// экран «Поддержка»: связь с провайдером (звонок, ВКонтакте, помощь
 /// на сайте) и версия приложения. контакты - из [AppConfig]
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -45,16 +45,6 @@ class SupportScreen extends StatelessWidget {
           const SizedBox(height: 18),
           _sectionTitle('Мы в соцсетях'),
           _group([
-            _tile(
-              icon: Icons.campaign_rounded,
-              color: const Color(0xFF2AABEE),
-              title: 'Telegram-канал',
-              subtitle: 'Новости и статус сети',
-              onTap: () => _open(
-                  Uri.parse('https://t.me/${AppConfig.supportTelegram}'),
-                  'telegram'),
-            ),
-            _divider(),
             _tile(
               icon: Icons.groups_rounded,
               color: const Color(0xFF0077FF),
