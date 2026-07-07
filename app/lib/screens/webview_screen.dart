@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -40,7 +41,8 @@ class _WebViewScreenState extends State<WebViewScreen>
   DateTime? _lastOpenAt; // когда последний раз грузили свежую ссылку
   bool _recovering = false; // идёт восстановление сессии (страница входа)
   bool _opening = false; // грузим свежую страницу - прячем старый контент
-  bool _pendingPayment = false; // ярлык «Пополнить» на холодном старте - ждём загрузки
+  bool _pendingPayment =
+      false; // ярлык «Пополнить» на холодном старте - ждём загрузки
 
   /// свой хост держим внутри WebView, всё остальное - наружу
   static const String _host = 'stat.interra.ru';
@@ -80,7 +82,8 @@ class _WebViewScreenState extends State<WebViewScreen>
               setState(() {
                 _loading = false;
                 _firstLoaded = true;
-                _opening = false; // теперь снимаем заглушку - страница уже покрашена
+                _opening =
+                    false; // теперь снимаем заглушку - страница уже покрашена
               });
             }
             // снимок для офлайна делаем только с «живой» сетевой страницы,
@@ -774,6 +777,10 @@ class _WebViewScreenState extends State<WebViewScreen>
 
   @override
   Widget build(BuildContext context) {
+    // на Android снизу уже есть системная навигация (назад/домой), поэтому своя
+    // нижняя панель дублирует её и выглядит плохо: убираем панель целиком, а
+    // «Главную» выносим в шапку слева от настроек. на iOS оставляем как было.
+    final isAndroid = Platform.isAndroid;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -787,6 +794,14 @@ class _WebViewScreenState extends State<WebViewScreen>
           title: const Text('Личный кабинет'),
           actions: [
             _balanceChip(),
+            // на Android «Главная» живёт в шапке (слева от настроек),
+            // т.к. нижней панели больше нет
+            if (isAndroid)
+              IconButton(
+                icon: const Icon(Icons.home_rounded),
+                tooltip: 'Главная',
+                onPressed: _openCabinet,
+              ),
             IconButton(
               icon: const Icon(Icons.settings),
               tooltip: 'Настройки',
@@ -818,38 +833,40 @@ class _WebViewScreenState extends State<WebViewScreen>
               const CabinetSkeleton(),
           ],
         ),
-        bottomNavigationBar: BottomAppBar(
-          height: 64,
-          padding: EdgeInsets.zero,
-          color: context.p.card,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: context.p.line)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _navButton(
-                  icon: Icons.arrow_back_ios_new,
-                  label: 'Назад',
-                  onTap: _goBack,
+        bottomNavigationBar: isAndroid
+            ? null
+            : BottomAppBar(
+                height: 64,
+                padding: EdgeInsets.zero,
+                color: context.p.card,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: context.p.line)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _navButton(
+                        icon: Icons.arrow_back_ios_new,
+                        label: 'Назад',
+                        onTap: _goBack,
+                      ),
+                      _navButton(
+                        icon: Icons.home_rounded,
+                        label: 'Главная',
+                        color: AppColors.brand,
+                        big: true,
+                        onTap: _openCabinet,
+                      ),
+                      _navButton(
+                        icon: Icons.refresh,
+                        label: 'Обновить',
+                        onTap: _refresh,
+                      ),
+                    ],
+                  ),
                 ),
-                _navButton(
-                  icon: Icons.home_rounded,
-                  label: 'Главная',
-                  color: AppColors.brand,
-                  big: true,
-                  onTap: _openCabinet,
-                ),
-                _navButton(
-                  icon: Icons.refresh,
-                  label: 'Обновить',
-                  onTap: _refresh,
-                ),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -930,8 +947,7 @@ class _WebViewScreenState extends State<WebViewScreen>
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Row(
               children: [
                 const Icon(Icons.cloud_off_rounded,
@@ -939,7 +955,8 @@ class _WebViewScreenState extends State<WebViewScreen>
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text('Нет сети — показаны последние данные',
-                      style: TextStyle(fontSize: 12.5, color: Color(0xFF8A5A1E))),
+                      style:
+                          TextStyle(fontSize: 12.5, color: Color(0xFF8A5A1E))),
                 ),
                 GestureDetector(
                   onTap: _openCabinet,
@@ -966,7 +983,8 @@ class _WebViewScreenState extends State<WebViewScreen>
           curve: Curves.easeOut,
           builder: (context, t, child) => Opacity(
             opacity: t,
-            child: Transform.translate(offset: Offset(0, (1 - t) * 12), child: child),
+            child: Transform.translate(
+                offset: Offset(0, (1 - t) * 12), child: child),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
