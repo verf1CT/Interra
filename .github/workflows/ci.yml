@@ -56,9 +56,29 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
+      # Релизная подпись: если в секретах репозитория лежит keystore и пароли,
+      # восстанавливаем android/key.properties + upload-keystore.p12 -> сборка
+      # подписывается сторовым ключом (годится для Google Play). Если секретов
+      # нет, шаг ничего не делает и остаётся debug-подпись (см. build.gradle.kts).
+      - name: Prepare Android signing
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.p12
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.p12
+          storeType=PKCS12
+          storePassword=$ANDROID_STORE_PASSWORD
+          keyAlias=upload
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+
       # Release-сборка: компилирует нативный Android-код и даёт компактный APK.
-      # без key.properties подписывается debug-ключом (см. build.gradle.kts) -
-      # ставится на телефон для теста.
+      # с key.properties (из секретов) - сторовая подпись; без него debug-подпись,
+      # APK всё равно ставится на телефон для теста.
       - name: Build APK
         run: flutter build apk --release
 
