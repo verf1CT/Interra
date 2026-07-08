@@ -42,11 +42,14 @@ FCM, а «мёртвые» токены сам вычищает. Без ключ
 
 | Метод | Путь                   | Описание                                                   |
 |-------|------------------------|------------------------------------------------------------|
-| GET   | `/api/admin/stats`     | Статистика устройств, сводка `totals` и история рассылок    |
-| POST  | `/api/admin/broadcast` | Отправка: `{ title, body, target:{type,value?}, data?, imageUrl?, link? }` |
+| GET   | `/api/admin/stats`     | Статистика устройств, сводка `totals` (вкл. `opens`) и история рассылок |
+| POST  | `/api/admin/broadcast` | Отправка/планирование: `{ title, body, target:{type,value?}, data?, imageUrl?, link?, sendAt? }` |
+| GET   | `/api/admin/scheduled` | Список запланированных (ожидающих) рассылок                 |
+| POST  | `/api/admin/scheduled/:id/cancel` | Отмена запланированной рассылки                 |
 
 `imageUrl` (https) — картинка в уведомлении (rich push); `link` (https) —
-открывается по тапу. Оба необязательны.
+открывается по тапу; `sendAt` (ISO, в будущем) — отложенная рассылка (фоновый
+планировщик, интервал `SCHEDULER_TICK_MS`, по умолчанию 30 c). Все необязательны.
 
 `target.type`: `all` (всем), `segment` (по тегу-категории), `login` (логин UTM5).
 

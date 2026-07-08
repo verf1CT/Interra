@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
-import { selectTokens, logBroadcast, updateBroadcastResult, stats, recentBroadcasts, broadcastStats } from '../db.js';
-import { sendToTokens, fcmEnabled } from '../fcm.js';
+import { stats, recentBroadcasts, broadcastStats, createScheduled, listScheduled, cancelScheduled } from '../db.js';
+import { fcmEnabled } from '../fcm.js';
+import { runBroadcast } from '../broadcast.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireAdmin);
@@ -16,6 +17,23 @@ adminRouter.get('/stats', (req, res) => {
   });
 });
 
+/** общая валидация тела рассылки. Возвращает строку-ошибку или null. */
+function validateBroadcast({ title, body, target, imageUrl, link }) {
+  if (!title || !body) return 'title и body обязательны';
+  if (!target || !['all', 'segment', 'login'].includes(target.type)) {
+    return "target.type должен быть 'all', 'segment' или 'login'";
+  }
+  if ((target.type === 'segment' || target.type === 'login') && !target.value) {
+    return 'для segment/login нужен target.value';
+  }
+  for (const [name, val] of Object.entries({ imageUrl, link })) {
+    if (val != null && val !== '' && (typeof val !== 'string' || !/^https:\/\//i.test(val))) {
+      return `${name} должен быть https-ссылкой`;
+    }
+  }
+  return null;
+}
+
 /**
  * POST /api/admin/broadcast
  * Тело: {
@@ -23,59 +41,41 @@ adminRouter.get('/stats', (req, res) => {
  *   target: { type: 'all'|'segment'|'login', value? },
  *   data?: object,
  *   imageUrl?: string,  // https-картинка в уведомлении (rich push)
- *   link?: string       // https-ссылка, открывается по тапу (кладётся в data.link)
+ *   link?: string,      // https-ссылка, открывается по тапу (кладётся в data.link)
+ *   sendAt?: string     // если задано — не слать сейчас, а запланировать на это время
  * }
  */
 adminRouter.post('/broadcast', async (req, res) => {
-  const { title, body, target, data, imageUrl, link } = req.body || {};
+  const { title, body, target, data, imageUrl, link, sendAt } = req.body || {};
 
-  if (!title || !body) {
-    return res.status(400).json({ error: 'title и body обязательны' });
-  }
-  if (!target || !['all', 'segment', 'login'].includes(target.type)) {
-    return res.status(400).json({ error: "target.type должен быть 'all', 'segment' или 'login'" });
-  }
-  if ((target.type === 'segment' || target.type === 'login') && !target.value) {
-    return res.status(400).json({ error: 'для segment/login нужен target.value' });
-  }
-  // необязательные url — но если заданы, только https
-  for (const [name, val] of Object.entries({ imageUrl, link })) {
-    if (val != null && val !== '' && (typeof val !== 'string' || !/^https:\/\//i.test(val))) {
-      return res.status(400).json({ error: `${name} должен быть https-ссылкой` });
+  const err = validateBroadcast({ title, body, target, imageUrl, link });
+  if (err) return res.status(400).json({ error: err });
+
+  // запланированная рассылка
+  if (sendAt != null && sendAt !== '') {
+    const when = new Date(sendAt);
+    if (Number.isNaN(when.getTime())) {
+      return res.status(400).json({ error: 'sendAt — некорректная дата/время' });
     }
+    if (when.getTime() <= Date.now()) {
+      return res.status(400).json({ error: 'sendAt должен быть в будущем' });
+    }
+    const r = createScheduled({ title, body, data, imageUrl, link, target, sendAt: when.toISOString() });
+    return res.json({ ok: true, scheduled: true, id: r.lastInsertRowid, sendAt: when.toISOString() });
   }
 
-  const tokens = selectTokens(target);
-  if (tokens.length === 0) {
-    return res.json({ ok: true, recipients: 0, successCount: 0, failureCount: 0, note: 'нет получателей' });
-  }
+  // немедленная отправка
+  const result = await runBroadcast({ title, body, target, data, imageUrl, link });
+  res.json({ ok: true, ...result });
+});
 
-  // link уходит в data, чтобы приложение открыло его по тапу
-  const outData = { ...(data || {}), ...(link ? { link } : {}) };
+/** GET /api/admin/scheduled — ожидающие отправки рассылки. */
+adminRouter.get('/scheduled', (req, res) => {
+  res.json({ scheduled: listScheduled() });
+});
 
-  // журналируем ДО отправки — нужен id рассылки, чтобы приложение вернуло его
-  // при открытии (трекинг open-rate). Счётчики доставки проставим после отправки
-  const logged = logBroadcast({
-    title,
-    body,
-    // сохраняем image/link в журнале, чтобы показывать их в истории/аналитике
-    data: { ...outData, ...(imageUrl ? { image: imageUrl } : {}) },
-    target,
-    recipients: tokens.length,
-    successCount: 0,
-    failureCount: 0,
-  });
-  const bid = logged.lastInsertRowid;
-  outData.bid = bid; // приложение пришлёт этот id на /api/events/opened
-
-  const { successCount, failureCount } = await sendToTokens(tokens, {
-    title,
-    body,
-    data: outData,
-    imageUrl: imageUrl || undefined,
-  });
-
-  updateBroadcastResult(bid, successCount, failureCount);
-
-  res.json({ ok: true, recipients: tokens.length, successCount, failureCount });
+/** POST /api/admin/scheduled/:id/cancel — отменить запланированную рассылку. */
+adminRouter.post('/scheduled/:id/cancel', (req, res) => {
+  const r = cancelScheduled(Number(req.params.id));
+  res.json({ ok: true, canceled: r.changes });
 });

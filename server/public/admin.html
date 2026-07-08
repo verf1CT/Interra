@@ -86,11 +86,19 @@
       <label>Ссылка по нажатию (URL, необязательно)</label>
       <input type="text" id="link-url" placeholder="https://interra.ru/… — откроется по тапу" />
 
+      <label>Запланировать на (необязательно — иначе отправится сразу)</label>
+      <input type="datetime-local" id="send-at" />
+
       <div class="row" style="margin-top:16px">
         <button id="send-btn">Отправить</button>
         <button class="secondary" id="refresh-btn" style="flex:0 0 auto">Обновить статистику</button>
       </div>
       <div class="result" id="send-result"></div>
+    </div>
+
+    <div class="card hidden" id="scheduled-card">
+      <h2>Запланированные рассылки</h2>
+      <div id="scheduled-body" class="muted">—</div>
     </div>
 
     <div class="card hidden" id="analytics-card">
@@ -107,6 +115,7 @@
 
   <script>
     let token = '';
+    let lastStats = null;
     const $ = (id) => document.getElementById(id);
 
     async function api(path, opts = {}) {
@@ -125,7 +134,8 @@
       try {
         await loadStats();
         $('auth-card').classList.add('hidden');
-        ['stats-card', 'send-card', 'analytics-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
+        ['stats-card', 'send-card', 'scheduled-card', 'analytics-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
+        loadScheduled();
       } catch (e) {
         $('auth-error').textContent = e.message;
         $('auth-error').classList.add('err');
@@ -143,6 +153,7 @@
 
     async function loadStats() {
       const s = await api('/api/admin/stats');
+      lastStats = s;
       const pill = $('fcm-pill');
       pill.textContent = s.fcmEnabled ? 'push включён' : 'push выключен (dry-run)';
       pill.className = 'pill ' + (s.fcmEnabled ? 'on' : 'off');
@@ -200,21 +211,37 @@
       const payload = { title: $('title').value.trim(), body: $('body').value.trim(), target };
       const imageUrl = $('image-url').value.trim();
       const link = $('link-url').value.trim();
+      const sendAt = $('send-at').value; // datetime-local, локальное время
       if (imageUrl) payload.imageUrl = imageUrl;
       if (link) payload.link = link;
+      if (sendAt) payload.sendAt = sendAt;
+
+      // предохранитель: подтверждение перед массовой рассылкой «всем»
+      if (type === 'all') {
+        const n = lastStats?.devices?.total ?? '—';
+        const when = sendAt ? `\n\nЗапланировать на: ${sendAt.replace('T', ' ')}` : '';
+        if (!confirm(`Отправить ВСЕМ клиентам (устройств: ${n})?\n\n${payload.title}\n${payload.body}${when}`)) {
+          return;
+        }
+      }
 
       const result = $('send-result');
       result.className = 'result';
       $('send-btn').disabled = true;
       try {
         const r = await api('/api/admin/broadcast', { method: 'POST', body: JSON.stringify(payload) });
-        result.textContent = `Отправлено: ${r.successCount}/${r.recipients}` +
-          (r.failureCount ? `, ошибок: ${r.failureCount}` : '') +
-          (r.note ? ` (${r.note})` : '');
+        if (r.scheduled) {
+          result.textContent = `Запланировано на ${new Date(r.sendAt).toLocaleString('ru-RU')}`;
+          loadScheduled();
+        } else {
+          result.textContent = `Отправлено: ${r.successCount}/${r.recipients}` +
+            (r.failureCount ? `, ошибок: ${r.failureCount}` : '') +
+            (r.note ? ` (${r.note})` : '');
+          loadStats();
+        }
         result.className = 'result ok';
         $('title').value = ''; $('body').value = '';
-        $('image-url').value = ''; $('link-url').value = '';
-        loadStats();
+        $('image-url').value = ''; $('link-url').value = ''; $('send-at').value = '';
       } catch (e) {
         result.textContent = e.message;
         result.className = 'result err';
@@ -222,6 +249,34 @@
         $('send-btn').disabled = false;
       }
     };
+
+    async function loadScheduled() {
+      try {
+        const { scheduled } = await api('/api/admin/scheduled');
+        if (!scheduled || !scheduled.length) {
+          $('scheduled-body').innerHTML = 'Нет запланированных рассылок.';
+          return;
+        }
+        const rows = scheduled.map((b) =>
+          `<tr><td>${new Date(b.send_at).toLocaleString('ru-RU')}</td>` +
+          `<td>${escapeHtml(b.title)}</td>` +
+          `<td>${b.target_type}${b.target_value ? ':' + escapeHtml(b.target_value) : ''}</td>` +
+          `<td><button class="secondary" data-cancel="${b.id}" style="padding:5px 10px">Отменить</button></td></tr>`).join('');
+        $('scheduled-body').innerHTML =
+          `<table><tr><th>Когда</th><th>Заголовок</th><th>Кому</th><th></th></tr>${rows}</table>`;
+        $('scheduled-body').querySelectorAll('[data-cancel]').forEach((btn) => {
+          btn.onclick = async () => {
+            btn.disabled = true;
+            try {
+              await api('/api/admin/scheduled/' + btn.dataset.cancel + '/cancel', { method: 'POST' });
+              loadScheduled();
+            } catch (e) { alert(e.message); btn.disabled = false; }
+          };
+        });
+      } catch (e) {
+        $('scheduled-body').textContent = e.message;
+      }
+    }
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, (c) =>

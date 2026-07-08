@@ -35,6 +35,22 @@ db.exec(`
     failure_count INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS scheduled_broadcasts (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    title        TEXT NOT NULL,
+    body         TEXT NOT NULL,
+    data         TEXT NOT NULL DEFAULT '{}',
+    image_url    TEXT,
+    link         TEXT,
+    target_type  TEXT NOT NULL,
+    target_value TEXT,
+    send_at      TEXT NOT NULL,               -- ISO-время (UTC), когда отправить
+    status       TEXT NOT NULL DEFAULT 'pending', -- pending | sent | canceled
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sched_due ON scheduled_broadcasts(status, send_at);
 `);
 
 // миграция: добавляем opens (счётчик открытий) для старых БД без этого столбца
@@ -165,6 +181,51 @@ export function stats() {
 
 export function recentBroadcasts(limit = 20) {
   return db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT ?').all(limit);
+}
+
+// --- запланированные рассылки ---
+
+export function createScheduled({ title, body, data, imageUrl, link, target, sendAt }) {
+  return db
+    .prepare(
+      `INSERT INTO scheduled_broadcasts
+         (title, body, data, image_url, link, target_type, target_value, send_at)
+       VALUES (@title, @body, @data, @imageUrl, @link, @targetType, @targetValue, @sendAt)`
+    )
+    .run({
+      title,
+      body,
+      data: JSON.stringify(data ?? {}),
+      imageUrl: imageUrl ?? null,
+      link: link ?? null,
+      targetType: target.type,
+      targetValue: target.value ?? null,
+      sendAt,
+    });
+}
+
+/** ожидающие отправки, ближайшие сверху. */
+export function listScheduled() {
+  return db
+    .prepare("SELECT * FROM scheduled_broadcasts WHERE status = 'pending' ORDER BY send_at ASC")
+    .all();
+}
+
+export function cancelScheduled(id) {
+  return db
+    .prepare("UPDATE scheduled_broadcasts SET status = 'canceled' WHERE id = ? AND status = 'pending'")
+    .run(id);
+}
+
+/** запланированные, которым пора (send_at <= now). */
+export function dueScheduled(nowIso) {
+  return db
+    .prepare("SELECT * FROM scheduled_broadcasts WHERE status = 'pending' AND send_at <= ? ORDER BY send_at ASC")
+    .all(nowIso);
+}
+
+export function markScheduledSent(id) {
+  return db.prepare("UPDATE scheduled_broadcasts SET status = 'sent' WHERE id = ?").run(id);
 }
 
 /** сводные счётчики по всем рассылкам — для дашборда аналитики в панели. */
