@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'auth_store.dart';
 import 'api_client.dart';
 import 'notify_prefs.dart';
@@ -49,6 +50,12 @@ class PushService {
       FirebaseMessaging.onMessage.listen(_showForeground);
       FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
+      // тап по пушу с data.link (rich push из панели) → открываем ссылку.
+      // Из фона/закрытого состояния и когда приложение было убито
+      FirebaseMessaging.onMessageOpenedApp.listen(_openFromMessage);
+      final initial = await messaging.getInitialMessage();
+      if (initial != null) _openFromMessage(initial);
+
       // регистрируем устройство и реагируем на обновление токена
       await registerCurrentToken();
       messaging.onTokenRefresh.listen((_) => registerCurrentToken());
@@ -88,6 +95,20 @@ class PushService {
       );
     } catch (e) {
       debugPrint('registerCurrentToken пропущен (нет APNs/бэкенда?): $e');
+    }
+  }
+
+  /// открывает ссылку из data.link уведомления во внешнем браузере.
+  /// Только https — чтобы пуш не мог открыть произвольную схему
+  static Future<void> _openFromMessage(RemoteMessage message) async {
+    try {
+      final link = message.data['link'];
+      if (link is! String || !link.startsWith('https://')) return;
+      final uri = Uri.tryParse(link);
+      if (uri == null) return;
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('открытие ссылки из push пропущено: $e');
     }
   }
 

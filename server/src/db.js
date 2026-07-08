@@ -146,3 +146,16 @@ export function stats() {
 export function recentBroadcasts(limit = 20) {
   return db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT ?').all(limit);
 }
+
+/** сводные счётчики по всем рассылкам — для дашборда аналитики в панели. */
+export function broadcastStats() {
+  return db
+    .prepare(
+      `SELECT COUNT(*)                       AS total,
+              COALESCE(SUM(recipients), 0)    AS recipients,
+              COALESCE(SUM(success_count), 0) AS success,
+              COALESCE(SUM(failure_count), 0) AS failure
+       FROM broadcasts`
+    )
+    .get();
+}
