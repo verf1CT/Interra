@@ -36,6 +36,21 @@ class ApiClient {
     }
   }
 
+  /// сообщает бэкенду, что пользователь открыл уведомление рассылки (open-rate).
+  /// best-effort: ошибки/оффлайн молча игнорируем — это метрика, не критично
+  static Future<void> reportOpened(String bid) async {
+    final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/events/opened');
+    try {
+      await SecureHttp
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'bid': bid}),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {}
+  }
+
   static Future<void> unregisterDevice(String token) async {
     final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/unregister');
     try {

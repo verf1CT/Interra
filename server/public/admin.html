@@ -29,7 +29,7 @@
     .result { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; display: none; }
     .result.ok { background: #e3f7e8; color: #1a7f37; display: block; }
     .result.err { background: #fde8e8; color: #b42318; display: block; }
-    .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
     .tile { background: #f7f8fa; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
     .tile .num { font-size: 22px; font-weight: 700; }
     .tile .lbl { font-size: 12px; color: #8a92a0; margin-top: 2px; }
@@ -155,12 +155,14 @@
         `По платформам: ${byPlatform}`;
 
       // KPI-плитки
-      const t = s.totals || { total: 0, recipients: 0, success: 0, failure: 0 };
+      const t = s.totals || { total: 0, recipients: 0, success: 0, failure: 0, opens: 0 };
       const rate = t.recipients ? Math.round((t.success / t.recipients) * 100) : 0;
+      const ctr = t.success ? Math.round((t.opens / t.success) * 100) : 0;
       const tile = (num, lbl) => `<div class="tile"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`;
       $('totals').innerHTML =
         tile(t.total, 'Рассылок') + tile(t.recipients, 'Получателей') +
-        tile(t.success, 'Доставлено') + tile(rate + '%', 'Успешно');
+        tile(t.success, 'Доставлено') + tile(rate + '%', 'Доставлено %') +
+        tile(t.opens || 0, 'Открытий') + tile(ctr + '%', 'CTR (открыли)');
 
       // бар-чарт доставки по последним рассылкам (зелёное — успех, красное — ошибки)
       $('chart').innerHTML = (s.broadcasts || []).slice(0, 10).map((b) => {
@@ -168,7 +170,8 @@
         const ok = rec ? (b.success_count / rec) * 100 : 0;
         const fail = rec ? (b.failure_count / rec) * 100 : 0;
         return `<div><div class="head"><b>${escapeHtml(b.title)}</b>` +
-          `<span>${b.success_count}/${rec}${b.failure_count ? ' · ошибок ' + b.failure_count : ''}</span></div>` +
+          `<span>${b.success_count}/${rec}${b.failure_count ? ' · ошибок ' + b.failure_count : ''}` +
+          `${b.opens ? ' · 👁 ' + b.opens : ''}</span></div>` +
           `<div class="bar"><span class="ok" style="width:${ok}%"></span><span class="fail" style="width:${fail}%"></span></div></div>`;
       }).join('') || '<span class="muted">Пока нет данных.</span>';
 
