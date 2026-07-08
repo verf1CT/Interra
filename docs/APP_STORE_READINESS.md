@@ -6,9 +6,9 @@
 ## Технические артефакты
 - ✅ Иконка приложения (логотип Интерры, 1024×1024, без альфа-канала).
 - ✅ Нативная заставка (flutter_native_splash).
-- 🟡 **Privacy Manifest** — `app/ios/Runner/PrivacyInfo.xcprivacy` создан.
-  Подключить: в Xcode перетащить файл в target Runner, отметить Target Membership
-  (Copy Bundle Resources). Без этого App Store отклонит сборку.
+- ✅ **Privacy Manifest** — `app/ios/Runner/PrivacyInfo.xcprivacy` создан и
+  подключён к target Runner (Copy Bundle Resources) прямо в `project.pbxproj`,
+  так что попадает в сборку и не теряется при пересоздании проекта.
 - 🟡 **Push (APNs)** — см. `docs/IOS_PUSH_SETUP.md` (нужен платный аккаунт).
 - ⬜ `ITSAppUsesNonExemptEncryption` в Info.plist = `false` (используется только
   стандартный HTTPS) — добавить, чтобы не заполнять экспортный опросник при каждой сборке.
