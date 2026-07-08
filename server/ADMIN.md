@@ -378,17 +378,23 @@ curl -X POST https://push.interra.ru/api/admin/broadcast \
   -H "Authorization: Bearer <ADMIN_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Плановые работы",
-    "body": "01.08 с 02:00 до 05:00 возможны перерывы связи.",
-    "target": { "type": "segment", "value": "outage" },
-    "data": { "url": "https://interra.ru/news/42" }
+    "title": "Акция октября",
+    "body": "Скидка 20% на тариф до конца месяца",
+    "target": { "type": "segment", "value": "news" },
+    "imageUrl": "https://interra.ru/promo/banner.jpg",
+    "link": "https://interra.ru/promo"
   }'
 ```
 
 - `target.type`: `all` | `segment` | `login`; для `segment`/`login` обязателен
   `target.value`.
-- `data` — необязательные пары для приложения (например, ссылка).
-- Ответ: `{ ok, recipients, successCount, failureCount }`.
+- `imageUrl` (необязательно, только `https`) — **картинка в уведомлении**
+  (rich push). На Android рисуется системным треем сама; на iOS для картинки
+  нужен Notification Service Extension (пока не настроен — текст придёт без неё).
+- `link` (необязательно, только `https`) — **открывается по тапу** по уведомлению.
+- `data` — произвольные пары для приложения.
+- Ответ: `{ ok, recipients, successCount, failureCount }`. Все рассылки видны в
+  панели во вкладке «Аналитика рассылок».
 
 **Эндпоинты приложения** (вызывает клиент, без токена):
 `POST /api/devices/register` и `POST /api/devices/unregister`. Регистрация

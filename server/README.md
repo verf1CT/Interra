@@ -41,8 +41,11 @@ FCM, а «мёртвые» токены сам вычищает. Без ключ
 
 | Метод | Путь                   | Описание                                                   |
 |-------|------------------------|------------------------------------------------------------|
-| GET   | `/api/admin/stats`     | Статистика устройств и история рассылок                    |
-| POST  | `/api/admin/broadcast` | Отправка: `{ title, body, target:{type,value?}, data? }`   |
+| GET   | `/api/admin/stats`     | Статистика устройств, сводка `totals` и история рассылок    |
+| POST  | `/api/admin/broadcast` | Отправка: `{ title, body, target:{type,value?}, data?, imageUrl?, link? }` |
+
+`imageUrl` (https) — картинка в уведомлении (rich push); `link` (https) —
+открывается по тапу. Оба необязательны.
 
 `target.type`: `all` (всем), `segment` (по тегу-категории), `login` (логин UTM5).
 
