@@ -5,6 +5,7 @@ import './db.js';
 import { devicesRouter } from './routes/devices.js';
 import { adminRouter } from './routes/admin.js';
 import { eventsRouter } from './routes/events.js';
+import { startScheduler } from './scheduler.js';
 
 const app = express();
 // за обратным прокси (nginx на push.interra.ru) - доверяем первому хопу,
@@ -29,4 +30,5 @@ app.use((err, req, res, next) => {
 app.listen(config.port, () => {
   console.log(`[server] ЛК Интерра backend слушает http://localhost:${config.port}`);
   console.log(`[server] Админ-панель: http://localhost:${config.port}/admin.html`);
+  startScheduler();
 });
