@@ -37,6 +37,14 @@ db.exec(`
   );
 `);
 
+// миграция: добавляем opens (счётчик открытий) для старых БД без этого столбца
+{
+  const cols = db.prepare('PRAGMA table_info(broadcasts)').all().map((c) => c.name);
+  if (!cols.includes('opens')) {
+    db.exec('ALTER TABLE broadcasts ADD COLUMN opens INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
 /**
  * создаёт или обновляет устройство по его push-токену.
  * Возвращает строку устройства
@@ -132,6 +140,18 @@ export function logBroadcast({ title, body, data, target, recipients, successCou
     });
 }
 
+/** проставляет итоговые счётчики доставки после отправки рассылки. */
+export function updateBroadcastResult(id, successCount, failureCount) {
+  return db
+    .prepare('UPDATE broadcasts SET success_count = ?, failure_count = ? WHERE id = ?')
+    .run(successCount, failureCount, id);
+}
+
+/** +1 к счётчику открытий рассылки (когда пользователь тапнул по пушу). */
+export function incrementOpens(id) {
+  return db.prepare('UPDATE broadcasts SET opens = opens + 1 WHERE id = ?').run(id);
+}
+
 export function stats() {
   const total = db.prepare('SELECT COUNT(*) AS n FROM devices').get().n;
   const withLogin = db
@@ -154,7 +174,8 @@ export function broadcastStats() {
       `SELECT COUNT(*)                       AS total,
               COALESCE(SUM(recipients), 0)    AS recipients,
               COALESCE(SUM(success_count), 0) AS success,
-              COALESCE(SUM(failure_count), 0) AS failure
+              COALESCE(SUM(failure_count), 0) AS failure,
+              COALESCE(SUM(opens), 0)         AS opens
        FROM broadcasts`
     )
     .get();

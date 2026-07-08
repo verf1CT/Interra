@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'auth_store.dart';
 import 'api_client.dart';
@@ -40,6 +41,7 @@ class PushService {
       await _local.initialize(
         settings:
             const InitializationSettings(android: androidInit, iOS: iosInit),
+        onDidReceiveNotificationResponse: _onLocalTap,
       );
       await _local
           .resolvePlatformSpecificImplementation<
@@ -98,12 +100,25 @@ class PushService {
     }
   }
 
-  /// открывает ссылку из data.link уведомления во внешнем браузере.
-  /// Только https — чтобы пуш не мог открыть произвольную схему
+  /// тап по системному пушу (фон/закрытое приложение): открываем ссылку и
+  /// отмечаем открытие рассылки в аналитике бэкенда
   static Future<void> _openFromMessage(RemoteMessage message) async {
+    final bid = message.data['bid'];
+    if (bid is String && bid.isNotEmpty) ApiClient.reportOpened(bid);
+    await _openLink(message.data['link']);
+  }
+
+  /// тап по локальному уведомлению (показанному на переднем плане):
+  /// payload — это ссылка, положенная в _showForeground
+  static void _onLocalTap(NotificationResponse response) {
+    _openLink(response.payload);
+  }
+
+  /// открывает ссылку во внешнем браузере. только https — чтобы пуш не мог
+  /// открыть произвольную схему
+  static Future<void> _openLink(String? link) async {
     try {
-      final link = message.data['link'];
-      if (link is! String || !link.startsWith('https://')) return;
+      if (link == null || !link.startsWith('https://')) return;
       final uri = Uri.tryParse(link);
       if (uri == null) return;
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -115,6 +130,31 @@ class PushService {
   static Future<void> _showForeground(RemoteMessage message) async {
     final n = message.notification;
     if (n == null) return;
+
+    final link = message.data['link'];
+    final payload = (link is String && link.startsWith('https://')) ? link : null;
+
+    // rich-картинка (Android): скачиваем и показываем big-picture; при любой
+    // ошибке тихо откатываемся к обычному текстовому уведомлению
+    StyleInformation? style;
+    final imageUrl = n.android?.imageUrl;
+    if (imageUrl != null && imageUrl.startsWith('https://')) {
+      try {
+        final res = await http
+            .get(Uri.parse(imageUrl))
+            .timeout(const Duration(seconds: 8));
+        if (res.statusCode == 200) {
+          style = BigPictureStyleInformation(
+            ByteArrayAndroidBitmap(res.bodyBytes),
+            contentTitle: n.title,
+            summaryText: n.body,
+          );
+        }
+      } catch (e) {
+        debugPrint('картинка push не загружена: $e');
+      }
+    }
+
     await _local.show(
       id: n.hashCode,
       title: n.title,
@@ -126,9 +166,11 @@ class PushService {
           channelDescription: _channel.description,
           importance: Importance.high,
           priority: Priority.high,
+          styleInformation: style,
         ),
         iOS: const DarwinNotificationDetails(),
       ),
+      payload: payload,
     );
   }
 }

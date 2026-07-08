@@ -4,6 +4,7 @@ import { config } from './config.js';
 import './db.js';
 import { devicesRouter } from './routes/devices.js';
 import { adminRouter } from './routes/admin.js';
+import { eventsRouter } from './routes/events.js';
 
 const app = express();
 // за обратным прокси (nginx на push.interra.ru) - доверяем первому хопу,
@@ -18,6 +19,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.use('/api/devices', devicesRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/events', eventsRouter);
 
 app.use((err, req, res, next) => {
   console.error('[error]', err);

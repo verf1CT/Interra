@@ -389,8 +389,9 @@ curl -X POST https://push.interra.ru/api/admin/broadcast \
 - `target.type`: `all` | `segment` | `login`; для `segment`/`login` обязателен
   `target.value`.
 - `imageUrl` (необязательно, только `https`) — **картинка в уведомлении**
-  (rich push). На Android рисуется системным треем сама; на iOS для картинки
-  нужен Notification Service Extension (пока не настроен — текст придёт без неё).
+  (rich push). На Android рисуется системным треем сама; на iOS нужен
+  Notification Service Extension — исходники готовы, подключение описано в
+  `docs/IOS_PUSH_SETUP.md` (без него iOS-пуш придёт без картинки).
 - `link` (необязательно, только `https`) — **открывается по тапу** по уведомлению.
 - `data` — произвольные пары для приложения.
 - Ответ: `{ ok, recipients, successCount, failureCount }`. Все рассылки видны в
@@ -398,7 +399,9 @@ curl -X POST https://push.interra.ru/api/admin/broadcast \
 
 **Эндпоинты приложения** (вызывает клиент, без токена):
 `POST /api/devices/register` и `POST /api/devices/unregister`. Регистрация
-ограничена: **30 запросов с IP в минуту** (иначе `429`).
+ограничена: **30 запросов с IP в минуту** (иначе `429`). Плюс
+`POST /api/events/opened` `{ bid }` — приложение отмечает открытие рассылки
+(тап по пушу со ссылкой), из чего в панели считается **open-rate / CTR**.
 
 **Скрипт прямой отправки** (в обход базы, нужен только ключ Firebase):
 
