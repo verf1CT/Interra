@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
-import { selectTokens, logBroadcast, stats, recentBroadcasts, broadcastStats } from '../db.js';
+import { selectTokens, logBroadcast, updateBroadcastResult, stats, recentBroadcasts, broadcastStats } from '../db.js';
 import { sendToTokens, fcmEnabled } from '../fcm.js';
 
 export const adminRouter = Router();
@@ -53,6 +53,21 @@ adminRouter.post('/broadcast', async (req, res) => {
   // link уходит в data, чтобы приложение открыло его по тапу
   const outData = { ...(data || {}), ...(link ? { link } : {}) };
 
+  // журналируем ДО отправки — нужен id рассылки, чтобы приложение вернуло его
+  // при открытии (трекинг open-rate). Счётчики доставки проставим после отправки
+  const logged = logBroadcast({
+    title,
+    body,
+    // сохраняем image/link в журнале, чтобы показывать их в истории/аналитике
+    data: { ...outData, ...(imageUrl ? { image: imageUrl } : {}) },
+    target,
+    recipients: tokens.length,
+    successCount: 0,
+    failureCount: 0,
+  });
+  const bid = logged.lastInsertRowid;
+  outData.bid = bid; // приложение пришлёт этот id на /api/events/opened
+
   const { successCount, failureCount } = await sendToTokens(tokens, {
     title,
     body,
@@ -60,16 +75,7 @@ adminRouter.post('/broadcast', async (req, res) => {
     imageUrl: imageUrl || undefined,
   });
 
-  logBroadcast({
-    title,
-    body,
-    // сохраняем image/link в журнале, чтобы показывать их в истории/аналитике
-    data: { ...outData, ...(imageUrl ? { image: imageUrl } : {}) },
-    target,
-    recipients: tokens.length,
-    successCount,
-    failureCount,
-  });
+  updateBroadcastResult(bid, successCount, failureCount);
 
   res.json({ ok: true, recipients: tokens.length, successCount, failureCount });
 });
