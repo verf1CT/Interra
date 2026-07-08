@@ -10,8 +10,8 @@
   подключён к target Runner (Copy Bundle Resources) прямо в `project.pbxproj`,
   так что попадает в сборку и не теряется при пересоздании проекта.
 - 🟡 **Push (APNs)** — см. `docs/IOS_PUSH_SETUP.md` (нужен платный аккаунт).
-- ⬜ `ITSAppUsesNonExemptEncryption` в Info.plist = `false` (используется только
-  стандартный HTTPS) — добавить, чтобы не заполнять экспортный опросник при каждой сборке.
+- ✅ `ITSAppUsesNonExemptEncryption` в Info.plist = `false` (используется только
+  стандартный HTTPS) — задано, экспортный опросник при сборке не спрашивается.
 
 ## Метаданные в App Store Connect (когда аккаунт активен)
 - ⬜ Название, подзаголовок, описание, ключевые слова (рус.).
