@@ -26,7 +26,7 @@ export const fcmEnabled = () => enabled;
  * рассылает push на список токенов. возвращает {successCount, failureCount}.
  * Невалидные/отписавшиеся токены автоматически удаляются из БД
  */
-export async function sendToTokens(tokens, { title, body, data }) {
+export async function sendToTokens(tokens, { title, body, data, imageUrl }) {
   const unique = [...new Set(tokens)].filter(Boolean);
   if (unique.length === 0) return { successCount: 0, failureCount: 0 };
 
@@ -37,7 +37,9 @@ export async function sendToTokens(tokens, { title, body, data }) {
 
   if (!enabled) {
     console.log(
-      `[fcm:dry-run] "${title}" → ${unique.length} устройств. body="${body}" data=${JSON.stringify(stringData)}`
+      `[fcm:dry-run] "${title}" → ${unique.length} устройств. body="${body}"` +
+        (imageUrl ? ` image=${imageUrl}` : '') +
+        ` data=${JSON.stringify(stringData)}`
     );
     return { successCount: unique.length, failureCount: 0 };
   }
@@ -50,10 +52,18 @@ export async function sendToTokens(tokens, { title, body, data }) {
     const batch = unique.slice(i, i + 500);
     const res = await messaging.sendEachForMulticast({
       tokens: batch,
-      notification: { title, body },
+      // imageUrl в notification рисуется системным треем на Android и (при
+      // наличии Notification Service Extension) на iOS — без кода в приложении
+      notification: imageUrl ? { title, body, imageUrl } : { title, body },
       data: stringData,
-      android: { priority: 'high', notification: { sound: 'default' } },
-      apns: { payload: { aps: { sound: 'default' } } },
+      android: {
+        priority: 'high',
+        notification: imageUrl ? { sound: 'default', imageUrl } : { sound: 'default' },
+      },
+      apns: {
+        payload: { aps: { sound: 'default', ...(imageUrl ? { 'mutable-content': 1 } : {}) } },
+        ...(imageUrl ? { fcmOptions: { imageUrl } } : {}),
+      },
     });
     successCount += res.successCount;
     failureCount += res.failureCount;

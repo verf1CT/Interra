@@ -29,6 +29,18 @@
     .result { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; display: none; }
     .result.ok { background: #e3f7e8; color: #1a7f37; display: block; }
     .result.err { background: #fde8e8; color: #b42318; display: block; }
+    .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .tile { background: #f7f8fa; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+    .tile .num { font-size: 22px; font-weight: 700; }
+    .tile .lbl { font-size: 12px; color: #8a92a0; margin-top: 2px; }
+    .bchart { display: grid; gap: 12px; }
+    .bchart .head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #525a66; }
+    .bchart .head b { color: #1c1f24; font-weight: 600; }
+    .bar { height: 9px; border-radius: 999px; background: #eef0f3; overflow: hidden; display: flex; margin-top: 4px; }
+    .bar .ok { background: #1a7f37; }
+    .bar .fail { background: #b42318; }
+    a.tag { text-decoration: none; margin-left: 4px; }
+    @media (max-width: 520px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
     .hidden { display: none; }
   </style>
 </head>
@@ -68,11 +80,23 @@
       <label>Текст</label>
       <textarea id="body" placeholder="Текст уведомления"></textarea>
 
+      <label>Картинка (URL, необязательно)</label>
+      <input type="text" id="image-url" placeholder="https://…/banner.jpg — покажется в уведомлении" />
+
+      <label>Ссылка по нажатию (URL, необязательно)</label>
+      <input type="text" id="link-url" placeholder="https://interra.ru/… — откроется по тапу" />
+
       <div class="row" style="margin-top:16px">
         <button id="send-btn">Отправить</button>
         <button class="secondary" id="refresh-btn" style="flex:0 0 auto">Обновить статистику</button>
       </div>
       <div class="result" id="send-result"></div>
+    </div>
+
+    <div class="card hidden" id="analytics-card">
+      <h2>Аналитика рассылок</h2>
+      <div class="tiles" id="totals"></div>
+      <div id="chart" class="bchart" style="margin-top:16px"></div>
     </div>
 
     <div class="card hidden" id="history-card">
@@ -101,7 +125,7 @@
       try {
         await loadStats();
         $('auth-card').classList.add('hidden');
-        ['stats-card', 'send-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
+        ['stats-card', 'send-card', 'analytics-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
       } catch (e) {
         $('auth-error').textContent = e.message;
         $('auth-error').classList.add('err');
@@ -130,10 +154,35 @@
         `С привязанным логином: <b>${s.devices.withLogin}</b><br>` +
         `По платформам: ${byPlatform}`;
 
-      const rows = (s.broadcasts || []).map((b) =>
-        `<tr><td>${b.created_at}</td><td>${escapeHtml(b.title)}</td>` +
-        `<td>${b.target_type}${b.target_value ? ':' + escapeHtml(b.target_value) : ''}</td>` +
-        `<td>${b.success_count}/${b.recipients}</td></tr>`).join('');
+      // KPI-плитки
+      const t = s.totals || { total: 0, recipients: 0, success: 0, failure: 0 };
+      const rate = t.recipients ? Math.round((t.success / t.recipients) * 100) : 0;
+      const tile = (num, lbl) => `<div class="tile"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`;
+      $('totals').innerHTML =
+        tile(t.total, 'Рассылок') + tile(t.recipients, 'Получателей') +
+        tile(t.success, 'Доставлено') + tile(rate + '%', 'Успешно');
+
+      // бар-чарт доставки по последним рассылкам (зелёное — успех, красное — ошибки)
+      $('chart').innerHTML = (s.broadcasts || []).slice(0, 10).map((b) => {
+        const rec = b.recipients || 0;
+        const ok = rec ? (b.success_count / rec) * 100 : 0;
+        const fail = rec ? (b.failure_count / rec) * 100 : 0;
+        return `<div><div class="head"><b>${escapeHtml(b.title)}</b>` +
+          `<span>${b.success_count}/${rec}${b.failure_count ? ' · ошибок ' + b.failure_count : ''}</span></div>` +
+          `<div class="bar"><span class="ok" style="width:${ok}%"></span><span class="fail" style="width:${fail}%"></span></div></div>`;
+      }).join('') || '<span class="muted">Пока нет данных.</span>';
+
+      const rows = (s.broadcasts || []).map((b) => {
+        let tags = '';
+        try {
+          const d = JSON.parse(b.data || '{}');
+          if (d.image) tags += ` <a class="tag" href="${escapeHtml(d.image)}" target="_blank" rel="noopener" title="картинка">🖼️</a>`;
+          if (d.link) tags += ` <a class="tag" href="${escapeHtml(d.link)}" target="_blank" rel="noopener" title="ссылка">🔗</a>`;
+        } catch (_) {}
+        return `<tr><td>${b.created_at}</td><td>${escapeHtml(b.title)}${tags}</td>` +
+          `<td>${b.target_type}${b.target_value ? ':' + escapeHtml(b.target_value) : ''}</td>` +
+          `<td>${b.success_count}/${b.recipients}</td></tr>`;
+      }).join('');
       $('history-body').innerHTML = rows
         ? `<table><tr><th>Когда</th><th>Заголовок</th><th>Кому</th><th>Доставлено</th></tr>${rows}</table>`
         : 'Пока рассылок не было.';
@@ -146,6 +195,10 @@
       const target = { type };
       if (type !== 'all') target.value = $('target-value').value.trim();
       const payload = { title: $('title').value.trim(), body: $('body').value.trim(), target };
+      const imageUrl = $('image-url').value.trim();
+      const link = $('link-url').value.trim();
+      if (imageUrl) payload.imageUrl = imageUrl;
+      if (link) payload.link = link;
 
       const result = $('send-result');
       result.className = 'result';
@@ -157,6 +210,7 @@
           (r.note ? ` (${r.note})` : '');
         result.className = 'result ok';
         $('title').value = ''; $('body').value = '';
+        $('image-url').value = ''; $('link-url').value = '';
         loadStats();
       } catch (e) {
         result.textContent = e.message;
