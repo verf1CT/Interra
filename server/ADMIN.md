@@ -132,7 +132,7 @@ node --version   # v20.x
 ```bash
 mkdir -p /opt/interra
 cd /opt/interra
-git clone <URL-репозитория> .
+git clone https://github.com/verf1CT/Interra.git .
 # в результате должна появиться папка /opt/interra/server
 cd /opt/interra/server
 ```
