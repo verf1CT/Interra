@@ -9,7 +9,7 @@ import 'services/quick_actions_service.dart';
 import 'services/update_check.dart';
 import 'screens/biometric_gate.dart';
 import 'screens/register_screen.dart';
-import 'screens/webview_screen.dart';
+import 'screens/cabinet_screen.dart';
 import 'widgets/privacy_shield.dart';
 
 Future<void> main() async {
@@ -77,7 +77,7 @@ class InterraApp extends StatelessWidget {
         builder: (context, child) => PrivacyShield(
           child: BiometricGate(child: child ?? const SizedBox.shrink()),
         ),
-        home: loggedIn ? const WebViewScreen() : const RegisterScreen(),
+        home: loggedIn ? const CabinetScreen() : const RegisterScreen(),
       ),
     );
   }
