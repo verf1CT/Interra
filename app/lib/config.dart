@@ -14,8 +14,8 @@ class AppConfig {
   /// Грузим именно `aaainfo…&oper=info` (страница «Основная информация»):
   /// `aaa…` отдаёт лишь оболочку с пустым телом, а контент (баланс, тариф)
   /// рендерит `aaainfo`. параметр `loginParam` уже начинается с `?login=`
-  static String cabinetFromLoginParam(String loginParam) =>
-      '$billingBase/aaainfo$loginParam&oper=info';
+  static String cabinetUrl(String loginParam, {String oper = 'info'}) =>
+      '$billingBase/aaainfo$loginParam&oper=$oper';
 
   /// базовый адрес нашего бэкенда (server/) для push-рассылок.
   /// Для локальной отладки на эмуляторе Android: http://10.0.2.2:8080
