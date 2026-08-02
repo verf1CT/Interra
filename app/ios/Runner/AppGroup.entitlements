@@ -9,7 +9,7 @@
 	-->
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.ru.interra.lkInterra</string>
+		<string>group.ru.interra.lkInterra.ivan</string>
 	</array>
 </dict>
 </plist>
