@@ -29,6 +29,6 @@ app.use((err, req, res, next) => {
 
 app.listen(config.port, () => {
   console.log(`[server] ЛК Интерра backend слушает http://localhost:${config.port}`);
-  console.log(`[server] Админ-панель: http://localhost:${config.port}/`);
+  console.log(`[server] Админ-панель: http://localhost:${config.port}/admin.html`);
   startScheduler();
 });

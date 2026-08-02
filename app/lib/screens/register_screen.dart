@@ -7,7 +7,7 @@ import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/push_service.dart';
 import '../services/analytics.dart';
-import 'cabinet_screen.dart';
+import 'webview_screen.dart';
 
 /// форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр)
 class _RuPhoneInputFormatter extends TextInputFormatter {
@@ -148,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await PushService.registerCurrentToken();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const CabinetScreen()),
+        MaterialPageRoute(builder: (_) => const WebViewScreen()),
       );
     } else {
       // '1' - первичная регистрация утеряна: токен мёртв, сбрасываем и
