@@ -1,0 +1,319 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=PT+Serif:ital,wght@0,400;1,400&display=swap');
+
+/* Google Fonts doesn't serve PT Serif at 300, it only has 400. I'll use 400 for PT Serif but apply lighter rendering if possible, or substitute with Cormorant Garamond Light if I had to, but the prompt says PT Serif. */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap');
+
+:root {
+  /* Colors */
+  --color-void-black: #000000;
+  --color-carbon: #060606;
+  --color-graphite: #252525;
+  --color-onyx: #1f1f1f;
+  --color-iron: #313131;
+  --color-slate: #3d3d3d;
+  --color-fog: #525252;
+  --color-ash: #7a7a7a;
+  --color-smoke: #8a8a8a;
+  --color-pearl: #c5c5c5;
+  --color-bone: #e5e5e5;
+  --color-chalk: #ffffff;
+  --color-signal-lime: #c5ff4a;
+
+  /* Typography — Font Families */
+  --font-pt-serif: 'Cormorant Garamond', 'PT Serif', ui-serif, Georgia, serif;
+  --font-inter-tight: 'Inter Tight', ui-sans-serif, system-ui, sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Typography — Scale */
+  --text-caption: 10px;
+  --leading-caption: 1.2;
+  --tracking-caption: 0.24px;
+  
+  --text-label: 11px;
+  --tracking-label: 0.22em;
+
+  --text-body: 14px;
+  --leading-body: 1.55;
+
+  --text-subheading: 20px;
+  --leading-subheading: 1.3;
+  --tracking-subheading: -0.2px;
+
+  --text-heading-sm: 32px;
+  --leading-heading-sm: 1.15;
+  --tracking-heading-sm: -0.4px;
+
+  --text-heading: 49px;
+  --leading-heading: 1.05;
+  --tracking-heading: -1px;
+
+  /* Spacing */
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-10: 10px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-40: 40px;
+  --spacing-64: 64px;
+  --spacing-80: 80px;
+
+  /* Radii */
+  --radius-tags: 2px;
+  --radius-cards: 0px;
+  --radius-buttons: 4px;
+
+  /* Shadows */
+  --shadow-sm: rgba(197, 255, 74, 0.45) 0px 0px 8px 0px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-inter-tight);
+  background-color: var(--color-carbon);
+  color: var(--color-bone);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+* { box-sizing: border-box; }
+
+*:focus { outline: none; }
+*:focus-visible {
+  outline: 1px solid var(--color-signal-lime);
+  outline-offset: 2px;
+}
+
+/* Typography Classes */
+h1, h2, h3, h4 {
+  font-family: var(--font-pt-serif);
+  font-weight: 300;
+  margin: 0;
+  color: var(--color-chalk);
+}
+.display-title {
+  font-size: var(--text-heading);
+  line-height: var(--leading-heading);
+  letter-spacing: var(--tracking-heading);
+}
+.display-title i {
+  color: var(--color-signal-lime);
+  font-style: italic;
+}
+.card-title {
+  font-size: 32px;
+  line-height: var(--leading-heading-sm);
+  letter-spacing: var(--tracking-heading-sm);
+  margin-bottom: var(--spacing-16);
+}
+
+.metadata-label {
+  font-family: var(--font-inter-tight);
+  font-size: var(--text-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-ash);
+}
+.metadata-label.bracketed::before { content: "[ "; }
+.metadata-label.bracketed::after { content: " ]"; }
+
+.body-text {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--color-bone);
+  margin: 0;
+}
+
+/* Layout */
+.layout-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-24);
+}
+.section-gap {
+  margin-bottom: var(--spacing-80);
+}
+
+/* Top Nav Bar */
+.top-nav {
+  background-color: var(--color-void-black);
+  border-bottom: 1px solid var(--color-graphite);
+  height: 64px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-24);
+}
+.wordmark {
+  font-family: var(--font-pt-serif);
+  font-weight: 300;
+  font-size: 20px;
+  color: var(--color-chalk);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-12);
+}
+.ghost-nav {
+  display: flex;
+  gap: var(--spacing-32);
+}
+.ghost-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-chalk);
+  font-family: var(--font-inter-tight);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.ghost-btn:hover { color: var(--color-signal-lime); }
+
+/* Buttons */
+.btn-lime {
+  background: var(--color-signal-lime);
+  color: var(--color-void-black);
+  padding: 14px 24px;
+  border-radius: var(--radius-buttons);
+  border: none;
+  font-family: var(--font-inter-tight);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.btn-lime:hover { transform: translateY(-1px); }
+.btn-lime:active { transform: translateY(0); opacity: 0.8; }
+.btn-lime:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+.btn-outline-lime {
+  background: transparent;
+  color: var(--color-signal-lime);
+  padding: 10px 20px;
+  border-radius: var(--radius-buttons);
+  border: 1px solid var(--color-signal-lime);
+  font-family: var(--font-inter-tight);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btn-outline-lime:hover { background: rgba(197, 255, 74, 0.1); }
+
+/* Neon Divider */
+.neon-divider {
+  width: 100%;
+  height: 6px;
+  background-color: var(--color-signal-lime);
+  margin-bottom: var(--spacing-80);
+}
+
+/* Sharp Content Card */
+.sharp-card {
+  background: var(--color-onyx);
+  border: 1px solid var(--color-graphite);
+  border-radius: var(--radius-cards);
+  padding: 40px;
+}
+.card-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-24);
+}
+
+/* Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--spacing-24);
+}
+@media(max-width: 800px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+/* Forms & Inputs */
+.input-row {
+  display: flex;
+  gap: var(--spacing-16);
+  margin-bottom: var(--spacing-20);
+}
+.input-row > * { flex: 1; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+  margin-bottom: var(--spacing-20);
+}
+input, textarea, select {
+  background: var(--color-void-black);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-buttons);
+  padding: 14px 16px;
+  color: var(--color-bone);
+  font-family: var(--font-inter-tight);
+  font-size: var(--text-body);
+  transition: border 0.2s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--color-signal-lime);
+}
+textarea { min-height: 100px; resize: vertical; }
+
+/* Code Block Panel */
+.code-panel {
+  background: var(--color-graphite);
+  border: 1px solid var(--color-iron);
+  border-radius: var(--radius-buttons);
+  padding: 24px;
+  margin-top: 24px;
+  font-family: var(--font-jetbrains-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-bone);
+}
+.code-panel .kw { color: var(--color-signal-lime); }
+.code-panel .str { color: var(--color-chalk); }
+
+/* Status Tag Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--color-signal-lime);
+  color: var(--color-signal-lime);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-inter-tight);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.status-pill.offline {
+  border-color: var(--color-fog);
+  color: var(--color-fog);
+}
+
+/* History Row */
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-slate);
+}
+.history-row:last-child { border-bottom: none; }
