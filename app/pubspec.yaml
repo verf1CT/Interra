@@ -47,6 +47,7 @@ flutter:
   assets:
     - assets/splash_logo.png
     - assets/certs/
+    - assets/web/
   fonts:
     - family: Manrope
       fonts:

@@ -5,7 +5,7 @@ import WidgetKit
 /// и виджетом (кнопка «Обновить»). дублирует минимум логики Dart-слоя:
 /// bbb cmd=open → aaainfo → регулярка «Баланс … руб.»
 enum BalanceCore {
-    static let appGroup = "group.ru.interra.lkInterra"
+    static let appGroup = "group.ru.interra.lkInterra.ivan"
     static let widgetKind = "BalanceWidget"
     static let billingBase = "https://stat.interra.ru/cgi-bin/utm5"
 

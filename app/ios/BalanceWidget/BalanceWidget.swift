@@ -39,7 +39,7 @@ struct BalanceWidgetConfig: WidgetConfigurationIntent {
 
 /// Данные пишет приложение через home_widget в общий UserDefaults (app group):
 /// balance_text («1 846,03 ₽»), account_text («504600»), balance_updated («14:05»)
-private let appGroup = "group.ru.interra.lkInterra"
+private let appGroup = "group.ru.interra.lkInterra.ivan"
 
 struct BalanceEntry: TimelineEntry {
     let date: Date

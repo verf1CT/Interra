@@ -1,0 +1,39 @@
+html,body{background:#0F141A !important;color:#EAEEF2 !important;}
+/* глушим ВСЕ белые поверхности сайта UTM (иначе кабинет остаётся белым): */
+[bgcolor]{background-color:transparent !important;}
+.sidebar{background:transparent !important;border-right-color:#2C3742 !important;}
+.header{background-color:transparent !important;}
+.nav{background-color:#131A22 !important;}
+.nav-wrapper,.main,.grid,.wrapper,.b-content,#aaatds{background-color:transparent !important;}
+.nav a,.nav-link{color:#C3CDD6 !important;}
+.nav-link.--active,.nav-link:hover{background-color:#1E2833 !important;}
+.nav-link.--active{color:#5AB0EE !important;}
+.nav-divider .divider{background:#2C3742 !important;border-color:#2C3742 !important;}
+.nav-footer{border-top-color:#2C3742 !important;}
+.nav-footer__note,.nav-footer__text,.header-logo__note,.font-s,.font-dark{color:#9BA8B4 !important;}
+.header-burger__item{background:#C3CDD6 !important;}
+font[color='black'],font[color='#000000'],font[color='#000']{color:#EAEEF2 !important;}
+a{color:#5AB0EE !important;}
+hr{border-top-color:#2C3742 !important;}
+/* информер */
+.b-informer tr td{background:#241C13 !important;color:#E7D6C4 !important;}
+.b-informer a,.b-informer a font{color:#F79B5B !important;}
+/* счёт */
+.b-account tr{border-bottom-color:#26313C !important;}
+.b-account td[align=right]{color:#8A97A2 !important;}
+.b-account td:not([align=right]),.b-account span,.b-account td font{color:#EAEEF2 !important;}
+/* вкладки */
+.b-tab{border-bottom-color:#2C3742 !important;}
+.b-tab td.active,.b-tab td a{color:#9BA8B4 !important;}
+.b-tab td.active{color:#EAEEF2 !important;}
+/* заголовки */
+.t,.font-l,.font-dark{color:#EAEEF2 !important;}
+/* таблицы данных */
+#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) td{border-bottom-color:#26313C !important;}
+#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) th{color:#8A97A2 !important;}
+#aaatds table:not(.b-tab):not(.b-content):not(.b-account):not(.b-informer) tr:nth-child(even) td{background:#151C24 !important;}
+/* поля и списки */
+input:not([type=submit]):not([type=button]):not([type=checkbox]):not([type=radio]):not([type=hidden]),textarea,select{background:#19212A !important;color:#EAEEF2 !important;border-color:#2C3742 !important;}
+/* вход в раздел */
+.login-title h2{color:#EAEEF2 !important;}
+div.btn7{background:#1B242E !important;color:#9BA8B4 !important;}
