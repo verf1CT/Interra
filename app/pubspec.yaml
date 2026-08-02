@@ -26,7 +26,6 @@ dependencies:
   home_widget: ^0.9.3
   nsd: ^5.0.1
   package_info_plus: ^8.0.0
-  html: ^0.15.4
 dev_dependencies:
   flutter_test:
     sdk: flutter
