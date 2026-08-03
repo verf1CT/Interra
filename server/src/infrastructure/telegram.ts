@@ -1,6 +1,10 @@
+import fs from 'node:fs';
 import { config } from '../config/env.js';
 import { logger } from './logger.js';
 import { broadcastService } from '../services/broadcast.service.js';
+import { DeviceRepository, DeviceRow } from '../repositories/device.repository.js';
+
+const deviceRepo = new DeviceRepository();
 
 export interface TelegramInlineButton {
   text: string;
@@ -13,7 +17,7 @@ export interface TelegramReplyMarkup {
 }
 
 /**
- * Отправляет сообщение в Telegram-чат администраторов.
+ * Отправляет текстовое сообщение в Telegram-чат администраторов.
  */
 export async function sendTelegramAlert(text: string, replyMarkup?: TelegramReplyMarkup): Promise<boolean> {
   const { telegramBotToken, telegramChatId } = config;
@@ -50,6 +54,42 @@ export async function sendTelegramAlert(text: string, replyMarkup?: TelegramRepl
     return true;
   } catch (err) {
     logger.error({ err }, 'Ошибка сети при отправке Telegram алерта');
+    return false;
+  }
+}
+
+/**
+ * Отправляет файл (документ) в Telegram-чат администраторов.
+ */
+export async function sendTelegramDocument(filename: string, fileBuffer: Buffer, caption?: string): Promise<boolean> {
+  const { telegramBotToken, telegramChatId } = config;
+
+  if (!telegramBotToken || !telegramChatId) {
+    return false;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('chat_id', telegramChatId);
+    formData.append('document', new Blob([new Uint8Array(fileBuffer)]), filename);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendDocument`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      logger.error({ errText, status: response.status }, 'Ошибка отправки документа в Telegram');
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    logger.error({ err }, 'Ошибка сети при отправке документа в Telegram');
     return false;
   }
 }
@@ -124,7 +164,7 @@ export function sendServerErrorAlert(path: string, method: string, requestId: st
 }
 
 /**
- * Простой обработчик команд Telegram бота (/push <текст>)
+ * Обработчик команд Telegram бота (/push, /stats, /backup, /help)
  */
 let pollingInterval: NodeJS.Timeout | null = null;
 let lastUpdateId = 0;
@@ -146,12 +186,20 @@ export function initTelegramBotCommands(): void {
         const text = update.message?.text?.trim();
         const chatId = update.message?.chat.id;
 
-        if (text && text.startsWith('/push ') && chatId) {
-          const pushBody = text.replace('/push ', '').trim();
-          if (!pushBody) continue;
+        if (!text || !chatId) continue;
+
+        const cmd = text.split(' ')[0].toLowerCase();
+
+        // 1. /push <текст>
+        if (cmd === '/push' || cmd.startsWith('/push@')) {
+          const pushBody = text.replace(/^\/push(@\w+)?\s*/i, '').trim();
+          if (!pushBody) {
+            await sendTelegramAlert('⚠️ Укажите текст рассылки. Пример: <code>/push Скоро технические работы.</code>');
+            continue;
+          }
 
           try {
-            const result = await broadcastService.sendBroadcast({
+            const result = await broadcastService.runBroadcast({
               title: 'Сообщение от провайдера',
               body: pushBody,
               target: { type: 'all' },
@@ -161,18 +209,91 @@ export function initTelegramBotCommands(): void {
               `✅ <b>Рассылка выполнена через Telegram!</b>\n` +
               `----------------------------------\n` +
               `Текст: <i>${pushBody}</i>\n` +
-              `Отправлено: <b>${result.successCount}</b> устройств\n` +
+              `Успешно отправлено: <b>${result.successCount}</b>\n` +
+              `Ошибок: <b>${result.failureCount}</b>\n` +
               `----------------------------------`
             );
           } catch (err) {
             await sendTelegramAlert(`❌ <b>Ошибка выполнения рассылки:</b> ${(err as Error).message}`);
           }
         }
+
+        // 2. /stats
+        else if (cmd === '/stats' || cmd.startsWith('/stats@')) {
+          try {
+            const devices = deviceRepo.listAll();
+            const iosCount = devices.filter((d: DeviceRow) => d.platform === 'ios').length;
+            const androidCount = devices.filter((d: DeviceRow) => d.platform === 'android').length;
+            const webCount = devices.filter((d: DeviceRow) => d.platform === 'web' || !d.platform).length;
+
+            const uptimeSec = Math.floor(process.uptime());
+            const hours = Math.floor(uptimeSec / 3600);
+            const minutes = Math.floor((uptimeSec % 3600) / 60);
+
+            const memMb = (process.memoryUsage().rss / (1024 * 1024)).toFixed(1);
+            let dbSizeMb = '0';
+            if (fs.existsSync(config.dbPath)) {
+              dbSizeMb = (fs.statSync(config.dbPath).size / (1024 * 1024)).toFixed(2);
+            }
+
+            const msg =
+              `📊 <b>[INTERRA SERVER STATS]</b>\n` +
+              `----------------------------------\n` +
+              `📱 <b>Всего устройств</b>: <b>${devices.length}</b>\n` +
+              `  ├ 🍏 iOS: <b>${iosCount}</b>\n` +
+              `  ├ 🤖 Android: <b>${androidCount}</b>\n` +
+              `  └ 🌐 Web / Прочие: <b>${webCount}</b>\n\n` +
+              `⏱ <b>Uptime</b>: ${hours}ч ${minutes}мин\n` +
+              `🧠 <b>RAM RSS</b>: <code>${memMb} MB</code>\n` +
+              `💾 <b>SQLite БД</b>: <code>${dbSizeMb} MB</code>\n` +
+              `----------------------------------`;
+            await sendTelegramAlert(msg);
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка получения статистики:</b> ${(err as Error).message}`);
+          }
+        }
+
+        // 3. /backup
+        else if (cmd === '/backup' || cmd.startsWith('/backup@')) {
+          try {
+            if (fs.existsSync(config.dbPath)) {
+              const fileBuf = fs.readFileSync(config.dbPath);
+              const dateStr = new Date().toISOString().slice(0, 10);
+              const filename = `interra-backup-${dateStr}.sqlite`;
+
+              const ok = await sendTelegramDocument(
+                filename,
+                fileBuf,
+                `💾 Резервная копия БД SQLite (${(fileBuf.length / (1024 * 1024)).toFixed(2)} MB)`
+              );
+              if (!ok) {
+                await sendTelegramAlert('❌ Ошибка отправки резервной копии базы данных.');
+              }
+            } else {
+              await sendTelegramAlert('⚠️ Файл базы данных не найден.');
+            }
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка создания бэкапа:</b> ${(err as Error).message}`);
+          }
+        }
+
+        // 4. /help или /start
+        else if (cmd === '/help' || cmd.startsWith('/help@') || cmd === '/start' || cmd.startsWith('/start@')) {
+          const msg =
+            `🤖 <b>[INTERRA BOT COMMANDS]</b>\n` +
+            `----------------------------------\n` +
+            `• <code>/push &lt;текст&gt;</code> — отправить рассылку всем абонентам\n` +
+            `• <code>/stats</code> — статистика устройств, памяти и uptime\n` +
+            `• <code>/backup</code> — скачать файл базы данных SQLite\n` +
+            `• <code>/help</code> — список команд\n` +
+            `----------------------------------`;
+          await sendTelegramAlert(msg);
+        }
       }
     } catch (err) {
-      // Игнорируем сетевые сбои в фоновом поллинге
+      // Игнорируем фоновые сетевые ошибки поллинга
     }
-  }, 10000);
+  }, 5000);
 }
 
 export function stopTelegramBotCommands(): void {

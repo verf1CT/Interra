@@ -61,6 +61,10 @@ export class DeviceRepository {
     return db.prepare('SELECT * FROM devices WHERE token = ?').get(token) as DeviceRow;
   }
 
+  listAll(): DeviceRow[] {
+    return db.prepare('SELECT * FROM devices ORDER BY id DESC').all() as DeviceRow[];
+  }
+
   deleteByToken(token: string) {
     return db.prepare('DELETE FROM devices WHERE token = ?').run(token);
   }
