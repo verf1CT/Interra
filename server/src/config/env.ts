@@ -18,6 +18,8 @@ const envSchema = z.object({
   FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   ALLOWED_ORIGINS: z.string().default('*'),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_CHAT_ID: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -38,6 +40,8 @@ export const config = {
     : '',
   nodeEnv: envData.NODE_ENV,
   allowedOrigins: envData.ALLOWED_ORIGINS,
+  telegramBotToken: envData.TELEGRAM_BOT_TOKEN || '',
+  telegramChatId: envData.TELEGRAM_CHAT_ID || '',
   serverRoot,
 };
 
