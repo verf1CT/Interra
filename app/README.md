@@ -132,10 +132,18 @@ EncryptedSharedPreferences). Коды ответа `0`/`1` разбираютс�
 
 ## Разработка
 
+Запуск возможен как через `flutter` напрямую, так и из корня через `Makefile`:
+
 ```bash
+# Из корня проекта:
+make dev-app                        # запуск Flutter приложения
+make test-app                       # юнит-тесты Flutter (36 шт.)
+make build-apk                      # сборка релизного APK
+
+# Или в папке app/:
 flutter pub get
 flutter run                         # на подключённом устройстве/эмуляторе
-flutter analyze lib test            # статический анализ (должно быть 0 замечаний)
+flutter analyze lib test            # статический анализ (0 замечаний)
 flutter test                        # юнит-тесты (36 шт.)
 ```
 
