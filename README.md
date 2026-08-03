@@ -18,6 +18,12 @@
 
 # ЛК Интерра
 
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)
+![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
+![Tests](https://img.shields.io/badge/Vitest-10%2F10%20PASSED-brightgreen?logo=vitest)
+![Architecture](https://img.shields.io/badge/Architecture-Clean%20Layered-orange)
+![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey)
+
 Мобильное приложение «Личный кабинет» для абонентов интернет-провайдера
 **Интерра** (`interra.ru`, г. Первоуральск). Один код на iOS и Android (Flutter).
 Показывает веб-кабинет, нативно подтягивает баланс, шлёт push-уведомления и даёт
