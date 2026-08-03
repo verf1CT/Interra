@@ -1,8 +1,10 @@
 import fs from 'node:fs';
+import { performance } from 'node:perf_hooks';
 import { config } from '../config/env.js';
 import { logger } from './logger.js';
 import { broadcastService } from '../services/broadcast.service.js';
 import { DeviceRepository, DeviceRow } from '../repositories/device.repository.js';
+import { db } from '../db/connection.js';
 
 const deviceRepo = new DeviceRepository();
 
@@ -12,9 +14,23 @@ export interface TelegramInlineButton {
   callback_data?: string;
 }
 
+export interface TelegramKeyboardButton {
+  text: string;
+}
+
 export interface TelegramReplyMarkup {
   inline_keyboard?: TelegramInlineButton[][];
+  keyboard?: TelegramKeyboardButton[][];
+  resize_keyboard?: boolean;
 }
+
+export const defaultReplyKeyboard: TelegramReplyMarkup = {
+  keyboard: [
+    [{ text: '📊 Статистика' }, { text: '💾 Бэкап БД' }],
+    [{ text: '🏓 Пинг' }, { text: '❓ Справка' }],
+  ],
+  resize_keyboard: true,
+};
 
 /**
  * Отправляет текстовое сообщение в Telegram-чат администраторов.
@@ -164,7 +180,7 @@ export function sendServerErrorAlert(path: string, method: string, requestId: st
 }
 
 /**
- * Обработчик команд Telegram бота (/push, /stats, /backup, /help)
+ * Обработчик команд Telegram бота (/push, /send, /find, /stats, /backup, /ping, /help)
  */
 let pollingInterval: NodeJS.Timeout | null = null;
 let lastUpdateId = 0;
@@ -190,11 +206,11 @@ export function initTelegramBotCommands(): void {
 
         const cmd = text.split(' ')[0].toLowerCase();
 
-        // 1. /push <текст>
+        // 1. /push <текст> (Массовая рассылка всем)
         if (cmd === '/push' || cmd.startsWith('/push@')) {
           const pushBody = text.replace(/^\/push(@\w+)?\s*/i, '').trim();
           if (!pushBody) {
-            await sendTelegramAlert('⚠️ Укажите текст рассылки. Пример: <code>/push Скоро технические работы.</code>');
+            await sendTelegramAlert('⚠️ Укажите текст рассылки. Пример: <code>/push Скоро технические работы.</code>', defaultReplyKeyboard);
             continue;
           }
 
@@ -206,20 +222,99 @@ export function initTelegramBotCommands(): void {
             });
 
             await sendTelegramAlert(
-              `✅ <b>Рассылка выполнена через Telegram!</b>\n` +
+              `✅ <b>Массовая рассылка выполнена!</b>\n` +
               `----------------------------------\n` +
               `Текст: <i>${pushBody}</i>\n` +
               `Успешно отправлено: <b>${result.successCount}</b>\n` +
               `Ошибок: <b>${result.failureCount}</b>\n` +
-              `----------------------------------`
+              `----------------------------------`,
+              defaultReplyKeyboard
             );
           } catch (err) {
-            await sendTelegramAlert(`❌ <b>Ошибка выполнения рассылки:</b> ${(err as Error).message}`);
+            await sendTelegramAlert(`❌ <b>Ошибка выполнения рассылки:</b> ${(err as Error).message}`, defaultReplyKeyboard);
           }
         }
 
-        // 2. /stats
-        else if (cmd === '/stats' || cmd.startsWith('/stats@')) {
+        // 2. /send <телефон/логин> <текст> (Персональный Push)
+        else if (cmd === '/send' || cmd.startsWith('/send@')) {
+          const content = text.replace(/^\/send(@\w+)?\s*/i, '').trim();
+          const firstSpaceIndex = content.indexOf(' ');
+
+          if (firstSpaceIndex === -1) {
+            await sendTelegramAlert(
+              '⚠️ Укажите телефон и текст. Пример:\n<code>/send 79221112233 Баланс пополнен!</code>',
+              defaultReplyKeyboard
+            );
+            continue;
+          }
+
+          const targetLogin = content.slice(0, firstSpaceIndex).trim();
+          const pushBody = content.slice(firstSpaceIndex + 1).trim();
+
+          if (!targetLogin || !pushBody) {
+            await sendTelegramAlert('⚠️ Неверный формат. Пример: <code>/send 79221112233 Текст push</code>', defaultReplyKeyboard);
+            continue;
+          }
+
+          try {
+            const result = await broadcastService.runBroadcast({
+              title: 'Сообщение от провайдера',
+              body: pushBody,
+              target: { type: 'login', value: targetLogin },
+            });
+
+            await sendTelegramAlert(
+              `🎯 <b>Персональный push отправлен!</b>\n` +
+              `----------------------------------\n` +
+              `Получатель: <code>${targetLogin}</code>\n` +
+              `Текст: <i>${pushBody}</i>\n` +
+              `Успешно отправлено: <b>${result.successCount}</b>\n` +
+              `----------------------------------`,
+              defaultReplyKeyboard
+            );
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка отправки персонального push:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // 3. /find <телефон/логин> (Поиск абонента/устройства)
+        else if (cmd === '/find' || cmd.startsWith('/find@')) {
+          const target = text.replace(/^\/find(@\w+)?\s*/i, '').trim();
+          if (!target) {
+            await sendTelegramAlert('⚠️ Укажите логин или телефон для поиска. Пример: <code>/find 79221112233</code>', defaultReplyKeyboard);
+            continue;
+          }
+
+          try {
+            const devices = deviceRepo.listAll();
+            const matched = devices.filter(
+              (d: DeviceRow) =>
+                (d.client_login && d.client_login.includes(target)) ||
+                d.token.includes(target)
+            );
+
+            if (matched.length === 0) {
+              await sendTelegramAlert(`⚠️ Устройство с логином или токеном <code>${target}</code> не найдено.`, defaultReplyKeyboard);
+            } else {
+              let resMsg = `🔍 <b>Найдено устройств: ${matched.length}</b>\n----------------------------------\n`;
+              for (const d of matched.slice(0, 3)) {
+                resMsg +=
+                  `👤 <b>Логин</b>: <code>${d.client_login || 'Без логина'}</code>\n` +
+                  `📱 <b>Платформа</b>: <code>${d.platform || 'Не указана'}</code>\n` +
+                  `📦 <b>Версия</b>: <code>${d.app_version || '1.0.0'}</code>\n` +
+                  `📅 <b>Регистрация</b>: <code>${d.created_at}</code>\n` +
+                  `🔑 <b>Токен</b>: <code>${d.token.slice(0, 18)}...</code>\n` +
+                  `----------------------------------\n`;
+              }
+              await sendTelegramAlert(resMsg, defaultReplyKeyboard);
+            }
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка поиска:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // 4. /stats или кнопка "📊 Статистика"
+        else if (cmd === '/stats' || cmd.startsWith('/stats@') || text === '📊 Статистика') {
           try {
             const devices = deviceRepo.listAll();
             const iosCount = devices.filter((d: DeviceRow) => d.platform === 'ios').length;
@@ -247,14 +342,14 @@ export function initTelegramBotCommands(): void {
               `🧠 <b>RAM RSS</b>: <code>${memMb} MB</code>\n` +
               `💾 <b>SQLite БД</b>: <code>${dbSizeMb} MB</code>\n` +
               `----------------------------------`;
-            await sendTelegramAlert(msg);
+            await sendTelegramAlert(msg, defaultReplyKeyboard);
           } catch (err) {
-            await sendTelegramAlert(`❌ <b>Ошибка получения статистики:</b> ${(err as Error).message}`);
+            await sendTelegramAlert(`❌ <b>Ошибка получения статистики:</b> ${(err as Error).message}`, defaultReplyKeyboard);
           }
         }
 
-        // 3. /backup
-        else if (cmd === '/backup' || cmd.startsWith('/backup@')) {
+        // 5. /backup или кнопка "💾 Бэкап БД"
+        else if (cmd === '/backup' || cmd.startsWith('/backup@') || text === '💾 Бэкап БД') {
           try {
             if (fs.existsSync(config.dbPath)) {
               const fileBuf = fs.readFileSync(config.dbPath);
@@ -267,27 +362,59 @@ export function initTelegramBotCommands(): void {
                 `💾 Резервная копия БД SQLite (${(fileBuf.length / (1024 * 1024)).toFixed(2)} MB)`
               );
               if (!ok) {
-                await sendTelegramAlert('❌ Ошибка отправки резервной копии базы данных.');
+                await sendTelegramAlert('❌ Ошибка отправки резервной копии базы данных.', defaultReplyKeyboard);
               }
             } else {
-              await sendTelegramAlert('⚠️ Файл базы данных не найден.');
+              await sendTelegramAlert('⚠️ Файл базы данных не найден.', defaultReplyKeyboard);
             }
           } catch (err) {
-            await sendTelegramAlert(`❌ <b>Ошибка создания бэкапа:</b> ${(err as Error).message}`);
+            await sendTelegramAlert(`❌ <b>Ошибка создания бэкапа:</b> ${(err as Error).message}`, defaultReplyKeyboard);
           }
         }
 
-        // 4. /help или /start
-        else if (cmd === '/help' || cmd.startsWith('/help@') || cmd === '/start' || cmd.startsWith('/start@')) {
+        // 6. /ping или кнопка "🏓 Пинг"
+        else if (cmd === '/ping' || cmd.startsWith('/ping@') || text === '🏓 Пинг') {
+          try {
+            const start = performance.now();
+            db.prepare('SELECT 1').get();
+            const dbMs = (performance.now() - start).toFixed(2);
+
+            const uptimeSec = Math.floor(process.uptime());
+            const hours = Math.floor(uptimeSec / 3600);
+            const minutes = Math.floor((uptimeSec % 3600) / 60);
+
+            const msg =
+              `🏓 <b>[PONG] Сервер работает штатно</b>\n` +
+              `----------------------------------\n` +
+              `⚡️ <b>Отклик SQLite</b>: <code>${dbMs} ms</code>\n` +
+              `⏱ <b>Uptime</b>: <code>${hours}ч ${minutes}мин</code>\n` +
+              `🧠 <b>RAM RSS</b>: <code>${(process.memoryUsage().rss / (1024 * 1024)).toFixed(1)} MB</code>\n` +
+              `----------------------------------`;
+            await sendTelegramAlert(msg, defaultReplyKeyboard);
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка при выполнении пинга:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // 7. /help или /start или кнопка "❓ Справка"
+        else if (
+          cmd === '/help' ||
+          cmd.startsWith('/help@') ||
+          cmd === '/start' ||
+          cmd.startsWith('/start@') ||
+          text === '❓ Справка'
+        ) {
           const msg =
             `🤖 <b>[INTERRA BOT COMMANDS]</b>\n` +
             `----------------------------------\n` +
-            `• <code>/push &lt;текст&gt;</code> — отправить рассылку всем абонентам\n` +
+            `• <code>/push &lt;текст&gt;</code> — массовая рассылка всем клиентам\n` +
+            `• <code>/send &lt;логин&gt; &lt;текст&gt;</code> — персональный push клиенту\n` +
+            `• <code>/find &lt;логин/телефон&gt;</code> — поиск устройства в базе\n` +
             `• <code>/stats</code> — статистика устройств, памяти и uptime\n` +
             `• <code>/backup</code> — скачать файл базы данных SQLite\n` +
-            `• <code>/help</code> — список команд\n` +
+            `• <code>/ping</code> — проверка отклика сервера и базы данных\n` +
             `----------------------------------`;
-          await sendTelegramAlert(msg);
+          await sendTelegramAlert(msg, defaultReplyKeyboard);
         }
       }
     } catch (err) {
