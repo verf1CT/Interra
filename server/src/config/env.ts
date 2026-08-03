@@ -18,6 +18,7 @@ const envSchema = z.object({
   FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   ALLOWED_ORIGINS: z.string().default('*'),
+  SERVER_BASE_URL: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
 });
@@ -31,6 +32,12 @@ if (!parsed.success) {
 
 const envData = parsed.data;
 
+const defaultBaseUrl =
+  envData.SERVER_BASE_URL ||
+  (envData.NODE_ENV === 'production'
+    ? 'https://push.interra.ru'
+    : `http://localhost:${envData.PORT}`);
+
 export const config = {
   port: envData.PORT,
   adminToken: envData.ADMIN_TOKEN,
@@ -40,6 +47,7 @@ export const config = {
     : '',
   nodeEnv: envData.NODE_ENV,
   allowedOrigins: envData.ALLOWED_ORIGINS,
+  serverBaseUrl: defaultBaseUrl,
   telegramBotToken: envData.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: envData.TELEGRAM_CHAT_ID || '',
   serverRoot,
