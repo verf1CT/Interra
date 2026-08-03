@@ -12,6 +12,7 @@ import { adminRouter } from './routes/admin.routes.js';
 import { eventsRouter } from './routes/event.routes.js';
 import { schedulerService } from './services/scheduler.service.js';
 import { db } from './db/connection.js';
+import { setupOpenApi } from './docs/openapi.js';
 
 export const app = express();
 
@@ -45,6 +46,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Статика админ-панели
 app.use(express.static(path.join(config.serverRoot, 'public')));
+
+// OpenAPI 3.1 Documentation & Scalar UI
+setupOpenApi(app);
 
 // Health & System Routes
 app.get('/healthz', (_req: Request, res: Response) => {
@@ -95,6 +99,7 @@ if (config.nodeEnv !== 'test') {
  ------------------------------------------
  📡 PORT        : ${config.port}
  🌍 ENV         : ${config.nodeEnv}
+ 📚 SCALAR DOCS : http://localhost:${config.port}/docs
  📊 METRICS     : http://localhost:${config.port}/metrics
  🩺 HEALTH      : http://localhost:${config.port}/healthz
  🔑 ADMIN TOKEN : ${config.adminToken ? 'SET [••••••••]' : 'NOT SET ⚠️'}
