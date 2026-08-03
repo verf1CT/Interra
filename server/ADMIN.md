@@ -278,25 +278,35 @@ certbot --nginx -d push.interra.ru
 nginx -t && systemctl reload nginx      # проверка конфига и перезагрузка
 ```
 
-Готово: панель доступна по `https://push.interra.ru/admin.html`.
+Готово:
+- Админ-панель доступна по `https://push.interra.ru/admin.html` (или `https://push.interra.ru/`)
+- Интерактивная документация OpenAPI / Scalar UI — по `https://push.interra.ru/docs`
 
 ---
 
 <a id="шаг-7-проверка"></a>
 ## Шаг 7. Проверка, что всё живо
 
-Выполните по порядку — все три должны отвечать так, как указано:
+Выполните по порядку — все должны отвечать так, как указано:
 
 ```bash
-# 1) сервер отвечает локально
-curl -s http://localhost:8080/health
-# → {"ok":true}
+# 1) сервер отвечает локально (Liveness проба)
+curl -s http://localhost:8080/healthz
+# → {"status":"ok","uptime":...}
 
-# 2) сервер доступен снаружи по HTTPS
-curl -s https://push.interra.ru/health
-# → {"ok":true}
+# 2) проверка готовности базы данных (Readiness проба)
+curl -s http://localhost:8080/readyz
+# → {"status":"ready","db":"connected"}
 
-# 3) API отвечает и FCM включён (подставьте свой ADMIN_TOKEN)
+# 3) сервер доступен снаружи по HTTPS
+curl -s https://push.interra.ru/healthz
+# → {"status":"ok","uptime":...}
+
+# 4) интерактивная документация доступна снаружи
+curl -s https://push.interra.ru/docs
+# → HTML страницы Scalar UI
+
+# 5) API отвечает и FCM включён (подставьте свой ADMIN_TOKEN)
 curl -s -H "Authorization: Bearer <ADMIN_TOKEN>" \
      https://push.interra.ru/api/admin/stats
 # → в ответе "fcmEnabled":true  и статистика устройств
