@@ -5,3 +5,7 @@ export interface RequestStore {
 }
 
 export const requestStore = new AsyncLocalStorage<RequestStore>();
+
+export function getRequestId(): string | undefined {
+  return requestStore.getStore()?.requestId;
+}
