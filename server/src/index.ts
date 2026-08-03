@@ -45,6 +45,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// Редирект с корня на админ-панель
+app.get('/', (_req: Request, res: Response) => {
+  res.redirect('/admin.html');
+});
+
 // Статика админ-панели
 app.use(express.static(path.join(config.serverRoot, 'public')));
 
