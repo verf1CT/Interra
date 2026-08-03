@@ -13,7 +13,7 @@ import { eventsRouter } from './routes/event.routes.js';
 import { schedulerService } from './services/scheduler.service.js';
 import { db } from './db/connection.js';
 import { setupOpenApi } from './docs/openapi.js';
-import { sendServerBootAlert, sendServerShutdownAlert } from './infrastructure/telegram.js';
+import { sendServerBootAlert, sendServerShutdownAlert, initTelegramBotCommands, stopTelegramBotCommands } from './infrastructure/telegram.js';
 
 export const app = express();
 
@@ -114,6 +114,7 @@ if (config.nodeEnv !== 'test') {
     console.log(banner);
     logger.info(`🚀 [server] ЛК Интерра backend запущен на http://localhost:${config.port}`);
     schedulerService.start();
+    initTelegramBotCommands();
     sendServerBootAlert(config.port, config.nodeEnv);
   });
 
@@ -121,6 +122,7 @@ if (config.nodeEnv !== 'test') {
     logger.info({ signal }, 'Получен сигнал завершения. Запуск Graceful Shutdown...');
     sendServerShutdownAlert(signal);
     schedulerService.stop();
+    stopTelegramBotCommands();
 
     if (server) {
       server.close(() => {
