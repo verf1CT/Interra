@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config.dart';
 import '../theme.dart';
@@ -42,10 +43,46 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     });
   }
 
+  void _copyReport() {
+    final buffer = StringBuffer();
+    buffer.writeln('📋 Отчёт сетевой диагностики «Интерра»:');
+    for (final s in _diag.steps) {
+      final statusStr = switch (s.status) {
+        StepStatus.ok => '✅ ОК (${s.latencyMs ?? 0} мс)',
+        StepStatus.fail => '❌ Ошибка',
+        StepStatus.running => '⏳ Проверка...',
+        StepStatus.pending => '⏸ В очереди',
+      };
+      buffer.writeln('• ${s.title}: $statusStr');
+    }
+    if (_verdict != null) {
+      buffer.writeln('Вердикт: ${_verdict!.name}');
+    }
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Отчёт скопирован! Отправьте его специалисту поддержки.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Диагностика сети')),
+      appBar: AppBar(
+        title: const Text('Диагностика сети'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_rounded),
+            tooltip: 'Поделиться отчётом',
+            onPressed: _diag.steps.any((s) => s.status != StepStatus.pending)
+                ? _copyReport
+                : null,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -53,10 +90,22 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           const SizedBox(height: 18),
           if (_verdict != null) _verdictCard(_verdict!),
           const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: _running ? null : _run,
-            icon: const Icon(Icons.refresh),
-            label: Text(_running ? 'Проверяем…' : 'Проверить ещё раз'),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _running ? null : _run,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(_running ? 'Проверяем…' : 'Проверить ещё раз'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: _copyReport,
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Скопировать лог'),
+              ),
+            ],
           ),
         ],
       ),
@@ -69,8 +118,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           children: [
             for (var i = 0; i < _diag.steps.length; i++) ...[
               if (i > 0)
-                const Divider(
-                    height: 1, thickness: 1, indent: 56),
+                const Divider(height: 1, thickness: 1, indent: 56),
               _stepTile(_diag.steps[i]),
             ],
           ],
@@ -89,8 +137,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       );
 
   Widget _stepIcon(StepStatus st) => switch (st) {
-        StepStatus.pending => Icon(Icons.circle_outlined,
-            size: 22),
+        StepStatus.pending => const Icon(Icons.circle_outlined, size: 22),
         StepStatus.running => const Padding(
             padding: EdgeInsets.all(3),
             child: CircularProgressIndicator(
@@ -164,18 +211,30 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                   fontSize: 13.5, height: 1.45, color: context.p.inkMute)),
           if (v == Verdict.noInternet || v == Verdict.providerIssue) ...[
             const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: () {
-                Analytics.supportOpened('phone_diag');
-                launchUrl(Uri(scheme: 'tel', path: AppConfig.supportPhone),
-                    mode: LaunchMode.externalApplication);
-              },
-              icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
-              label: const Text('Позвонить: ${AppConfig.supportPhoneHuman}'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: color,
-                side: BorderSide(color: color.withValues(alpha: 0.6)),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Analytics.supportOpened('phone_diag');
+                      launchUrl(Uri(scheme: 'tel', path: AppConfig.supportPhone),
+                          mode: LaunchMode.externalApplication);
+                    },
+                    icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                    label: Text(AppConfig.supportPhoneHuman),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: color,
+                      side: BorderSide(color: color.withValues(alpha: 0.6)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: _copyReport,
+                  icon: const Icon(Icons.send_rounded, size: 18),
+                  tooltip: 'Отправить отчёт в поддержку',
+                ),
+              ],
             ),
           ],
         ],
