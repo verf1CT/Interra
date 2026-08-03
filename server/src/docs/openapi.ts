@@ -224,7 +224,7 @@ export function setupOpenApi(app: Express) {
     '/docs',
     apiReference({
       spec: {
-        content: openApiDocument,
+        url: '/openapi.json',
       },
       theme: 'purple',
     })
