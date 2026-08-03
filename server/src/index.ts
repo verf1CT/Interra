@@ -85,9 +85,23 @@ let server: ReturnType<typeof app.listen> | undefined;
 
 if (config.nodeEnv !== 'test') {
   server = app.listen(config.port, () => {
+    const banner = `
+  ___ _  _ _____ ___ ___ ___   _
+ |_ _| \\| |_   _| __| _ \\ _ \\ /_\\
+  | || \`| | | | | _||   /   // _ \\
+ |___|_|\\_| |_| |___|_|_\\_|_/_/ \\_\\
+
+ 🚀 INTERRA PUSH SERVER v0.2.0 (TypeScript)
+ ------------------------------------------
+ 📡 PORT        : ${config.port}
+ 🌍 ENV         : ${config.nodeEnv}
+ 📊 METRICS     : http://localhost:${config.port}/metrics
+ 🩺 HEALTH      : http://localhost:${config.port}/healthz
+ 🔑 ADMIN TOKEN : ${config.adminToken ? 'SET [••••••••]' : 'NOT SET ⚠️'}
+ ------------------------------------------
+`;
+    console.log(banner);
     logger.info(`🚀 [server] ЛК Интерра backend запущен на http://localhost:${config.port}`);
-    logger.info(`📊 [metrics] Prometheus метрики: http://localhost:${config.port}/metrics`);
-    logger.info(`🩺 [health] Liveness/Readiness: http://localhost:${config.port}/healthz`);
     schedulerService.start();
   });
 
