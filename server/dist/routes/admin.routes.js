@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { adminController } from '../controllers/admin.controller.js';
+import { requireAdmin } from '../middlewares/auth.middleware.js';
+import { validateBody } from '../middlewares/validate.middleware.js';
+import { BroadcastSchema } from '../domain/schemas.js';
+export const adminRouter = Router();
+adminRouter.use(requireAdmin);
+adminRouter.get('/stats', adminController.getStats);
+adminRouter.post('/broadcast', validateBody(BroadcastSchema), adminController.createBroadcast);
+adminRouter.get('/scheduled', adminController.listScheduled);
+adminRouter.post('/scheduled/:id/cancel', adminController.cancelScheduled);
