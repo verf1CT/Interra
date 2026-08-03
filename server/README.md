@@ -1,60 +1,91 @@
-# Бэкенд ЛК Интерра
+# Бэкенд ЛК Интерра (TypeScript Edition)
 
-Node.js/Express: хранит push-токены устройств и рассылает уведомления через
-Firebase Cloud Messaging, плюс веб-панель оператора для отправки.
+Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хранит push-токены устройств, собирает метрики Prometheus, ведёт структурированное Pino-логирование и рассылает уведомления через Firebase Cloud Messaging (включая отложенные рассылки), плюс веб-панель оператора.
 
-> 🚀 **Надо просто поднять сервер?** Не читайте этот файл — идите по
-> пошаговому руководству [`ADMIN.md`](./ADMIN.md): от чистого сервера до рабочих
-> рассылок, командами копипастом. Здесь — устройство кода и справка по API.
+> 🚀 **Надо просто поднять сервер?** Переходите в [`ADMIN.md`](./ADMIN.md) — пошаговое руководство от чистого сервера до деплоя в Docker.
 
-## Суть
+---
 
-Приложение при запуске регистрирует свой FCM-токен на этом сервере (вместе с
-логином абонента и категориями-тегами). Оператор через панель или API рассылает
-уведомление всем, сегменту (по тегу) или конкретному логину; сервер отдаёт их в
-FCM, а «мёртвые» токены сам вычищает. Без ключа Firebase работает в режиме
-**dry-run** (регистрация и панель работают, реальная отправка — только в лог).
+## 🏗 Архитектура и Устройство Кода
 
-## Структура `src/`
+Проект построен по принципам **Clean Layered Architecture** со строгой типизацией TypeScript и полной валидацией входящих данных с помощью **Zod**.
 
-| Файл | Назначение |
-|------|------------|
-| `index.js` | Express-приложение: статика панели, маршруты, обработка ошибок, `trust proxy` |
-| `config.js` | Чтение окружения (порт, `ADMIN_TOKEN`, путь к ключу Firebase, путь к БД) |
-| `db.js` | SQLite (better-sqlite3): таблицы `devices` и `broadcasts`, выборка токенов по цели |
-| `fcm.js` | Инициализация firebase-admin и мультикаст-рассылка с чисткой невалидных токенов |
-| `middleware/auth.js` | Защита админ-маршрутов bearer-токеном (сравнение за постоянное время) |
-| `routes/devices.js` | Регистрация/удаление устройств (+ антиспам по IP) |
-| `routes/admin.js` | Статистика и рассылка |
-| `public/admin.html` | Веб-панель оператора |
+```text
+src/
+├── config/             # Конфигурация (.env) с Zod-валидацией на старте (env.ts)
+├── domain/             # Сущности, типы, Zod-схемы (schemas.ts) и кастомные ошибки (errors.ts)
+├── infrastructure/     # Логирование Pino, метрики Prometheus, AsyncLocalStorage (requestId)
+├── db/                 # Соединение с SQLite (better-sqlite3) и миграции (connection.ts)
+├── repositories/       # Абстракция доступа к БД (device.repository.ts, broadcast.repository.ts)
+├── services/           # Бизнес-логика (fcm.service.ts, broadcast.service.ts, scheduler.service.ts)
+├── controllers/        # Обработка HTTP-запросов (device.controller.ts, admin.controller.ts, event.controller.ts)
+├── middlewares/        # ErrorHandler, RateLimiter, RequestId, Auth, ValidateBody
+├── routes/             # Маршруты Express (device.routes.ts, admin.routes.ts, event.routes.ts)
+└── index.ts            # Главный модуль, Helmet, CORS, Graceful Shutdown
+```
 
-## API
+---
 
-### Для приложения
+## 🛠 Технологии и Безопасность
 
-| Метод | Путь                      | Тело                                                                 |
-|-------|---------------------------|----------------------------------------------------------------------|
-| POST  | `/api/devices/register`   | `{ token, clientLogin?, platform?, appVersion?, segments?, prefs? }` |
-| POST  | `/api/devices/unregister` | `{ token }`                                                          |
-| POST  | `/api/events/opened`      | `{ bid }` — отметка открытия рассылки для open-rate (без токена)     |
+- **Язык**: TypeScript (модули `NodeNext`, строгий режим `"strict": true`).
+- **Сборщик / Скрипты**: `tsx watch` в dev-режиме, `tsc` для продакшн-билда в `dist/`.
+- **Валидация**: **Zod** (валидация тела запросов, параметров и переменных окружения).
+- **Логирование**: **Pino** (JSON-логи в продакшне, `pino-pretty` в dev-режиме) + сквозная трассировка запросов через `x-request-id`.
+- **Метрики**: **prom-client** (Prometheus эндпоинт `/metrics`).
+- **Безопасность**: **Helmet** (HTTP security headers) + **express-rate-limit** (антиспам).
+- **Отказоустойчивость**: **Graceful Shutdown** по сигналам `SIGTERM`/`SIGINT` с аккуратным завершением процессов и закрытием SQLite.
+- **Тестирование**: **Vitest** + **Supertest** (10/10 авто-тестов в `tests/api.test.ts`).
 
-### Для оператора (заголовок `Authorization: Bearer <ADMIN_TOKEN>`)
+---
 
-| Метод | Путь                   | Описание                                                   |
-|-------|------------------------|------------------------------------------------------------|
-| GET   | `/api/admin/stats`     | Статистика устройств, сводка `totals` (вкл. `opens`) и история рассылок |
-| POST  | `/api/admin/broadcast` | Отправка/планирование: `{ title, body, target:{type,value?}, data?, imageUrl?, link?, sendAt? }` |
-| GET   | `/api/admin/scheduled` | Список запланированных (ожидающих) рассылок                 |
-| POST  | `/api/admin/scheduled/:id/cancel` | Отмена запланированной рассылки                 |
+## 📡 API Справка
 
-`imageUrl` (https) — картинка в уведомлении (rich push); `link` (https) —
-открывается по тапу; `sendAt` (ISO, в будущем) — отложенная рассылка (фоновый
-планировщик, интервал `SCHEDULER_TICK_MS`, по умолчанию 30 c). Все необязательны.
+### 1. Для мобильного приложения
 
-`target.type`: `all` (всем), `segment` (по тегу-категории), `login` (логин UTM5).
+| Метод | Путь                      | Описание | Тело |
+|-------|---------------------------|----------|------|
+| POST  | `/api/devices/register`   | Регистрация FCM-токена устройства | `{ token, clientLogin?, platform?, appVersion?, segments?, prefs? }` |
+| POST  | `/api/devices/unregister` | Удаление токена устройства | `{ token }` |
+| POST  | `/api/events/opened`      | Отметка открытия пуша (для open-rate analytics) | `{ bid }` |
 
-## Модель данных
+### 2. Системные и Метрики
 
-- `devices` — токен, логин абонента, платформа, версия, теги-сегменты, prefs, метки времени.
-- `broadcasts` — журнал рассылок: заголовок, текст, цель, число получателей, статусы
-  доставки и `opens` (открытия — для аналитики open-rate/CTR в панели).
+| Метод | Путь       | Описание |
+|-------|------------|----------|
+| GET   | `/healthz` | Liveness проба (uptime сервера) |
+| GET   | `/readyz`  | Readiness проба (проверка подключения к SQLite `SELECT 1`) |
+| GET   | `/metrics` | Prometheus формат метрик (HTTP latency, статус-коды, пуши) |
+
+### 3. Для администратора / оператора (Заголовок `Authorization: Bearer <ADMIN_TOKEN>`)
+
+| Метод | Путь                            | Описание |
+|-------|---------------------------------|----------|
+| GET   | `/api/admin/stats`              | Статистика устройств, сводка `totals` и история рассылок |
+| POST  | `/api/admin/broadcast`          | Отправка немедленной или создание отложенной рассылки (`sendAt`) |
+| GET   | `/api/admin/scheduled`          | Список всех ожидающих отложенных рассылок |
+| POST  | `/api/admin/scheduled/:id/cancel` | Отмена отложенной рассылки по ID |
+
+---
+
+## 🚀 Скрипты Разработки и Сборки
+
+```bash
+# Установка зависимостей
+npm install
+
+# Запуск в режиме разработки (с авто-перезапуском при изменениях в TS)
+npm run dev
+
+# Проверка типов TypeScript (без генерации JS)
+npm run typecheck
+
+# Прогон интеграционных авто-тестов Vitest
+npm run test
+
+# Продакшн-сборка TypeScript в папку dist/
+npm run build
+
+# Запуск собранного проекта
+npm start
+```
