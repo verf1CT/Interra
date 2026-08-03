@@ -43,19 +43,18 @@ export async function sendTelegramAlert(text: string): Promise<boolean> {
  */
 export function sendServerBootAlert(port: number, env: string): void {
   const isProd = env === 'production' || config.serverBaseUrl.includes('push.interra.ru');
-  const envTag = isProd ? '🌐 <b>БОЕВОЙ ПРОДАКШН (push.interra.ru)</b>' : '🏡 <b>ЛОКАЛЬНЫЙ СЕРВЕР (Localhost)</b>';
+  const envLabel = isProd ? 'Production (push.interra.ru)' : 'Localhost';
   const baseUrl = config.serverBaseUrl;
 
   const msg =
     `🟢 <b>[INTERRA PUSH SERVER] Запущен</b>\n` +
     `----------------------------------\n` +
-    `🖥 <b>Окружение</b>  : ${envTag}\n` +
-    `📡 <b>PORT</b>        : <code>${port}</code>\n` +
-    `🎛 <b>Админка</b>     : <a href="${baseUrl}/admin.html">${baseUrl}/admin.html</a>\n` +
-    `📚 <b>Scalar UI</b>   : <a href="${baseUrl}/docs">${baseUrl}/docs</a>\n` +
-    `📊 <b>Метрики</b>     : <a href="${baseUrl}/metrics">${baseUrl}/metrics</a>\n` +
-    `🩺 <b>Health</b>      : <a href="${baseUrl}/healthz">${baseUrl}/healthz</a>\n` +
-    `⏱ <b>Время</b>       : <code>${new Date().toISOString()}</code>\n` +
+    `Сервер: <b>${envLabel}</b>\n` +
+    `Порт: <code>${port}</code>\n\n` +
+    `Админка: ${baseUrl}/admin.html\n` +
+    `Документация: ${baseUrl}/docs\n` +
+    `Метрики: ${baseUrl}/metrics\n` +
+    `Здоровье: ${baseUrl}/healthz\n` +
     `----------------------------------`;
   sendTelegramAlert(msg);
 }
@@ -65,15 +64,14 @@ export function sendServerBootAlert(port: number, env: string): void {
  */
 export function sendServerShutdownAlert(signal: string): void {
   const isProd = config.nodeEnv === 'production' || config.serverBaseUrl.includes('push.interra.ru');
-  const envTag = isProd ? '🌐 <b>ПРОДАКШН</b>' : '🏡 <b>ЛОКАЛЬНЫЙ</b>';
+  const envLabel = isProd ? 'Production' : 'Localhost';
 
   const msg =
     `🔴 <b>[INTERRA PUSH SERVER] Остановлен</b>\n` +
     `----------------------------------\n` +
-    `🖥 <b>Сервер</b>     : ${envTag}\n` +
-    `⚠️ <b>Сигнал</b>     : <code>${signal}</code>\n` +
-    `💾 <b>SQLite БД</b>  : Соединение закрыто\n` +
-    `⏱ <b>Время</b>      : <code>${new Date().toISOString()}</code>\n` +
+    `Сервер: <b>${envLabel}</b>\n` +
+    `Сигнал: <code>${signal}</code>\n` +
+    `SQLite БД: закрыта\n` +
     `----------------------------------`;
   sendTelegramAlert(msg);
 }
@@ -86,12 +84,11 @@ export function sendServerErrorAlert(path: string, method: string, requestId: st
   const fullUrl = `${baseUrl}${path}`;
 
   const msg =
-    `💥 <b>[INTERRA SERVER ALERT] Ошибка 500!</b>\n` +
+    `💥 <b>[INTERRA SERVER ALERT] Ошибка 500</b>\n` +
     `----------------------------------\n` +
-    `📍 <b>Маршрут</b>    : <code>${method}</code> <a href="${fullUrl}">${fullUrl}</a>\n` +
-    `🆔 <b>Request ID</b>  : <code>${requestId}</code>\n` +
-    `❌ <b>Текст</b>       : <code>${error}</code>\n` +
-    `⏱ <b>Время</b>       : <code>${new Date().toISOString()}</code>\n` +
+    `Маршрут: <code>${method}</code> ${fullUrl}\n` +
+    `Request ID: <code>${requestId}</code>\n` +
+    `Ошибка: <code>${error}</code>\n` +
     `----------------------------------`;
   sendTelegramAlert(msg);
 }
