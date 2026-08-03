@@ -36,7 +36,7 @@ const defaultBaseUrl =
   envData.SERVER_BASE_URL ||
   (envData.NODE_ENV === 'production'
     ? 'https://push.interra.ru'
-    : `http://localhost:${envData.PORT}`);
+    : `http://127.0.0.1:${envData.PORT}`);
 
 export const config = {
   port: envData.PORT,

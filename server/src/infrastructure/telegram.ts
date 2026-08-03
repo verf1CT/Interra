@@ -51,10 +51,10 @@ export function sendServerBootAlert(port: number, env: string): void {
     `----------------------------------\n` +
     `Сервер: <b>${envLabel}</b>\n` +
     `Порт: <code>${port}</code>\n\n` +
-    `Админка: ${baseUrl}/admin.html\n` +
-    `Документация: ${baseUrl}/docs\n` +
-    `Метрики: ${baseUrl}/metrics\n` +
-    `Здоровье: ${baseUrl}/healthz\n` +
+    `Админка: <a href="${baseUrl}/admin.html">${baseUrl}/admin.html</a>\n` +
+    `Документация: <a href="${baseUrl}/docs">${baseUrl}/docs</a>\n` +
+    `Метрики: <a href="${baseUrl}/metrics">${baseUrl}/metrics</a>\n` +
+    `Здоровье: <a href="${baseUrl}/healthz">${baseUrl}/healthz</a>\n` +
     `----------------------------------`;
   sendTelegramAlert(msg);
 }
@@ -86,7 +86,7 @@ export function sendServerErrorAlert(path: string, method: string, requestId: st
   const msg =
     `💥 <b>[INTERRA SERVER ALERT] Ошибка 500</b>\n` +
     `----------------------------------\n` +
-    `Маршрут: <code>${method}</code> ${fullUrl}\n` +
+    `Маршрут: <code>${method}</code> <a href="${fullUrl}">${fullUrl}</a>\n` +
     `Request ID: <code>${requestId}</code>\n` +
     `Ошибка: <code>${error}</code>\n` +
     `----------------------------------`;
