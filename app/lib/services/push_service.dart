@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'auth_store.dart';
 import 'api_client.dart';
 import 'notify_prefs.dart';
+import 'notifications_store.dart';
 
 /// обработчик push в фоне/при закрытом приложении. должен быть top-level
 @pragma('vm:entry-point')
@@ -133,6 +134,14 @@ class PushService {
 
     final link = message.data['link'];
     final payload = (link is String && link.startsWith('https://')) ? link : null;
+
+    if (n.title != null || n.body != null) {
+      NotificationsStore.instance.addNotification(
+        title: n.title ?? 'Уведомление',
+        body: n.body ?? '',
+        link: payload,
+      );
+    }
 
     // rich-картинка (Android): скачиваем и показываем big-picture; при любой
     // ошибке тихо откатываемся к обычному текстовому уведомлению

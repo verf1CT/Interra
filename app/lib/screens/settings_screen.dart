@@ -18,6 +18,7 @@ import '../widgets/ui_kit.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
+import 'notifications_history_screen.dart';
 
 /// экран настроек: аккаунт, уведомления, выход
 class SettingsScreen extends StatefulWidget {
@@ -317,6 +318,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                  leading: const Icon(Icons.history_toggle_off_rounded),
+                  title: const Text('История уведомлений'),
+                  subtitle: const Text('Все полученные сообщения и акции'),
+                  trailing: const Icon(Icons.chevron_right,
+                      color: AppColors.neutral),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsHistoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1, thickness: 1, indent: 56),
                 SwitchListTile(
                   secondary: const Icon(Icons.notifications_outlined),
                   title: const Text('Push-уведомления'),
