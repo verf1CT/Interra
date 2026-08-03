@@ -180,6 +180,35 @@ export function sendServerErrorAlert(path: string, method: string, requestId: st
 }
 
 /**
+ * Автоматически регистрирует список команд (/...) в Telegram API.
+ */
+export async function registerTelegramBotMenu(): Promise<void> {
+  const { telegramBotToken } = config;
+  if (!telegramBotToken) return;
+
+  try {
+    const url = `https://api.telegram.org/bot${telegramBotToken}/setMyCommands`;
+    const commands = [
+      { command: 'push', description: 'Массовая рассылка всем абонентам' },
+      { command: 'send', description: 'Персональный push: /send <логин> <текст>' },
+      { command: 'find', description: 'Поиск устройства: /find <логин>' },
+      { command: 'stats', description: 'Статистика устройств, памяти и uptime' },
+      { command: 'backup', description: 'Скачать бэкап базы данных SQLite' },
+      { command: 'ping', description: 'Проверить отклик сервера и БД' },
+      { command: 'help', description: 'Справка по всем командам' },
+    ];
+
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commands }),
+    });
+  } catch (err) {
+    logger.error({ err }, 'Ошибка при регистрации меню команд Telegram бота');
+  }
+}
+
+/**
  * Обработчик команд Telegram бота (/push, /send, /find, /stats, /backup, /ping, /help)
  */
 let pollingInterval: NodeJS.Timeout | null = null;
@@ -188,6 +217,8 @@ let lastUpdateId = 0;
 export function initTelegramBotCommands(): void {
   const { telegramBotToken } = config;
   if (!telegramBotToken) return;
+
+  registerTelegramBotMenu();
 
   pollingInterval = setInterval(async () => {
     try {
