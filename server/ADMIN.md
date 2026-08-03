@@ -177,7 +177,8 @@ cd /opt/interra/server
 
 ```bash
 docker compose ps                 # STATUS = Up
-curl -s http://localhost:8080/health   # {"ok":true}
+curl -s http://localhost:8080/healthz   # {"status":"ok","uptime":...}
+curl -s http://localhost:8080/readyz    # {"status":"ready","db":"connected"}
 ```
 
 Полезные команды на будущее:

@@ -21,8 +21,8 @@ docker compose up -d --build
 
 echo "Жду старт..."
 for i in $(seq 1 15); do
-  if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
-    echo "Бэкенд запущен: http://localhost:8080/health -> OK"
+  if curl -fsS http://localhost:8080/healthz >/dev/null 2>&1; then
+    echo "Бэкенд запущен: http://localhost:8080/healthz -> OK"
     echo "Админка: http://<адрес-сервера>:8080/admin.html"
     echo "(за nginx с HTTPS — https://push.interra.ru/admin.html)"
     exit 0
@@ -30,5 +30,5 @@ for i in $(seq 1 15); do
   sleep 1
 done
 
-echo "Не дождался /health. Логи: docker compose logs -f"
+echo "Не дождался /healthz. Логи: docker compose logs -f"
 exit 1
