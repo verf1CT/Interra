@@ -1,6 +1,6 @@
 # Бэкенд ЛК Интерра (TypeScript Edition)
 
-Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хранит push-токены устройств, собирает метрики Prometheus, ведёт структурированное Pino-логирование и рассылает уведомления через Firebase Cloud Messaging (включая отложенные рассылки), плюс веб-панель оператора.
+Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хранит push-токены устройств, собирает метрики Prometheus, предоставляет интерактивную документацию **Scalar UI (OpenAPI 3.1)**, ведёт структурированное Pino-логирование и рассылает уведомления через Firebase Cloud Messaging (включая отложенные рассылки), плюс веб-панель оператора.
 
 > 🚀 **Надо просто поднять сервер?** Переходите в [`ADMIN.md`](./ADMIN.md) — пошаговое руководство от чистого сервера до деплоя в Docker.
 
@@ -16,6 +16,7 @@ src/
 ├── domain/             # Сущности, типы, Zod-схемы (schemas.ts) и кастомные ошибки (errors.ts)
 ├── infrastructure/     # Логирование Pino, метрики Prometheus, AsyncLocalStorage (requestId)
 ├── db/                 # Соединение с SQLite (better-sqlite3) и миграции (connection.ts)
+├── docs/               # OpenAPI 3.1 спецификация и Scalar UI документация (openapi.ts)
 ├── repositories/       # Абстракция доступа к БД (device.repository.ts, broadcast.repository.ts)
 ├── services/           # Бизнес-логика (fcm.service.ts, broadcast.service.ts, scheduler.service.ts)
 ├── controllers/        # Обработка HTTP-запросов (device.controller.ts, admin.controller.ts, event.controller.ts)
@@ -29,6 +30,7 @@ src/
 ## 🛠 Технологии и Безопасность
 
 - **Язык**: TypeScript (модули `NodeNext`, строгий режим `"strict": true`).
+- **Интерактивная Документация**: **Scalar UI** + **OpenAPI 3.1** по адресу `/docs` и `/openapi.json`.
 - **Сборщик / Скрипты**: `tsx watch` в dev-режиме, `tsc` для продакшн-билда в `dist/`.
 - **Валидация**: **Zod** (валидация тела запросов, параметров и переменных окружения).
 - **Логирование**: **Pino** (JSON-логи в продакшне, `pino-pretty` в dev-режиме) + сквозная трассировка запросов через `x-request-id`.
@@ -49,13 +51,15 @@ src/
 | POST  | `/api/devices/unregister` | Удаление токена устройства | `{ token }` |
 | POST  | `/api/events/opened`      | Отметка открытия пуша (для open-rate analytics) | `{ bid }` |
 
-### 2. Системные и Метрики
+### 2. Документация, Системные и Метрики
 
-| Метод | Путь       | Описание |
-|-------|------------|----------|
-| GET   | `/healthz` | Liveness проба (uptime сервера) |
-| GET   | `/readyz`  | Readiness проба (проверка подключения к SQLite `SELECT 1`) |
-| GET   | `/metrics` | Prometheus формат метрик (HTTP latency, статус-коды, пуши) |
+| Метод | Путь            | Описание |
+|-------|-----------------|----------|
+| GET   | `/docs`         | **Интерактивная документация Scalar UI** (с возможностью тестирования запросов) |
+| GET   | `/openapi.json` | Сырая спецификация OpenAPI 3.1 |
+| GET   | `/healthz`      | Liveness проба (uptime сервера) |
+| GET   | `/readyz`       | Readiness проба (проверка подключения к SQLite `SELECT 1`) |
+| GET   | `/metrics`      | Prometheus формат метрик (HTTP latency, статус-коды, пуши) |
 
 ### 3. Для администратора / оператора (Заголовок `Authorization: Bearer <ADMIN_TOKEN>`)
 
@@ -70,22 +74,19 @@ src/
 
 ## 🚀 Скрипты Разработки и Сборки
 
+Запуск доступен как напрямую через `npm`, так и через глобальное меню `make` из корня проекта:
+
 ```bash
-# Установка зависимостей
+# Из корня проекта (через Makefile):
+make dev-server       # Запустить в dev-режиме
+make test-server      # Запустить тесты Vitest
+make build-server     # Собрать в dist/
+
+# Или прямо в папке server/:
 npm install
-
-# Запуск в режиме разработки (с авто-перезапуском при изменениях в TS)
-npm run dev
-
-# Проверка типов TypeScript (без генерации JS)
-npm run typecheck
-
-# Прогон интеграционных авто-тестов Vitest
-npm run test
-
-# Продакшн-сборка TypeScript в папку dist/
-npm run build
-
-# Запуск собранного проекта
-npm start
+npm run dev           # Запуск в режиме разработки (tsx watch)
+npm run typecheck     # Проверка типов TypeScript
+npm run test          # Прогон интеграционных тестов Vitest
+npm run build         # Продакшн-сборка TypeScript в папку dist/
+npm start             # Запуск собранного проекта
 ```

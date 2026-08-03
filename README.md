@@ -141,13 +141,24 @@ node scripts/send-test-push.js --token <FCM_TOKEN> "Тест" "Текст" # т�
 
 - Версия: **`1.0.0+2`** (единый источник — `app/pubspec.yaml`).
 - Приложение: `flutter analyze` — 0 замечаний; `flutter test` — 36/36.
-- Бэкенд: `npm run typecheck` — 0 ошибок TS; `npm run test` (Vitest) — 10/10 тестов пройдено.
+- Бэкенд: `npm run typecheck` — 0 ошибок TS; `npm run test` (Vitest) — 10/10 тестов пройдено; **Scalar UI + OpenAPI 3.1** по адресу `/docs`.
 - CI зелёный; на изменения в `app/**` собираются APK + AAB и публикуются в
   **Releases** (тег `build-<N>`). С ключом из секретов репозитория подпись
   сторовая, иначе debug. Коммиты в `server/**`/`docs/**` сборку не запускают.
 - Firebase-проект `interra-5a99e` подключён (Analytics / Crashlytics / FCM).
 
 ## Быстрый старт (для разработчика)
+
+Самый простой путь — использовать интерактивное меню из корня:
+
+```bash
+make                                               # вызов графического цветного меню
+make dev-server                                    # запуск бэкенда в dev-режиме
+make dev-app                                       # запуск Flutter приложения
+make test                                          # прогон всех тестов (Vitest + Flutter)
+```
+
+Или по папкам напрямую:
 
 ```bash
 # приложение (Flutter)
@@ -161,7 +172,7 @@ cd server
 npm install
 npm run dev                                        # режим разработки (tsx watch)
 npm run test                                       # запуск Vitest интеграционных тестов
-npm run build && npm start                         # продакшн сборка и запуск
+npm run build && npm start                         # продакшн сборка и запуск (документация: http://localhost:8080/docs)
 ```
 
 > Локальный запуск сервера проще всего через Docker: `cd server && ./deploy.sh`.
