@@ -1,10 +1,21 @@
 import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';
+import fetch, { RequestInit, Response } from 'node-fetch';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { config } from '../config/env.js';
 import { logger } from './logger.js';
 import { broadcastService } from '../services/broadcast.service.js';
 import { DeviceRepository, DeviceRow } from '../repositories/device.repository.js';
 import { db } from '../db/connection.js';
+
+const proxyAgent = config.telegramProxy ? new HttpsProxyAgent(config.telegramProxy) : undefined;
+
+function telegramFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    ...(proxyAgent ? { agent: proxyAgent } : {}),
+  } as any);
+}
 
 const deviceRepo = new DeviceRepository();
 
@@ -56,7 +67,7 @@ export async function sendTelegramAlert(text: string, replyMarkup?: TelegramRepl
       body.reply_markup = replyMarkup;
     }
 
-    const response = await fetch(url, {
+    const response = await telegramFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -93,7 +104,7 @@ export async function sendTelegramDocument(filename: string, fileBuffer: Buffer,
       formData.append('caption', caption);
     }
 
-    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendDocument`, {
+    const response = await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/sendDocument`, {
       method: 'POST',
       body: formData,
     });
@@ -200,7 +211,7 @@ export async function registerTelegramBotMenu(): Promise<void> {
       { command: 'help', description: 'Справка по всем командам' },
     ];
 
-    await fetch(url, {
+    await telegramFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ commands }),
@@ -223,7 +234,7 @@ async function answerCallbackQuery(callbackQueryId: string): Promise<void> {
   const { telegramBotToken } = config;
   if (!telegramBotToken) return;
   try {
-    await fetch(`https://api.telegram.org/bot${telegramBotToken}/answerCallbackQuery`, {
+    await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ callback_query_id: callbackQueryId }),
@@ -235,7 +246,7 @@ async function editTelegramAlert(chatId: number, messageId: number, text: string
   const { telegramBotToken } = config;
   if (!telegramBotToken) return;
   try {
-    await fetch(`https://api.telegram.org/bot${telegramBotToken}/editMessageText`, {
+    await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -263,7 +274,7 @@ export function initTelegramBotCommands(): void {
 
   pollingInterval = setInterval(async () => {
     try {
-      const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getUpdates?offset=${lastUpdateId + 1}&limit=5&timeout=0`);
+      const res = await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/getUpdates?offset=${lastUpdateId + 1}&limit=5&timeout=0`);
       if (!res.ok) return;
 
       const data = (await res.json()) as {
@@ -365,7 +376,7 @@ export function initTelegramBotCommands(): void {
         const allowedChatId = Number(config.telegramChatId);
         if (allowedChatId && chatId !== allowedChatId) {
           try {
-            await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+            await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

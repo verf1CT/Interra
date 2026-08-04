@@ -21,6 +21,7 @@ const envSchema = z.object({
   SERVER_BASE_URL: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
+  TELEGRAM_PROXY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -50,6 +51,7 @@ export const config = {
   serverBaseUrl: defaultBaseUrl,
   telegramBotToken: envData.TELEGRAM_BOT_TOKEN || '',
   telegramChatId: envData.TELEGRAM_CHAT_ID || '',
+  telegramProxy: envData.TELEGRAM_PROXY || process.env.HTTP_PROXY || process.env.HTTPS_PROXY || '',
   serverRoot,
 };
 

@@ -24,6 +24,8 @@
     "express-rate-limit": "^7.5.0",
     "firebase-admin": "^12.5.0",
     "helmet": "^8.0.0",
+    "https-proxy-agent": "^9.1.0",
+    "node-fetch": "^3.3.2",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
     "prom-client": "^15.1.3",
