@@ -55,6 +55,7 @@ export class WatchdogService {
         `Стек-трейс:\n<code>${(err.stack || '').slice(0, 500)}</code>\n` +
         `----------------------------------`;
       sendTelegramAlert(alertMsg);
+      setTimeout(() => process.exit(1), 3000);
     });
 
     process.on('unhandledRejection', (reason: unknown) => {
@@ -66,6 +67,7 @@ export class WatchdogService {
         `Причина: <code>${reasonStr}</code>\n` +
         `----------------------------------`;
       sendTelegramAlert(alertMsg);
+      setTimeout(() => process.exit(1), 3000);
     });
   }
 

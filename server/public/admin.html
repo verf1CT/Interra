@@ -50,7 +50,7 @@
     <div class="card" id="auth-card">
       <h2>Вход</h2>
       <label>Админ-токен</label>
-      <input type="text" id="token" value="interra_secret_admin_token_2026" placeholder="ADMIN_TOKEN из .env" />
+      <input type="text" id="token" placeholder="ADMIN_TOKEN из .env" />
       <div class="row" style="margin-top:14px">
         <button id="login-btn">Войти</button>
       </div>
@@ -143,6 +143,7 @@
       $('auth-error').classList.remove('err');
       try {
         await loadStats();
+        localStorage.setItem('interra_admin_token', token);
         $('auth-card').classList.add('hidden');
         ['stats-card', 'send-card', 'scheduled-card', 'analytics-card', 'history-card'].forEach((id) => $(id).classList.remove('hidden'));
         loadScheduled();
@@ -153,7 +154,11 @@
     };
 
     window.addEventListener('DOMContentLoaded', () => {
-      if ($('token').value) $('login-btn').click();
+      const savedToken = localStorage.getItem('interra_admin_token');
+      if (savedToken) {
+        $('token').value = savedToken;
+        $('login-btn').click();
+      }
     });
 
     $('target-type').onchange = (e) => {

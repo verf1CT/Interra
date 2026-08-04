@@ -10,6 +10,8 @@ import { DeviceRepository, DeviceRow } from '../repositories/device.repository.j
 import { db } from '../db/connection.js';
 import { incidentService } from '../services/incident.service.js';
 
+function escapeHtml(text: string) { return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
 function createProxyAgent(proxyUrl?: string) {
   if (!proxyUrl) return undefined;
   if (proxyUrl.startsWith('socks')) {
@@ -240,6 +242,7 @@ interface WizardSession {
   title?: string;
   body?: string;
   screen?: string;
+  updatedAt: number;
 }
 
 const wizardSessions = new Map<number, WizardSession>();
@@ -286,6 +289,15 @@ export function initTelegramBotCommands(): void {
 
   registerTelegramBotMenu();
 
+  setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, session] of wizardSessions.entries()) {
+      if (now - session.updatedAt > 600000) {
+        wizardSessions.delete(chatId);
+      }
+    }
+  }, 5 * 60 * 1000);
+
   pollingInterval = setInterval(async () => {
     try {
       const res = await telegramFetch(`https://api.telegram.org/bot${telegramBotToken}/getUpdates?offset=${lastUpdateId + 1}&limit=5&timeout=0`);
@@ -323,13 +335,14 @@ export function initTelegramBotCommands(): void {
             const screenType = cb.data.replace('wiz_scr_', '');
             session.screen = screenType === 'none' ? undefined : screenType;
             session.step = 'confirm';
+            session.updatedAt = Date.now();
 
             const screenLabel = session.screen ? `<code>${session.screen}</code>` : 'отсутствует';
             const previewMsg =
               `📋 <b>Предпросмотр рассылки:</b>\n` +
               `----------------------------------\n` +
-              `Заголовок: <b>${session.title}</b>\n` +
-              `Текст: <i>${session.body}</i>\n` +
+              `Заголовок: <b>${escapeHtml(session.title || '')}</b>\n` +
+              `Текст: <i>${escapeHtml(session.body || '')}</i>\n` +
               `Deep link: ${screenLabel}\n` +
               `----------------------------------\n\n` +
               `Отправить эту рассылку всем абонентам?`;
@@ -362,8 +375,8 @@ export function initTelegramBotCommands(): void {
                 msgId,
                 `✅ <b>Массовая рассылка успешно выполнена!</b>\n` +
                 `----------------------------------\n` +
-                `Заголовок: <b>${session.title}</b>\n` +
-                `Текст: <i>${session.body}</i>${screenText}\n` +
+                `Заголовок: <b>${escapeHtml(session.title || '')}</b>\n` +
+                `Текст: <i>${escapeHtml(session.body || '')}</i>${screenText}\n` +
                 `Успешно отправлено: <b>${result.successCount}</b>\n` +
                 `Ошибок: <b>${result.failureCount}</b>\n` +
                 `----------------------------------`
@@ -421,9 +434,10 @@ export function initTelegramBotCommands(): void {
           if (session.step === 'title') {
             session.title = text === '-' ? 'Сообщение от провайдера' : text;
             session.step = 'body';
+            session.updatedAt = Date.now();
             await sendTelegramAlert(
               `🧙‍♂️ <b>Мастер создания рассылки (Шаг 2 из 3)</b>\n\n` +
-              `Заголовок: <b>${session.title}</b>\n\n` +
+              `Заголовок: <b>${escapeHtml(session.title || '')}</b>\n\n` +
               `Теперь введите <b>текст сообщения</b>:\n\n` +
               `<i>Для отмены отправьте /cancel</i>`,
               defaultReplyKeyboard
@@ -432,10 +446,11 @@ export function initTelegramBotCommands(): void {
           } else if (session.step === 'body') {
             session.body = text;
             session.step = 'screen';
+            session.updatedAt = Date.now();
             await sendTelegramAlert(
               `🧙‍♂️ <b>Мастер создания рассылки (Шаг 3 из 3)</b>\n\n` +
-              `Заголовок: <b>${session.title}</b>\n` +
-              `Текст: <i>${session.body}</i>\n\n` +
+              `Заголовок: <b>${escapeHtml(session.title || '')}</b>\n` +
+              `Текст: <i>${escapeHtml(session.body || '')}</i>\n\n` +
               `Выберите <b>экран приложения (Deep Link)</b> при тапе по push:`,
               {
                 inline_keyboard: [
@@ -454,7 +469,7 @@ export function initTelegramBotCommands(): void {
 
         // 0. /wizard или кнопка "🧙‍♂️ Пошаговая рассылка"
         if (cmd === '/wizard' || cmd.startsWith('/wizard@') || text === '🧙‍♂️ Пошаговая рассылка') {
-          wizardSessions.set(chatId, { step: 'title' });
+          wizardSessions.set(chatId, { step: 'title', updatedAt: Date.now() });
           await sendTelegramAlert(
             `🧙‍♂️ <b>Мастер создания рассылки (Шаг 1 из 3)</b>\n\n` +
             `Введите <b>заголовок</b> уведомления (или отправьте <code>-</code> для заглавия «Сообщение от провайдера»):\n\n` +

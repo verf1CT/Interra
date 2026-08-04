@@ -15,6 +15,7 @@ devicesRouter.post(
 
 devicesRouter.post(
   '/unregister',
+  deviceRateLimiter,
   validateBody(UnregisterDeviceSchema),
   deviceController.unregister
 );

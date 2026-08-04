@@ -9,6 +9,7 @@ import { requestIdMiddleware } from './middlewares/request-id.middleware.js';
 import { errorHandlerMiddleware } from './middlewares/error-handler.middleware.js';
 import { devicesRouter } from './routes/device.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
+import { requireAdmin } from './middlewares/auth.middleware.js';
 import { eventsRouter } from './routes/event.routes.js';
 import { incidentRouter } from './routes/incident.routes.js';
 import { schedulerService } from './services/scheduler.service.js';
@@ -25,7 +26,13 @@ app.set('trust proxy', 1);
 // Security & Middlewares
 app.use(
   helmet({
-    contentSecurityPolicy: false, // позволяет загружаться админ-панели и встроенным скриптам
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+      },
+    },
   })
 );
 app.use(cors({ origin: config.allowedOrigins }));
@@ -75,7 +82,7 @@ app.get('/readyz', (_req: Request, res: Response) => {
   }
 });
 
-app.get('/metrics', async (_req: Request, res: Response) => {
+app.get('/metrics', requireAdmin, async (_req: Request, res: Response) => {
   try {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());

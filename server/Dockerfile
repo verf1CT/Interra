@@ -28,9 +28,7 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 # Инструменты сборки для npm ci --only=production
-RUN apk add --no-cache python3 make g++ && \
-    COPY package*.json ./
-
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci --only=production && \
     apk del python3 make g++

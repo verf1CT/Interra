@@ -11,9 +11,8 @@ export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   const tokenFromHeader = authHeader.startsWith('Bearer ')
     ? authHeader.slice(7)
     : null;
-  const tokenFromQuery = (req.query.token as string) || null;
 
-  const token = tokenFromHeader || tokenFromQuery;
+  const token = tokenFromHeader;
 
   if (token !== config.adminToken) {
     return next(new UnauthorizedError('Неверный или отсутствующий токен авторизации'));

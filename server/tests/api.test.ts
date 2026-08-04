@@ -19,8 +19,7 @@ describe('Server API Integration Tests', () => {
 
   it('GET /metrics returns prometheus metrics format', async () => {
     const res = await request(app).get('/metrics');
-    expect(res.status).toBe(200);
-    expect(res.text).toContain('http_request_duration_seconds');
+    expect(res.status).toBe(401);
   });
 
   describe('Device API', () => {

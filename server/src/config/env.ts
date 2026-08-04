@@ -17,7 +17,7 @@ const envSchema = z.object({
   DB_PATH: z.string().optional(),
   FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  ALLOWED_ORIGINS: z.string().default('*'),
+  ALLOWED_ORIGINS: z.string().default('https://push.interra.ru'),
   SERVER_BASE_URL: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_CHAT_ID: z.string().optional(),
