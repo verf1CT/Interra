@@ -1,8 +1,8 @@
 # Бэкенд ЛК Интерра (TypeScript Edition)
 
-Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хранит push-токены устройств, собирает метрики Prometheus, предоставляет интерактивную документацию **Scalar UI (OpenAPI 3.1)**, ведёт структурированное Pino-логирование и рассылает уведомления через Firebase Cloud Messaging (включая отложенные рассылки), плюс веб-панель оператора.
+Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хранит push-токены устройств, собирает метрики Prometheus, предоставляет интерактивную документацию **Scalar UI (OpenAPI 3.1)**, ведёт структурированное Pino-логирование, рассылает уведомления через Firebase Cloud Messaging (с поддержкой Deep Links на конкретные экраны), содержит встроенный **Telegram Bot (с пошаговым визардом `/wizard`)** и **Watchdog авто-мониторинг сбоев**.
 
-> 🚀 **Надо просто поднять сервер?** Переходите в [`ADMIN.md`](./ADMIN.md) — пошаговое руководство от чистого сервера до деплоя в Docker.
+> 🚀 **Надо просто поднять сервер?** Выполните `make docker-up` из корня репозитория или перейдите в [`ADMIN.md`](./ADMIN.md) — пошаговое руководство деплоя.
 
 ---
 
@@ -14,16 +14,33 @@ Enterprise-ready бэкенд на **Node.js / Express / TypeScript**: хран�
 src/
 ├── config/             # Конфигурация (.env) с Zod-валидацией на старте (env.ts)
 ├── domain/             # Сущности, типы, Zod-схемы (schemas.ts) и кастомные ошибки (errors.ts)
-├── infrastructure/     # Логирование Pino, метрики Prometheus, AsyncLocalStorage (requestId)
+├── infrastructure/     # Логирование Pino, метрики Prometheus, Telegram Bot интеграция (telegram.ts)
 ├── db/                 # Соединение с SQLite (better-sqlite3) и миграции (connection.ts)
 ├── docs/               # OpenAPI 3.1 спецификация и Scalar UI документация (openapi.ts)
 ├── repositories/       # Абстракция доступа к БД (device.repository.ts, broadcast.repository.ts)
-├── services/           # Бизнес-логика (fcm.service.ts, broadcast.service.ts, scheduler.service.ts)
+├── services/           # Бизнес-логика (fcm.service.ts, broadcast.service.ts, scheduler.service.ts, watchdog.service.ts)
 ├── controllers/        # Обработка HTTP-запросов (device.controller.ts, admin.controller.ts, event.controller.ts)
 ├── middlewares/        # ErrorHandler, RateLimiter, RequestId, Auth, ValidateBody
 ├── routes/             # Маршруты Express (device.routes.ts, admin.routes.ts, event.routes.ts)
-└── index.ts            # Главный модуль, Helmet, CORS, Graceful Shutdown
+└── index.ts            # Главный модуль, Helmet, CORS, Graceful Shutdown, Watchdog boot
 ```
+
+---
+
+## 🤖 Интеграция с Telegram Ботом & Watchdog
+
+1. **Интерактивный пошаговый мастер (`/wizard`)**:
+   - Позволяет сформировать push через бот без открывания веб-панели (Заголовок → Текст → Выбор Deep Link → Предпросмотр → Кнопка «🚀 Отправить всем»).
+2. **Команды администрирования**:
+   - `/stats` — сводка по устройствам, RAM, Uptime и размеру SQLite.
+   - `/backup` — отправка архива SQLite базы в чат.
+   - `/send <login> <text>` — точечный push абоненту.
+   - `/find <login>` — поиск устройств в БД.
+   - `/ping` — проверка отклика SQLite и состояния процесса.
+3. **Watchdog авто-мониторинг сбоев (`watchdogService`)**:
+   - Проверка отклика SQLite каждые 30 секунд.
+   - Отслеживание потребления RAM Heap (>450MB).
+   - Перехват `uncaughtException` и `unhandledRejection` с мгновенной отправкой стек-трейса в Telegram чат.
 
 ---
 
@@ -37,7 +54,8 @@ src/
 - **Метрики**: **prom-client** (Prometheus эндпоинт `/metrics`).
 - **Безопасность**: **Helmet** (HTTP security headers) + **express-rate-limit** (антиспам).
 - **Отказоустойчивость**: **Graceful Shutdown** по сигналам `SIGTERM`/`SIGINT` с аккуратным завершением процессов и закрытием SQLite.
-- **Тестирование**: **Vitest** + **Supertest** (10/10 авто-тестов в `tests/api.test.ts`).
+- **Тестирование**: **Vitest** + **Supertest** (15/15 авто-тестов: `api.test.ts`, `watchdog.test.ts`, `e2e-broadcast.test.ts`).
+- **Docker**: Готовый мультистадийный `Dockerfile` + `docker-compose.yml` с NGINX reverse proxy.
 
 ---
 
@@ -66,7 +84,7 @@ src/
 | Метод | Путь                            | Описание |
 |-------|---------------------------------|----------|
 | GET   | `/api/admin/stats`              | Статистика устройств, сводка `totals` и история рассылок |
-| POST  | `/api/admin/broadcast`          | Отправка немедленной или создание отложенной рассылки (`sendAt`) |
+| POST  | `/api/admin/broadcast`          | Отправка немедленной или создание отложенной рассылки (`sendAt`, `screen`) |
 | GET   | `/api/admin/scheduled`          | Список всех ожидающих отложенных рассылок |
 | POST  | `/api/admin/scheduled/:id/cancel` | Отмена отложенной рассылки по ID |
 
@@ -74,19 +92,16 @@ src/
 
 ## 🚀 Скрипты Разработки и Сборки
 
-Запуск доступен как напрямую через `npm`, так и через глобальное меню `make` из корня проекта:
-
 ```bash
-# Из корня проекта (через Makefile):
-make dev-server       # Запустить в dev-режиме
-make test-server      # Запустить тесты Vitest
-make build-server     # Собрать в dist/
-
-# Или прямо в папке server/:
-npm install
+# Разработка
 npm run dev           # Запуск в режиме разработки (tsx watch)
 npm run typecheck     # Проверка типов TypeScript
-npm run test          # Прогон интеграционных тестов Vitest
+npm run test          # Запуск Vitest тестов (15/15 PASSED)
+
+# Продакшн
 npm run build         # Продакшн-сборка TypeScript в папку dist/
 npm start             # Запуск собранного проекта
+
+# Docker
+docker-compose up -d --build # Запуск полного стека в Docker
 ```

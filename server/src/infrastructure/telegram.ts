@@ -26,6 +26,7 @@ export interface TelegramReplyMarkup {
 
 export const defaultReplyKeyboard: TelegramReplyMarkup = {
   keyboard: [
+    [{ text: '🧙‍♂️ Пошаговая рассылка' }],
     [{ text: '📊 Статистика' }, { text: '💾 Бэкап БД' }],
     [{ text: '🏓 Пинг' }, { text: '❓ Справка' }],
   ],
@@ -189,6 +190,7 @@ export async function registerTelegramBotMenu(): Promise<void> {
   try {
     const url = `https://api.telegram.org/bot${telegramBotToken}/setMyCommands`;
     const commands = [
+      { command: 'wizard', description: '🧙‍♂️ Пошаговый мастер создания рассылки' },
       { command: 'push', description: 'Массовая рассылка всем абонентам' },
       { command: 'send', description: 'Персональный push: /send <логин> <текст>' },
       { command: 'find', description: 'Поиск устройства: /find <логин>' },
@@ -208,8 +210,47 @@ export async function registerTelegramBotMenu(): Promise<void> {
   }
 }
 
+interface WizardSession {
+  step: 'title' | 'body' | 'screen' | 'confirm';
+  title?: string;
+  body?: string;
+  screen?: string;
+}
+
+const wizardSessions = new Map<number, WizardSession>();
+
+async function answerCallbackQuery(callbackQueryId: string): Promise<void> {
+  const { telegramBotToken } = config;
+  if (!telegramBotToken) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${telegramBotToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId }),
+    });
+  } catch (_) {}
+}
+
+async function editTelegramAlert(chatId: number, messageId: number, text: string, replyMarkup?: TelegramReplyMarkup): Promise<void> {
+  const { telegramBotToken } = config;
+  if (!telegramBotToken) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${telegramBotToken}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: replyMarkup,
+      }),
+    });
+  } catch (_) {}
+}
+
 /**
- * Обработчик команд Telegram бота (/push, /send, /find, /stats, /backup, /ping, /help)
+ * Обработчик команд Telegram бота (/push, /wizard, /send, /find, /stats, /backup, /ping, /help)
  */
 let pollingInterval: NodeJS.Timeout | null = null;
 let lastUpdateId = 0;
@@ -225,24 +266,193 @@ export function initTelegramBotCommands(): void {
       const res = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getUpdates?offset=${lastUpdateId + 1}&limit=5&timeout=0`);
       if (!res.ok) return;
 
-      const data = (await res.json()) as { ok: boolean; result: Array<{ update_id: number; message?: { text?: string; chat: { id: number } } }> };
+      const data = (await res.json()) as {
+        ok: boolean;
+        result: Array<{
+          update_id: number;
+          message?: { text?: string; chat: { id: number } };
+          callback_query?: { id: string; data: string; message?: { message_id: number; chat: { id: number } } };
+        }>;
+      };
       if (!data.ok || !data.result) return;
 
       for (const update of data.result) {
         lastUpdateId = update.update_id;
+
+        // --- Обработка нажатий на инлайн-кнопки (callback_query) ---
+        if (update.callback_query) {
+          const cb = update.callback_query;
+          const chatId = cb.message?.chat.id;
+          const msgId = cb.message?.message_id;
+          if (!chatId || !msgId) continue;
+
+          const allowedChatId = Number(config.telegramChatId);
+          if (allowedChatId && chatId !== allowedChatId) continue;
+
+          await answerCallbackQuery(cb.id);
+
+          const session = wizardSessions.get(chatId);
+
+          if (cb.data.startsWith('wiz_scr_')) {
+            if (!session) continue;
+            const screenType = cb.data.replace('wiz_scr_', '');
+            session.screen = screenType === 'none' ? undefined : screenType;
+            session.step = 'confirm';
+
+            const screenLabel = session.screen ? `<code>${session.screen}</code>` : 'отсутствует';
+            const previewMsg =
+              `📋 <b>Предпросмотр рассылки:</b>\n` +
+              `----------------------------------\n` +
+              `Заголовок: <b>${session.title}</b>\n` +
+              `Текст: <i>${session.body}</i>\n` +
+              `Deep link: ${screenLabel}\n` +
+              `----------------------------------\n\n` +
+              `Отправить эту рассылку всем абонентам?`;
+
+            await editTelegramAlert(chatId, msgId, previewMsg, {
+              inline_keyboard: [
+                [
+                  { text: '🚀 Отправить всем', callback_data: 'wiz_send' },
+                  { text: '❌ Отмена', callback_data: 'wiz_cancel' },
+                ],
+              ],
+            });
+          } else if (cb.data === 'wiz_send') {
+            if (!session || !session.title || !session.body) {
+              await editTelegramAlert(chatId, msgId, '⚠️ Сессия создания рассылки истекла. Запустите /wizard снова.');
+              continue;
+            }
+
+            try {
+              const result = await broadcastService.runBroadcast({
+                title: session.title,
+                body: session.body,
+                target: { type: 'all' },
+                screen: session.screen,
+              });
+
+              const screenText = session.screen ? `\nDeep link: <code>${session.screen}</code>` : '';
+              await editTelegramAlert(
+                chatId,
+                msgId,
+                `✅ <b>Массовая рассылка успешно выполнена!</b>\n` +
+                `----------------------------------\n` +
+                `Заголовок: <b>${session.title}</b>\n` +
+                `Текст: <i>${session.body}</i>${screenText}\n` +
+                `Успешно отправлено: <b>${result.successCount}</b>\n` +
+                `Ошибок: <b>${result.failureCount}</b>\n` +
+                `----------------------------------`
+              );
+            } catch (err) {
+              await editTelegramAlert(chatId, msgId, `❌ <b>Ошибка рассылки:</b> ${(err as Error).message}`);
+            }
+            wizardSessions.delete(chatId);
+          } else if (cb.data === 'wiz_cancel') {
+            wizardSessions.delete(chatId);
+            await editTelegramAlert(chatId, msgId, '❌ Создание рассылки отменено.');
+          }
+
+          continue;
+        }
+
+        // --- Обработка текстовых сообщений ---
         const text = update.message?.text?.trim();
         const chatId = update.message?.chat.id;
 
         if (!text || !chatId) continue;
 
+        // Проверка авторизации: принимаем команды только из админской группы
+        const allowedChatId = Number(config.telegramChatId);
+        if (allowedChatId && chatId !== allowedChatId) {
+          try {
+            await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: '⛔️ Доступ запрещён. Бот принимает команды только из авторизованной группы.',
+              }),
+            });
+          } catch (_) {}
+          continue;
+        }
+
         const cmd = text.split(' ')[0].toLowerCase();
 
-        // 1. /push <текст> (Массовая рассылка всем)
-        if (cmd === '/push' || cmd.startsWith('/push@')) {
-          const pushBody = text.replace(/^\/push(@\w+)?\s*/i, '').trim();
-          if (!pushBody) {
-            await sendTelegramAlert('⚠️ Укажите текст рассылки. Пример: <code>/push Скоро технические работы.</code>', defaultReplyKeyboard);
+        // Команда /cancel для отмены визарда
+        if (cmd === '/cancel' || cmd.startsWith('/cancel@')) {
+          if (wizardSessions.has(chatId)) {
+            wizardSessions.delete(chatId);
+            await sendTelegramAlert('❌ Создание рассылки отменено.', defaultReplyKeyboard);
+          } else {
+            await sendTelegramAlert('ℹ️ У вас нет активных сессий создания рассылки.', defaultReplyKeyboard);
+          }
+          continue;
+        }
+
+        // Обработка активных шагов Wizard (если не команда)
+        const session = wizardSessions.get(chatId);
+        if (session && !text.startsWith('/')) {
+          if (session.step === 'title') {
+            session.title = text === '-' ? 'Сообщение от провайдера' : text;
+            session.step = 'body';
+            await sendTelegramAlert(
+              `🧙‍♂️ <b>Мастер создания рассылки (Шаг 2 из 3)</b>\n\n` +
+              `Заголовок: <b>${session.title}</b>\n\n` +
+              `Теперь введите <b>текст сообщения</b>:\n\n` +
+              `<i>Для отмены отправьте /cancel</i>`,
+              defaultReplyKeyboard
+            );
             continue;
+          } else if (session.step === 'body') {
+            session.body = text;
+            session.step = 'screen';
+            await sendTelegramAlert(
+              `🧙‍♂️ <b>Мастер создания рассылки (Шаг 3 из 3)</b>\n\n` +
+              `Заголовок: <b>${session.title}</b>\n` +
+              `Текст: <i>${session.body}</i>\n\n` +
+              `Выберите <b>экран приложения (Deep Link)</b> при тапе по push:`,
+              {
+                inline_keyboard: [
+                  [{ text: '🚫 Без перехода', callback_data: 'wiz_scr_none' }],
+                  [{ text: '📊 Диагностика', callback_data: 'wiz_scr_diagnostics' }, { text: '⚙️ Настройки', callback_data: 'wiz_scr_settings' }],
+                  [{ text: '💬 Поддержка', callback_data: 'wiz_scr_support' }, { text: '💳 Оплата', callback_data: 'wiz_scr_payment' }],
+                  [{ text: '🔔 Уведомления', callback_data: 'wiz_scr_notifications' }],
+                ],
+              }
+            );
+            continue;
+          }
+        }
+
+        // --- Команды ---
+
+        // 0. /wizard или кнопка "🧙‍♂️ Пошаговая рассылка"
+        if (cmd === '/wizard' || cmd.startsWith('/wizard@') || text === '🧙‍♂️ Пошаговая рассылка') {
+          wizardSessions.set(chatId, { step: 'title' });
+          await sendTelegramAlert(
+            `🧙‍♂️ <b>Мастер создания рассылки (Шаг 1 из 3)</b>\n\n` +
+            `Введите <b>заголовок</b> уведомления (или отправьте <code>-</code> для заглавия «Сообщение от провайдера»):\n\n` +
+            `<i>Для отмены отправьте /cancel</i>`,
+            defaultReplyKeyboard
+          );
+          continue;
+        }
+
+        // 1. /push [--screen=diagnostics] <текст> (Массовая рассылка всем)
+        if (cmd === '/push' || cmd.startsWith('/push@')) {
+          let pushBody = text.replace(/^\/push(@\w+)?\s*/i, '').trim();
+          if (!pushBody) {
+            await sendTelegramAlert('⚠️ Укажите текст рассылки. Пример: <code>/push Скоро технические работы.</code>\nС deep link: <code>/push --screen=diagnostics Проверьте соединение!</code>', defaultReplyKeyboard);
+            continue;
+          }
+
+          // парсим флаг --screen=xxx
+          let screen: string | undefined;
+          const screenMatch = pushBody.match(/--screen=(\w+)/);
+          if (screenMatch) {
+            screen = screenMatch[1];
+            pushBody = pushBody.replace(/--screen=\w+\s*/g, '').trim();
           }
 
           try {
@@ -250,12 +460,14 @@ export function initTelegramBotCommands(): void {
               title: 'Сообщение от провайдера',
               body: pushBody,
               target: { type: 'all' },
+              screen,
             });
 
+            const screenLabel = screen ? `\nDeep link: <code>${screen}</code>` : '';
             await sendTelegramAlert(
               `✅ <b>Массовая рассылка выполнена!</b>\n` +
               `----------------------------------\n` +
-              `Текст: <i>${pushBody}</i>\n` +
+              `Текст: <i>${pushBody}</i>${screenLabel}\n` +
               `Успешно отправлено: <b>${result.successCount}</b>\n` +
               `Ошибок: <b>${result.failureCount}</b>\n` +
               `----------------------------------`,
@@ -438,7 +650,8 @@ export function initTelegramBotCommands(): void {
           const msg =
             `🤖 <b>[INTERRA BOT COMMANDS]</b>\n` +
             `----------------------------------\n` +
-            `• <code>/push &lt;текст&gt;</code> — массовая рассылка всем клиентам\n` +
+            `• <code>/wizard</code> — пошаговый мастер создания рассылки\n` +
+            `• <code>/push &lt;текст&gt;</code> — быстрая рассылка всем клиентам\n` +
             `• <code>/send &lt;логин&gt; &lt;текст&gt;</code> — персональный push клиенту\n` +
             `• <code>/find &lt;логин/телефон&gt;</code> — поиск устройства в базе\n` +
             `• <code>/stats</code> — статистика устройств, памяти и uptime\n` +

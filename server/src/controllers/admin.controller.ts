@@ -23,7 +23,7 @@ export class AdminController {
 
   createBroadcast = async (req: Request, res: Response) => {
     const body: BroadcastDto = req.body;
-    const { title, body: msgBody, target, data, imageUrl, link, sendAt } = body;
+    const { title, body: msgBody, target, data, imageUrl, link, screen, sendAt } = body;
 
     // отложенная рассылка
     if (sendAt) {
@@ -54,6 +54,7 @@ export class AdminController {
       data,
       imageUrl,
       link,
+      screen,
     });
     res.json({ ok: true, ...result });
   };
