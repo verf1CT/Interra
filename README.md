@@ -72,18 +72,42 @@
 3. **Наш сервер → приложение / Telegram** — оператор из веб-панели или Telegram-бота
    рассылает уведомления (с поддержкой Deep Links на конкретные экраны).
 
-```
-┌─────────────────────────────┐   регистрация push-токена    ┌───────────────────────────┐
-│  Приложение (app/)           │ ───────────────────────────▶ │  Сервер (server/)          │
-│  • кабинет в WebView         │                              │  • TypeScript + Zod + SQLite │
-│  • нативный баланс           │ ◀──── push (через Firebase)  │  • рассылка уведомлений    │
-│  • диагностика / Wi-Fi       │   + Deep Link (screen)       │  • Telegram Bot + /wizard  │
-│  • история пушей (локально)  │                              │  • Watchdog мониторинг     │
-└─────────────────────────────┘                              └───────────────────────────┘
-        │  прямые запросы к биллингу (HTTPS)                              │
-        ▼                                                                 ▼
-   биллинг провайдера                                           Telegram Чад Админов
-   (вход по SMS, страница кабинета, баланс)                     (алерты сбоев, бэкапы БД)
+```mermaid
+flowchart TD
+    subgraph App ["📱 Mobile App (Flutter Clean Architecture)"]
+        UI["🎨 UI Layer\n(WebView Cabinet, Diagnostics, History)"]
+        Store["💾 Stores & Local State\n(AuthStore, NotificationsStore)"]
+        Security["🔐 Security Layer\n(Biometric Gate, Privacy Shield)"]
+    end
+
+    subgraph Backend ["⚡️ Push Server (TypeScript Clean Layered)"]
+        API["📡 Express REST API\n(Zod Schemas & OpenAPI 3.1)"]
+        Services["🎛 Services & Repositories\n(Broadcast, FCM, Devices)"]
+        DB[("💾 SQLite DB\n(better-sqlite3)")]
+        Watchdog["🛡 Watchdog Monitor\n(Health & Uncaught Errors)"]
+        Bot["🤖 Telegram Bot\n(/wizard, /stats, /backup, /ping)"]
+    end
+
+    subgraph Cloud ["🌐 External Infrastructure & Services"]
+        Billing["💳 Provider Billing UTM5\n(Auth, Balances)"]
+        FCM["🔥 Firebase Cloud Messaging\n(FCM Multicast)"]
+        TelegramChat["💬 Telegram Admin Group\n(-5498751607)"]
+    end
+
+    %% Interactions & Data Flows
+    UI -->|1. Direct HTTPS Auth & WebView| Billing
+    UI -->|2. Register FCM Device Token| API
+    UI -->|3. Save Local Push History| Store
+    Security -->|Protect UI Access| UI
+
+    API -->|4. Validate Payload & Route| Services
+    Services -->|5. Store & Select Tokens| DB
+    Services -->|6. Multicast Broadcast Payload| FCM
+    FCM -->|7. Deliver FCM Push & Deep Link| UI
+
+    Watchdog -->|8. Health Alerts & Crash Traces| TelegramChat
+    Bot -->|9. Interactive /wizard & Commands| Services
+    Bot -->|10. Backup DB Files & Stats| TelegramChat
 ```
 
 ## Состав репозитория
