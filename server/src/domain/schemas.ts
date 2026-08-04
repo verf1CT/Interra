@@ -47,6 +47,7 @@ export const BroadcastSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
   imageUrl: HttpsUrl.nullable().optional(),
   link: HttpsUrl.nullable().optional(),
+  screen: z.enum(['diagnostics', 'settings', 'support', 'payment', 'notifications']).optional(),
   sendAt: z.string().optional(),
 });
 

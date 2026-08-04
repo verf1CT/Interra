@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 🚀 Interra Push Backend Server
+  push-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: interra_push_server
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DB_PATH=/app/data/interra.sqlite
+      - SERVER_BASE_URL=https://push.interra.ru
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=-5498751607
+      - ADMIN_TOKEN=secret_admin_token_2026
+    volumes:
+      # Persistent Volume для физического файла SQLite БД
+      - sqlite_data:/app/data
+      # Опционально: файл сервисного аккаунта Firebase
+      - ./server/firebase-service-account.json:/app/firebase-service-account.json:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # 🛡 NGINX Reverse Proxy (SSL / HTTPS Terminal)
+  nginx:
+    image: nginx:alpine
+    container_name: interra_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certs_data:/etc/letsencrypt
+    depends_on:
+      - push-server
+
+volumes:
+  sqlite_data:
+    driver: local
+  certs_data:
+    driver: local

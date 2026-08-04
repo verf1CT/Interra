@@ -16,8 +16,9 @@ export class BroadcastService {
     data?: Record<string, unknown>;
     imageUrl?: string | null;
     link?: string | null;
+    screen?: string | null;
   }) {
-    const { title, body, target, data, imageUrl, link } = params;
+    const { title, body, target, data, imageUrl, link, screen } = params;
     const tokens = this.deviceRepo.selectTokensByTarget(target);
 
     // До рассылки создаём запись в БД, чтобы получить broadcast ID (`bid`)
@@ -41,6 +42,7 @@ export class BroadcastService {
     }
     fcmData.bid = String(broadcastId);
     if (link) fcmData.link = link;
+    if (screen) fcmData.screen = screen;
 
     logger.info(
       { broadcastId, recipients: tokens.length, target },

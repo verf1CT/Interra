@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -8,6 +9,9 @@ import 'auth_store.dart';
 import 'api_client.dart';
 import 'notify_prefs.dart';
 import 'notifications_store.dart';
+import 'quick_actions_service.dart';
+import '../screens/diagnostics_screen.dart';
+import '../screens/notifications_history_screen.dart';
 
 /// обработчик push в фоне/при закрытом приложении. должен быть top-level
 @pragma('vm:entry-point')
@@ -106,13 +110,58 @@ class PushService {
   static Future<void> _openFromMessage(RemoteMessage message) async {
     final bid = message.data['bid'];
     if (bid is String && bid.isNotEmpty) ApiClient.reportOpened(bid);
+
+    final screen = message.data['screen'];
+    if (screen is String && screen.isNotEmpty) {
+      _navigateToScreen(screen);
+      return;
+    }
     await _openLink(message.data['link']);
   }
 
   /// тап по локальному уведомлению (показанному на переднем плане):
-  /// payload — это ссылка, положенная в _showForeground
+  /// payload — JSON строка с link и screen
   static void _onLocalTap(NotificationResponse response) {
-    _openLink(response.payload);
+    if (response.payload == null) return;
+    try {
+      final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+      final screen = data['screen'] as String?;
+      if (screen != null && screen.isNotEmpty) {
+        _navigateToScreen(screen);
+        return;
+      }
+      _openLink(data['link'] as String?);
+    } catch (_) {
+      // обратная совместимость: payload = простая ссылка
+      _openLink(response.payload);
+    }
+  }
+
+  /// Deep-link навигация по имени экрана из push data
+  static void _navigateToScreen(String screen) {
+    final nav = QuickActionsService.navigatorKey.currentState;
+    if (nav == null) return;
+
+    switch (screen) {
+      case 'diagnostics':
+        nav.push(MaterialPageRoute(
+          builder: (_) => const DiagnosticsScreen(),
+          settings: const RouteSettings(name: 'diagnostics'),
+        ));
+      case 'settings':
+        QuickActionsService.route('action_settings');
+      case 'support':
+        QuickActionsService.route('action_support');
+      case 'payment':
+        QuickActionsService.route('action_pay');
+      case 'notifications':
+        nav.push(MaterialPageRoute(
+          builder: (_) => const NotificationsHistoryScreen(),
+          settings: const RouteSettings(name: 'notifications'),
+        ));
+      default:
+        debugPrint('Неизвестный deep-link экран: $screen');
+    }
   }
 
   /// открывает ссылку во внешнем браузере. только https — чтобы пуш не мог
@@ -133,13 +182,20 @@ class PushService {
     if (n == null) return;
 
     final link = message.data['link'];
-    final payload = (link is String && link.startsWith('https://')) ? link : null;
+    final payloadLink = (link is String && link.startsWith('https://')) ? link : null;
+    final screen = message.data['screen'];
+
+    // JSON payload для onLocalTap — содержит и link, и screen
+    final payloadJson = jsonEncode({
+      if (payloadLink != null) 'link': payloadLink,
+      if (screen is String && screen.isNotEmpty) 'screen': screen,
+    });
 
     if (n.title != null || n.body != null) {
       NotificationsStore.instance.addNotification(
         title: n.title ?? 'Уведомление',
         body: n.body ?? '',
-        link: payload,
+        link: payloadLink,
       );
     }
 
@@ -179,7 +235,7 @@ class PushService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
-      payload: payload,
+      payload: payloadJson,
     );
   }
 }

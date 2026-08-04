@@ -60,10 +60,10 @@ build-apk:
 	cd app && flutter build apk --release
 
 docker-up:
-	cd server && docker-compose up -d --build
+	docker-compose up -d --build
 
 docker-down:
-	cd server && docker-compose down
+	docker-compose down
 
 clean:
 	rm -rf server/dist server/node_modules app/build
