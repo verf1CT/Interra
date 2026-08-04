@@ -1,0 +1,58 @@
+name: 🐛 Отчёт об ошибке (Bug Report)
+description: Создать подробный отчёт об обнаруженной баге или проблеме
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за вклад в проект! Пожалуйста, заполните форму ниже, чтобы мы смогли быстрее воспроизвести и устранить проблему.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент системы
+      description: В каком компоненте обнаружена проблема?
+      options:
+        - "📱 Mobile App (Flutter)"
+        - "⚡️ Push Server (TypeScript)"
+        - "🤖 Telegram Bot"
+        - "📦 Docker / Infra"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание проблемы
+      description: Подробное описание того, что произошло
+      placeholder: Опишите баг и ожидаемое поведение...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги для воспроизведения
+      description: Как повторить проблему?
+      placeholder: |
+        1. Открыть раздел '...'
+        2. Нажать на '...'
+        3. Наблюдать ошибку '...'
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Платформа / ОС
+      options:
+        - "Android"
+        - "iOS"
+        - "Linux / Docker"
+        - "macOS"
+        - "Все платформы"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи и стек-трейс
+      description: Прикрепите фрагмент логов из терминала или приложения
+      render: shell

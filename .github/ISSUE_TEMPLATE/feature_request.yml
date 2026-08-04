@@ -1,0 +1,36 @@
+name: ⚡️ Предложение новой фичи (Feature Request)
+description: Предложить новую функцию или улучшение для проекта
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Есть идея как сделать проект ещё лучше? Заполните эту форму!
+  - type: dropdown
+    id: target_area
+    attributes:
+      label: Область доработки
+      options:
+        - "📱 Мобильное приложение (Flutter)"
+        - "⚡️ Бэкенд и API (TypeScript)"
+        - "🤖 Telegram-бот"
+        - "📊 Админка и Веб-панель"
+        - "🛠 DX и CI/CD"
+    validations:
+      required: true
+  - type: textarea
+    id: feature_description
+    attributes:
+      label: Описание фичи
+      description: Что именно должна делать новая функция?
+      placeholder: Подробно опишите предлагаемое улучшение...
+    validations:
+      required: true
+  - type: textarea
+    id: value_proposition
+    attributes:
+      label: Польза для проекта
+      description: Какую проблему решает эта фича?
+    validations:
+      required: false

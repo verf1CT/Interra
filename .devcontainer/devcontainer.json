@@ -1,0 +1,25 @@
+{
+  "name": "Interra Fullstack Dev Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "typescript.tsdk": "server/node_modules/typescript/lib",
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "Dart-Code.flutter",
+        "Dart-Code.dart-code",
+        "eamodio.gitlens"
+      ]
+    }
+  },
+  "forwardPorts": [8080],
+  "postCreateCommand": "cd server && npm install",
+  "remoteUser": "node"
+}
