@@ -32,6 +32,8 @@
   `unzip → cd server → ./deploy.sh`. Скрипт создаст `ADMIN_TOKEN` и поднимет
   сервис на порту 8080.
 - **Nginx + HTTPS:** завернуть `https://push.interra.ru` на этот порт + SSL.
+- **Запросить токен Telegram-бота у разработчика**: получить `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` для Telegram-бота и алертов.
+- **Прописать прокси для РФ сервера**: указать `TELEGRAM_PROXY=http://vps-frankfurt.duckdns.org:8080` (или `socks5://...`) в файле `server/.env`.
 - **Прислать мне `ADMIN_TOKEN`** (его выведет `deploy.sh`).
 - Желательно закрыть админку по белому списку IP.
 
