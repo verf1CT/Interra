@@ -47,7 +47,7 @@ export const BroadcastSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
   imageUrl: HttpsUrl.nullable().optional(),
   link: HttpsUrl.nullable().optional(),
-  screen: z.enum(['diagnostics', 'settings', 'support', 'payment', 'notifications']).optional(),
+  screen: z.enum(['diagnostics', 'settings', 'support', 'payment', 'notifications', 'incidents']).optional(),
   sendAt: z.string().optional(),
 });
 
@@ -60,3 +60,15 @@ export type UnregisterDeviceDto = z.infer<typeof UnregisterDeviceSchema>;
 export type BroadcastDto = z.infer<typeof BroadcastSchema>;
 export type OpenedEventDto = z.infer<typeof OpenedEventSchema>;
 export type TargetDto = z.infer<typeof TargetSchema>;
+
+// --- Incidents ---
+export const IncidentTypeEnum = z.enum(['incident', 'planned_work']);
+
+export const IncidentCreateSchema = z.object({
+  title: z.string().min(1).max(500),
+  description: z.string().max(2000).optional(),
+  type: IncidentTypeEnum.default('incident'),
+  affectedArea: z.string().max(200).optional(),
+});
+
+export type IncidentCreateDto = z.infer<typeof IncidentCreateSchema>;

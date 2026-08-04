@@ -52,6 +52,19 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_sched_due ON scheduled_broadcasts(status, send_at);
+
+  CREATE TABLE IF NOT EXISTS incidents (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    title         TEXT NOT NULL,
+    description   TEXT,
+    type          TEXT NOT NULL DEFAULT 'incident',
+    status        TEXT NOT NULL DEFAULT 'active',
+    affected_area TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    resolved_at   TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
 `);
 
 // Migration for opens column

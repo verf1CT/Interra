@@ -15,10 +15,12 @@ import '../services/pin_lock.dart';
 import '../services/push_service.dart';
 import '../services/update_check.dart';
 import '../widgets/ui_kit.dart';
+import 'diagnostics_screen.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
 import 'notifications_history_screen.dart';
+import 'network_status_screen.dart';
 
 /// экран настроек: аккаунт, уведомления, выход
 class SettingsScreen extends StatefulWidget {
@@ -461,6 +463,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   settings: const RouteSettings(name: 'support'),
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _sectionTitle('Сеть'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: const Icon(Icons.wifi_tethering_rounded,
+                      color: AppColors.brand),
+                  title: const Text('Статус сети'),
+                  subtitle: const Text('Аварии и плановые работы'),
+                  trailing: Icon(Icons.chevron_right, color: context.p.inkFaint),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NetworkStatusScreen(),
+                      settings: const RouteSettings(name: 'incidents'),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, thickness: 1, indent: 56),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: const Icon(Icons.network_check_rounded,
+                      color: AppColors.brand),
+                  title: const Text('Диагностика'),
+                  subtitle: const Text('Проверка подключения'),
+                  trailing: Icon(Icons.chevron_right, color: context.p.inkFaint),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DiagnosticsScreen(),
+                      settings: const RouteSettings(name: 'diagnostics'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 18),

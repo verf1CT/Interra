@@ -11,6 +11,7 @@ import 'notify_prefs.dart';
 import 'notifications_store.dart';
 import 'quick_actions_service.dart';
 import '../screens/diagnostics_screen.dart';
+import '../screens/network_status_screen.dart';
 import '../screens/notifications_history_screen.dart';
 
 /// обработчик push в фоне/при закрытом приложении. должен быть top-level
@@ -154,6 +155,11 @@ class PushService {
         QuickActionsService.route('action_support');
       case 'payment':
         QuickActionsService.route('action_pay');
+      case 'incidents':
+        nav.push(MaterialPageRoute(
+          builder: (_) => const NetworkStatusScreen(),
+          settings: const RouteSettings(name: 'incidents'),
+        ));
       case 'notifications':
         nav.push(MaterialPageRoute(
           builder: (_) => const NotificationsHistoryScreen(),

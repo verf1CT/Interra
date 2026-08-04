@@ -8,6 +8,7 @@ import { logger } from './logger.js';
 import { broadcastService } from '../services/broadcast.service.js';
 import { DeviceRepository, DeviceRow } from '../repositories/device.repository.js';
 import { db } from '../db/connection.js';
+import { incidentService } from '../services/incident.service.js';
 
 function createProxyAgent(proxyUrl?: string) {
   if (!proxyUrl) return undefined;
@@ -48,7 +49,7 @@ export const defaultReplyKeyboard: TelegramReplyMarkup = {
   keyboard: [
     [{ text: '🧙‍♂️ Пошаговая рассылка' }],
     [{ text: '📊 Статистика' }, { text: '💾 Бэкап БД' }],
-    [{ text: '🏓 Пинг' }, { text: '❓ Справка' }],
+    [{ text: '🚨 Аварии' }, { text: '🏓 Пинг' }, { text: '❓ Справка' }],
   ],
   resize_keyboard: true,
 };
@@ -214,6 +215,10 @@ export async function registerTelegramBotMenu(): Promise<void> {
       { command: 'push', description: 'Массовая рассылка всем абонентам' },
       { command: 'send', description: 'Персональный push: /send <логин> <текст>' },
       { command: 'find', description: 'Поиск устройства: /find <логин>' },
+      { command: 'incident', description: '🚨 Создать аварию: /incident <описание>' },
+      { command: 'planned', description: '🔧 Плановые работы: /planned <описание>' },
+      { command: 'resolve', description: '✅ Закрыть инцидент: /resolve <id>' },
+      { command: 'incidents', description: '📋 Список активных инцидентов' },
       { command: 'stats', description: 'Статистика устройств, памяти и uptime' },
       { command: 'backup', description: 'Скачать бэкап базы данных SQLite' },
       { command: 'ping', description: 'Проверить отклик сервера и БД' },
@@ -659,6 +664,75 @@ export function initTelegramBotCommands(): void {
           }
         }
 
+        // /incident <описание> — создать аварию
+        else if (cmd === '/incident' || cmd.startsWith('/incident@')) {
+          const title = text.replace(/^\/incident(@\w+)?\s*/i, '').trim();
+          if (!title) {
+            await sendTelegramAlert('⚠️ Укажите описание аварии. Пример: <code>/incident Обрыв оптики на ул. Ленина</code>', defaultReplyKeyboard);
+            continue;
+          }
+          try {
+            const incident = await incidentService.createIncident({ title, type: 'incident' });
+            // Alert is already sent by incidentService
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка создания инцидента:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // /planned <описание> — создать плановые работы
+        else if (cmd === '/planned' || cmd.startsWith('/planned@')) {
+          const title = text.replace(/^\/planned(@\w+)?\s*/i, '').trim();
+          if (!title) {
+            await sendTelegramAlert('⚠️ Укажите описание работ. Пример: <code>/planned Техработы 06.08 02:00-06:00</code>', defaultReplyKeyboard);
+            continue;
+          }
+          try {
+            const incident = await incidentService.createIncident({ title, type: 'planned_work' });
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка создания плановых работ:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // /resolve <id> — закрыть инцидент
+        else if (cmd === '/resolve' || cmd.startsWith('/resolve@')) {
+          const idStr = text.replace(/^\/resolve(@\w+)?\s*/i, '').trim();
+          const id = Number(idStr);
+          if (!id || Number.isNaN(id)) {
+            await sendTelegramAlert('⚠️ Укажите ID инцидента. Пример: <code>/resolve 3</code>', defaultReplyKeyboard);
+            continue;
+          }
+          try {
+            const resolved = await incidentService.resolveIncident(id);
+            if (!resolved) {
+              await sendTelegramAlert(`⚠️ Инцидент #${id} не найден или уже закрыт.`, defaultReplyKeyboard);
+            }
+            // Success alert is sent by incidentService
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка закрытия инцидента:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
+        // /incidents или кнопка "🚨 Аварии" — список активных инцидентов
+        else if (cmd === '/incidents' || cmd.startsWith('/incidents@') || text === '🚨 Аварии') {
+          try {
+            const active = incidentService.listActive();
+            if (active.length === 0) {
+              await sendTelegramAlert('✅ <b>Активных инцидентов нет.</b> Все системы работают штатно.', defaultReplyKeyboard);
+            } else {
+              let msg = `📋 <b>Активные инциденты (${active.length}):</b>\n----------------------------------\n`;
+              for (const inc of active) {
+                const emoji = inc.type === 'planned_work' ? '🔧' : '🚨';
+                const area = inc.affected_area ? ` (${inc.affected_area})` : '';
+                msg += `${emoji} <b>#${inc.id}</b> ${inc.title}${area}\n📅 ${inc.created_at}\n\n`;
+              }
+              msg += `Закрыть: <code>/resolve &lt;id&gt;</code>`;
+              await sendTelegramAlert(msg, defaultReplyKeyboard);
+            }
+          } catch (err) {
+            await sendTelegramAlert(`❌ <b>Ошибка получения инцидентов:</b> ${(err as Error).message}`, defaultReplyKeyboard);
+          }
+        }
+
         // 7. /help или /start или кнопка "❓ Справка"
         else if (
           cmd === '/help' ||
@@ -674,6 +748,10 @@ export function initTelegramBotCommands(): void {
             `• <code>/push &lt;текст&gt;</code> — быстрая рассылка всем клиентам\n` +
             `• <code>/send &lt;логин&gt; &lt;текст&gt;</code> — персональный push клиенту\n` +
             `• <code>/find &lt;логин/телефон&gt;</code> — поиск устройства в базе\n` +
+            `• <code>/incident &lt;текст&gt;</code> — создать аварию\n` +
+            `• <code>/planned &lt;текст&gt;</code> — создать плановые работы\n` +
+            `• <code>/resolve &lt;id&gt;</code> — закрыть инцидент\n` +
+            `• <code>/incidents</code> — список активных инцидентов\n` +
             `• <code>/stats</code> — статистика устройств, памяти и uptime\n` +
             `• <code>/backup</code> — скачать файл базы данных SQLite\n` +
             `• <code>/ping</code> — проверка отклика сервера и базы данных\n` +

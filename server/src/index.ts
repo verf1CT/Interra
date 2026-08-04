@@ -10,6 +10,7 @@ import { errorHandlerMiddleware } from './middlewares/error-handler.middleware.j
 import { devicesRouter } from './routes/device.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { eventsRouter } from './routes/event.routes.js';
+import { incidentRouter } from './routes/incident.routes.js';
 import { schedulerService } from './services/scheduler.service.js';
 import { watchdogService } from './services/watchdog.service.js';
 import { db } from './db/connection.js';
@@ -87,6 +88,7 @@ app.get('/metrics', async (_req: Request, res: Response) => {
 app.use('/api/devices', devicesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/incidents', incidentRouter);
 
 // Centralized Error Handling
 app.use(errorHandlerMiddleware);

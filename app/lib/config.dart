@@ -21,6 +21,9 @@ class AppConfig {
   /// Для локальной отладки на эмуляторе Android: http://10.0.2.2:8080
   static const String backendBaseUrl = 'https://push.interra.ru';
 
+  /// эндпоинт инцидентов сети
+  static const String incidentsUrl = '$backendBaseUrl/api/v1/incidents';
+
   // версия приложения больше не хранится тут: единый источник - нативный
   // пакет (pubspec `version:`), читается через AppInfo (services/app_info.dart)
 
