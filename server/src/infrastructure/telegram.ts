@@ -2,13 +2,22 @@ import fs from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 import { config } from '../config/env.js';
 import { logger } from './logger.js';
 import { broadcastService } from '../services/broadcast.service.js';
 import { DeviceRepository, DeviceRow } from '../repositories/device.repository.js';
 import { db } from '../db/connection.js';
 
-const proxyAgent = config.telegramProxy ? new HttpsProxyAgent(config.telegramProxy) : undefined;
+function createProxyAgent(proxyUrl?: string) {
+  if (!proxyUrl) return undefined;
+  if (proxyUrl.startsWith('socks')) {
+    return new SocksProxyAgent(proxyUrl);
+  }
+  return new HttpsProxyAgent(proxyUrl);
+}
+
+const proxyAgent = createProxyAgent(config.telegramProxy);
 
 function telegramFetch(url: string, init?: RequestInit): Promise<Response> {
   return fetch(url, {
