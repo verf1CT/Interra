@@ -19,8 +19,6 @@
 - **Telegram Bot**: Команда `/ping` — проверка отклика SQLite и отображение uptime/RAM.
 - **Telegram Bot**: Авторизация по `chat_id` — бот принимает команды только из авторизованной группы.
 - **Telegram Bot**: Встроенное меню команд (`/setMyCommands`) — список при вводе `/` в Telegram.
-- **Telegram Bot**: Inline Keyboard кнопки (Админка, Документация, Метрики, Health) под сообщением о старте сервера.
-- **Watchdog / Health Monitoring**: Автоматический мониторинг состояния БД SQLite, потребления памяти RAM и перехват необработанных исключений Node.js (`uncaughtException`, `unhandledRejection`) с немедленной отправкой тревожных алертов `🚨 CRITICAL` / `⚠️ WARNING` в Telegram-чат админов.
 - **Deep Links**: Поддержка `screen` в push data-payload — тап по push открывает конкретный экран приложения (`diagnostics`, `settings`, `support`, `payment`, `notifications`).
 - **Deep Links**: Флаг `--screen=xxx` в Telegram-команде `/push` — рассылка с автоматическим deep link.
 - **Flutter**: Экран «История уведомлений» — хранение полученных push-сообщений на устройстве.
