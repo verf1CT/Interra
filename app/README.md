@@ -73,6 +73,7 @@ EncryptedSharedPreferences). Коды ответа `0`/`1` разбираютс�
 | `webview_screen.dart` | Кабинет в WebView: авто-получение ссылки, стили/тёмная тема, офлайн-кэш, pull-to-refresh, чип баланса, восстановление сессии |
 | `settings_screen.dart` | Аккаунт, тема, категории уведомлений, замок (биометрия/PIN), задержка автоблокировки, выход |
 | `support_screen.dart` | Связь с провайдером (звонок, Telegram, ВКонтакте, помощь), диагностика, устройства в сети |
+| `notifications_history_screen.dart` | Экран «История уведомлений» (просмотр полученных push-сообщений, время, ссылки) |
 | `diagnostics_screen.dart` | Пошаговая диагностика сети с вердиктом |
 | `lan_devices_screen.dart` | Список устройств в Wi-Fi (иконка, имя, IP) |
 | `biometric_gate.dart` | Замок поверх всего приложения (Face ID/отпечаток + PIN) |
@@ -85,6 +86,7 @@ EncryptedSharedPreferences). Коды ответа `0`/`1` разбираютс�
 | `billing_api.dart` | Штатный API UTM5 `bbb` (регистрация по SMS, ссылка на кабинет) |
 | `secure_http.dart` | HTTP-клиент с **пиннингом** корней Let's Encrypt для своих хостов |
 | `auth_store.dart` | Токен и телефон в Keychain / EncryptedSharedPreferences |
+| `notifications_store.dart` | Локальное хранение истории push-уведомлений в SharedPreferences |
 | `balance_store.dart` | Распарсенный баланс: кэш, форматирование «1 846,03 ₽», отдача в виджеты/часы |
 | `page_cache.dart` | Офлайн-снимок кабинета (HTML в файл + baseUrl), чистится при выходе |
 | `push_service.dart` | FCM: разрешения, локальные уведомления на переднем плане, регистрация токена |
