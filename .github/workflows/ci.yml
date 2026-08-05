@@ -31,7 +31,14 @@ jobs:
         run: flutter analyze lib test
 
       - name: Tests
-        run: flutter test
+        run: flutter test --coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: verf1CT/Interra
 
       - name: Generate Summary Report
         if: always()
