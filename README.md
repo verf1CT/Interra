@@ -25,6 +25,9 @@
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20Layered-orange)
 ![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/verf1CT/Interra)
+[![Test Status](https://github.com/verf1CT/Interra/actions/workflows/ci.yml/badge.svg)](https://github.com/verf1CT/Interra/actions)
+[![codecov](https://codecov.io/gh/verf1CT/Interra/graph/badge.svg)](https://codecov.io/gh/verf1CT/Interra)
+
 
 Мобильное приложение «Личный кабинет» для абонентов интернет-провайдера
 **Интерра** (`interra.ru`, г. Первоуральск). Один код на iOS и Android (Flutter).
