@@ -73,18 +73,35 @@
 3. **Наш сервер → приложение / Telegram** — оператор из веб-панели или Telegram-бота
    рассылает уведомления (с поддержкой Deep Links на конкретные экраны).
 
-```
-┌─────────────────────────────┐   регистрация push-токена    ┌───────────────────────────┐
-│  Приложение (app/)           │ ───────────────────────────▶ │  Сервер (server/)          │
-│  • кабинет в WebView         │                              │  • TypeScript + Zod + SQLite │
-│  • нативный баланс           │ ◀──── push (через Firebase)  │  • рассылка уведомлений    │
-│  • диагностика / Wi-Fi       │   + Deep Link (screen)       │  • Telegram Bot + /wizard  │
-│  • история пушей (локально)  │                              │  • Watchdog мониторинг     │
-└─────────────────────────────┘                              └───────────────────────────┘
-        │  прямые запросы к биллингу (HTTPS)                              │
-        ▼                                                                 ▼
-   биллинг провайдера                                           Telegram Чат Админов
-   (вход по SMS, страница кабинета, баланс)                     (алерты сбоев, бэкапы БД)
+```mermaid
+flowchart TD
+    %% Define styles
+    classDef app fill:#e1f5fe,stroke:#02569b,stroke-width:2px,color:#000
+    classDef server fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef billing fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef tg fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+
+    subgraph User["📱 Мобильное приложение (Flutter)"]
+        A["<b>app/</b><br>• кабинет в WebView<br>• нативный баланс<br>• диагностика / Wi-Fi<br>• история пушей (локально)"]:::app
+    end
+
+    subgraph Backend["☁️ Наш бэкенд (Node.js)"]
+        B["<b>server/</b><br>• TypeScript + Zod + SQLite<br>• рассылка уведомлений<br>• Telegram Bot + /wizard<br>• Watchdog мониторинг"]:::server
+    end
+
+    subgraph Provider["🏢 Инфраструктура провайдера"]
+        C["<b>Биллинг</b><br>вход по SMS, страница<br>кабинета, баланс"]:::billing
+    end
+    
+    subgraph Admins["👨‍💻 Управление"]
+        D["<b>Telegram Чат Админов</b><br>алерты сбоев, бэкапы БД"]:::tg
+    end
+
+    %% Connections
+    A -- "регистрация push-токена" --> B
+    B -- "push (через Firebase)\n+ Deep Link" --> A
+    A -- "прямые запросы (HTTPS)" --> C
+    B -. "алерты и бэкапы" .-> D
 ```
 
 ## Состав репозитория
