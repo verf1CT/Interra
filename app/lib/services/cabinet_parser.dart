@@ -59,12 +59,6 @@ class CabinetParser {
       final res = await http.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) throw Exception('network_error');
 
-      final doc = parser.parse(res.body);
-      if (doc.querySelector('input[name="pass"]') != null || 
-          doc.querySelector('a[href*="oper=ident"]') != null) {
-        throw Exception('auth_expired');
-      }
-
       return res.body;
     } catch (e) {
       debugPrint('CabinetParser fetch error: $e');
@@ -72,10 +66,18 @@ class CabinetParser {
     }
   }
 
-  /// Получение главной страницы ЛК
-  static Future<CabinetData?> fetchCabinetData(String appToken) async {
-    final htmlString = await _fetchHtml(appToken, oper: 'info');
+  static void _checkAuth(dom.Document doc) {
+    if (doc.querySelector('input[name="pass"]') != null || 
+        doc.querySelector('a[href*="oper=ident"]') != null) {
+      throw Exception('auth_expired');
+    }
+  }
+
+  @visibleForTesting
+  static CabinetData parseCabinetHtml(String htmlString) {
     final doc = parser.parse(htmlString);
+    _checkAuth(doc);
+    
     final text = doc.body?.text ?? '';
 
     // Баланс
@@ -108,20 +110,17 @@ class CabinetParser {
     );
   }
 
-  /// Получение истории платежей
-  static Future<List<PaymentItem>> fetchPayments(String appToken) async {
-    final htmlString = await _fetchHtml(appToken, oper: 'payments');
+  @visibleForTesting
+  static List<PaymentItem> parsePaymentsHtml(String htmlString) {
     final doc = parser.parse(htmlString);
+    _checkAuth(doc);
     
     List<PaymentItem> items = [];
-    
-    // Ищем таблицы, которые могут быть историей платежей. В UTM5 они часто имеют класс table_report или border=1
     final tables = doc.querySelectorAll('table');
     for (var table in tables) {
       final rows = table.querySelectorAll('tr');
-      if (rows.length < 2) continue; // Нужен хотя бы заголовок и одна строка
+      if (rows.length < 2) continue;
 
-      // Проверим, похож ли заголовок на таблицу платежей (Дата, Сумма)
       final headerText = rows[0].text.toLowerCase();
       if (headerText.contains('дата') && (headerText.contains('сумма') || headerText.contains('приход'))) {
         for (int i = 1; i < rows.length; i++) {
@@ -137,35 +136,29 @@ class CabinetParser {
             }
           }
         }
-        break; // Нашли нужную таблицу, выходим
+        break;
       }
     }
-    
     return items;
   }
 
-  /// Получение услуг (доп. услуги, статус тарифа)
-  static Future<List<ServiceItem>> fetchServices(String appToken) async {
-    // В UTM5 список услуг обычно на oper=services или oper=tariffs
-    // Попробуем oper=tariffs, там обычно висит таблица с услугами
-    final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
+  @visibleForTesting
+  static List<ServiceItem> parseServicesHtml(String htmlString) {
     final doc = parser.parse(htmlString);
+    _checkAuth(doc);
     
     List<ServiceItem> items = [];
-    
     final tables = doc.querySelectorAll('table');
     for (var table in tables) {
       final rows = table.querySelectorAll('tr');
       if (rows.length < 2) continue;
 
       final headerText = rows[0].text.toLowerCase();
-      // Ищем заголовки вроде "Услуга", "Статус", "Абонентская плата"
       if (headerText.contains('услуг') || headerText.contains('тариф')) {
         for (int i = 1; i < rows.length; i++) {
           final cells = rows[i].querySelectorAll('td');
           if (cells.length >= 2) {
             final name = cells[0].text.trim();
-            // В разных версиях UTM5 столбцы скачут, возьмем все остальные как статус/цену
             String cost = '';
             String status = '';
             
@@ -184,7 +177,21 @@ class CabinetParser {
         break;
       }
     }
-    
     return items;
+  }
+
+  static Future<CabinetData?> fetchCabinetData(String appToken) async {
+    final htmlString = await _fetchHtml(appToken, oper: 'info');
+    return parseCabinetHtml(htmlString);
+  }
+
+  static Future<List<PaymentItem>> fetchPayments(String appToken) async {
+    final htmlString = await _fetchHtml(appToken, oper: 'payments');
+    return parsePaymentsHtml(htmlString);
+  }
+
+  static Future<List<ServiceItem>> fetchServices(String appToken) async {
+    final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
+    return parseServicesHtml(htmlString);
   }
 }
