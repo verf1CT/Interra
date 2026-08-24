@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "build-ui": "cd admin-ui && npm run build"
+    "build-ui": "cd admin-ui && npm run build",
+    "test": "vitest run --coverage"
   },
   "engines": {
     "node": ">=18"
@@ -17,5 +18,9 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "firebase-admin": "^12.5.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.11",
+    "vitest": "^4.1.11"
   }
 }

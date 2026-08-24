@@ -13,7 +13,7 @@ function resolveFromRoot(p, fallback) {
 export const config = {
   port: Number(process.env.PORT) || 8080,
   adminToken: process.env.ADMIN_TOKEN || '',
-  dbPath: resolveFromRoot(process.env.DB_PATH, './data/interra.sqlite'),
+  dbPath: process.env.DB_PATH === ':memory:' ? ':memory:' : resolveFromRoot(process.env.DB_PATH, './data/interra.sqlite'),
   firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT
     ? resolveFromRoot(process.env.FIREBASE_SERVICE_ACCOUNT)
     : '',
