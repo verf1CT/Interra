@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/services/cabinet_parser.dart';
+import 'package:lk_interra/services/cabinet_parser.dart';
 
 void main() {
   group('CabinetParser', () {
