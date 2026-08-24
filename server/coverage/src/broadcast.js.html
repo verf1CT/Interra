@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">70% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>7/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>2/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">70% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>7/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -115,9 +115,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -125,7 +125,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -134,10 +134,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -156,10 +156,10 @@ import { sendToTokens } from './fcm.js';
  * Общая логика для немедленной отправки (routes/admin) и планировщика (scheduler).
  * @returns {{recipients, successCount, failureCount, note?}}
  */
-export async function <span class="fstat-no" title="function not covered" >runBroadcast(</span>{ title, body, target, data, imageUrl, link }) {
-  const tokens = <span class="cstat-no" title="statement not covered" >selectTokens(target);</span>
-<span class="cstat-no" title="statement not covered" >  if (tokens.length === 0) {</span>
-<span class="cstat-no" title="statement not covered" >    return { recipients: 0, successCount: 0, failureCount: 0, note: 'нет получателей' };</span>
+export async function runBroadcast({ title, body, target, data, imageUrl, link }) {
+  const tokens = selectTokens(target);
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (tokens.length === 0) {
+    return { recipients: 0, successCount: 0, failureCount: 0, note: 'нет получателей' };
   }
 &nbsp;
   // link уходит в data, чтобы приложение открыло его по тапу
@@ -167,7 +167,7 @@ export async function <span class="fstat-no" title="function not covered" >runBr
 &nbsp;
   // журналируем ДО отправки — нужен id, чтобы приложение вернуло его при
   // открытии (open-rate). Счётчики доставки проставим после отправки
-  const logged = <span class="cstat-no" title="statement not covered" >logBroadcast({</span>
+  const logged = logBroadcast({
     title,
     body,
     data: { ...outData, ...(imageUrl ? { image: imageUrl } : {}) },
@@ -176,14 +176,14 @@ export async function <span class="fstat-no" title="function not covered" >runBr
     successCount: 0,
     failureCount: 0,
   });
-  const bid = <span class="cstat-no" title="statement not covered" >logged.lastInsertRowid;</span>
-<span class="cstat-no" title="statement not covered" >  outData.bid = bid;</span>
+  const bid = logged.lastInsertRowid;
+  outData.bid = bid;
 &nbsp;
-  const { successCount, failureCount } = <span class="cstat-no" title="statement not covered" >await sendToTokens(tokens, {</span>
+  const { successCount, failureCount } = await sendToTokens(tokens, {
     title,
     body,
     data: outData,
-    imageUrl: imageUrl || undefined,
+    imageUrl: imageUrl || <span class="branch-1 cbranch-no" title="branch not covered" >undefined,</span>
   });
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  updateBroadcastResult(bid, successCount, failureCount);</span>
@@ -196,7 +196,7 @@ export async function <span class="fstat-no" title="function not covered" >runBr
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-08-24T18:05:46.491Z
+                at 2026-08-24T18:17:08.452Z
             </div>
         <script src="../prettify.js"></script>
         <script>

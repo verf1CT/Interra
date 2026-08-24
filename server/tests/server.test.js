@@ -10,10 +10,15 @@ describe('server coverage', () => {
     expect(config.dbPath).toBeDefined();
   });
 
-  it('fcm is disabled without key', async () => {
-    expect(fcmEnabled()).toBe(false);
-    const res = await sendToTokens(['token1'], { title: 't', body: 'b' });
-    expect(res.successCount).toBe(1); // dry-run mode returns success for all tokens
+  it('fcm is disabled or enabled depending on env', async () => {
+    if (config.firebaseServiceAccount) {
+      expect(fcmEnabled()).toBe(true);
+      // skip real sendToTokens to avoid network timeout
+    } else {
+      expect(fcmEnabled()).toBe(false);
+      const res = await sendToTokens(['token1'], { title: 't', body: 'b' });
+      expect(res.successCount).toBe(1); // dry-run mode returns success for all tokens
+    }
   });
 
   it('broadcast dry-run', async () => {
