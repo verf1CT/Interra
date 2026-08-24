@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">30.3% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/33</span>
+                <span class='fraction'>10/33</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">9.67% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/31</span>
+                <span class='fraction'>3/31</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>1/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">30% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/30</span>
+                <span class='fraction'>9/30</span>
             </div>
         
             
@@ -154,24 +154,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -240,16 +240,16 @@ import admin from 'firebase-admin';
 import { config } from './config.js';
 import { deleteDevice } from './db.js';
 &nbsp;
-let messaging = <span class="cstat-no" title="statement not covered" >null;</span>
-let enabled = <span class="cstat-no" title="statement not covered" >false;</span>
+let messaging = null;
+let enabled = false;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >if (config.firebaseServiceAccount &amp;&amp; fs.existsSync(config.firebaseServiceAccount)) {</span>
-  const serviceAccount = <span class="cstat-no" title="statement not covered" >JSON.parse(fs.readFileSync(config.firebaseServiceAccount, 'utf8'));</span>
-<span class="cstat-no" title="statement not covered" >  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });</span>
-<span class="cstat-no" title="statement not covered" >  messaging = admin.messaging();</span>
-<span class="cstat-no" title="statement not covered" >  enabled = true;</span>
-<span class="cstat-no" title="statement not covered" >  console.log('[fcm] Firebase инициализирован — push включён.');</span>
-} else {
+if (config.firebaseServiceAccount &amp;&amp; fs.existsSync(config.firebaseServiceAccount)) {
+  const serviceAccount = JSON.parse(fs.readFileSync(config.firebaseServiceAccount, 'utf8'));
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  messaging = admin.messaging();
+  enabled = true;
+  console.log('[fcm] Firebase инициализирован — push включён.');
+} else <span class="missing-if-branch" title="else path not taken" >E</span>{
 <span class="cstat-no" title="statement not covered" >  console.warn(</span>
     '[fcm] Ключ Firebase не найден (' +
       (config.firebaseServiceAccount || 'FIREBASE_SERVICE_ACCOUNT не задан') +
@@ -257,7 +257,7 @@ let enabled = <span class="cstat-no" title="statement not covered" >false;</span
   );
 }
 &nbsp;
-export const fcmEnabled = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >()</span> =&gt; <span class="cstat-no" title="statement not covered" >enabled;</span></span>
+export const fcmEnabled = () =&gt; enabled;
 &nbsp;
 /**
  * рассылает push на список токенов. возвращает {successCount, failureCount}.
@@ -328,7 +328,7 @@ export async function <span class="fstat-no" title="function not covered" >sendT
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-08-24T18:05:46.491Z
+                at 2026-08-24T18:17:08.452Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">46.66% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>7/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>2/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">46.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>7/15</span>
             </div>
         
             
@@ -107,33 +107,21 @@
 <a name='L42'></a><a href='#L42'>42</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -141,24 +129,36 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { dueScheduled, markScheduledSent } from './db.js';
 import { runBroadcast } from './broadcast.js';
 &nbsp;
-const TICK_MS = <span class="cstat-no" title="statement not covered" >Number(process.env.SCHEDULER_TICK_MS) || 30_000;</span>
+const TICK_MS = Number(process.env.SCHEDULER_TICK_MS) || 30_000;
 &nbsp;
-async function <span class="fstat-no" title="function not covered" >tick(</span>) {
+async function tick() {
   let due;
-<span class="cstat-no" title="statement not covered" >  try {</span>
-<span class="cstat-no" title="statement not covered" >    due = dueScheduled(new Date().toISOString());</span>
+  try {
+    due = dueScheduled(new Date().toISOString());
   } catch (e) {
 <span class="cstat-no" title="statement not covered" >    console.error('[scheduler] выборка запланированных упала:', e);</span>
 <span class="cstat-no" title="statement not covered" >    return;</span>
   }
-<span class="cstat-no" title="statement not covered" >  for (const row of due) {</span>
+  for (const row of due) {
     // помечаем отправленной СРАЗУ, чтобы пересекающиеся тики не отправили дважды
 <span class="cstat-no" title="statement not covered" >    markScheduledSent(row.id);</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
@@ -181,10 +181,10 @@ async function <span class="fstat-no" title="function not covered" >tick(</span>
 }
 &nbsp;
 /** запускает фоновый опрос запланированных рассылок. */
-export function <span class="fstat-no" title="function not covered" >startScheduler(</span>) {
-<span class="cstat-no" title="statement not covered" >  tick(); </span>// сразу подберём просроченные при старте
-  const timer = <span class="cstat-no" title="statement not covered" >setInterval(tick, TICK_MS);</span>
-<span class="cstat-no" title="statement not covered" >  timer.unref?.();</span>
+export function startScheduler() {
+  tick(); // сразу подберём просроченные при старте
+  const timer = setInterval(tick, TICK_MS);
+  timer.unref?.();
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -193,7 +193,7 @@ export function <span class="fstat-no" title="function not covered" >startSchedu
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-08-24T18:05:46.491Z
+                at 2026-08-24T18:17:08.452Z
             </div>
         <script src="../prettify.js"></script>
         <script>
