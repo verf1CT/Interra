@@ -129,8 +129,6 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    final isAndroid = Platform.isAndroid;
-    
     return Scaffold(
       appBar: AppBar(
         title: Text(_appBarTitle),
