@@ -1,8 +1,18 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lk_interra/services/cabinet_parser.dart';
 
 void main() {
   group('CabinetParser', () {
+    test('decodeResponseBody avoids Latin-1 mojibake and recovers UTF-8', () {
+      const originalText = '<html><body><div>ФИО: Иванов Иван</div><div>Баланс: 450 руб</div></body></html>';
+      final utf8Bytes = utf8.encode(originalText);
+      final decoded = CabinetParser.decodeResponseBody(utf8Bytes);
+      expect(decoded, originalText);
+      expect(decoded.contains('Иванов'), true);
+      expect(decoded.contains('Баланс'), true);
+    });
+
     test('parseCabinetHtml correctly extracts info (mock format)', () {
       const html = '''
         <html>
@@ -57,6 +67,36 @@ void main() {
       expect(data.tariff, 'Комфорт 200');
     });
 
+    test('parseCabinetHtml correctly parses 4-column multi-cell table rows', () {
+      const html = '''
+        <html>
+        <body>
+          <table>
+            <tr>
+              <th>Лицевой счет:</th>
+              <td>112233</td>
+              <th>Основной баланс:</th>
+              <td>−350,00 руб.</td>
+            </tr>
+            <tr>
+              <th>Абонент:</th>
+              <td>Сидоров Алексей</td>
+              <th>Тариф:</th>
+              <td>Премиум 500</td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      ''';
+      
+      final data = CabinetParser.parseCabinetHtml(html);
+      
+      expect(data.account, '112233');
+      expect(data.balance, -350.0);
+      expect(data.fullName, 'Сидоров Алексей');
+      expect(data.tariff, 'Премиум 500');
+    });
+
     test('parseCabinetHtml correctly handles alternative labels and "е" instead of "ё"', () {
       const html = '''
         <html>
@@ -77,7 +117,7 @@ void main() {
       expect(data.tariff, 'Базовый');
     });
 
-    test('parseCabinetHtml throws on expired auth', () {
+    test('parseCabinetHtml throws on expired auth with password input', () {
       const html = '''
         <html>
         <body>
