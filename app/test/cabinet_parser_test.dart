@@ -3,7 +3,7 @@ import 'package:lk_interra/services/cabinet_parser.dart';
 
 void main() {
   group('CabinetParser', () {
-    test('parseCabinetHtml correctly extracts info', () {
+    test('parseCabinetHtml correctly extracts info (mock format)', () {
       const html = '''
         <html>
         <body>
@@ -21,6 +21,60 @@ void main() {
       expect(data.account, '123456789');
       expect(data.fullName, 'Иванов Иван Иванович');
       expect(data.tariff, 'Супер Интернет 100');
+    });
+
+    test('parseCabinetHtml correctly extracts info from real UTM5 table structure', () {
+      const html = '''
+        <html>
+        <body>
+          <table class="b-account">
+            <tr>
+              <td align="right"><b>Основной баланс:</b></td>
+              <td>550,20 руб.</td>
+            </tr>
+            <tr>
+              <td align="right"><b>Лицевой счет:</b></td>
+              <td>98765432</td>
+            </tr>
+            <tr>
+              <td align="right"><b>ФИО:</b></td>
+              <td>Косолапов Иван Александрович</td>
+            </tr>
+            <tr>
+              <td align="right"><b>Тариф:</b></td>
+              <td>Комфорт 200</td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      ''';
+      
+      final data = CabinetParser.parseCabinetHtml(html);
+      
+      expect(data.balance, 550.20);
+      expect(data.account, '98765432');
+      expect(data.fullName, 'Косолапов Иван Александрович');
+      expect(data.tariff, 'Комфорт 200');
+    });
+
+    test('parseCabinetHtml correctly handles alternative labels and "е" instead of "ё"', () {
+      const html = '''
+        <html>
+        <body>
+          <p>Договор № 445566</p>
+          <p>Абонент: Петров Петр</p>
+          <p>Баланс: 0.00 руб</p>
+          <p>Тариф: Базовый</p>
+        </body>
+        </html>
+      ''';
+      
+      final data = CabinetParser.parseCabinetHtml(html);
+      
+      expect(data.account, '445566');
+      expect(data.fullName, 'Петров Петр');
+      expect(data.balance, 0.0);
+      expect(data.tariff, 'Базовый');
     });
 
     test('parseCabinetHtml throws on expired auth', () {

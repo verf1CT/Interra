@@ -1,7 +1,7 @@
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
-import 'package:http/http.dart' as http;
 import 'billing_api.dart';
+import 'secure_http.dart';
 import '../config.dart';
 import 'package:flutter/foundation.dart';
 
@@ -56,7 +56,7 @@ class CabinetParser {
     final liveUrl = AppConfig.cabinetUrl(r.data!, oper: oper);
     
     try {
-      final res = await http.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
+      final res = await SecureHttp.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
       if (res.statusCode != 200) throw Exception('network_error');
 
       return res.body;
@@ -77,35 +77,120 @@ class CabinetParser {
   static CabinetData parseCabinetHtml(String htmlString) {
     final doc = parser.parse(htmlString);
     _checkAuth(doc);
-    
-    final text = doc.body?.text ?? '';
 
-    // Баланс
-    final balanceMatch = RegExp(r'Баланс[\s:]*(-?[\d\s\u00A0]+(?:[.,]\d+)?)\s*руб').firstMatch(text);
-    double balance = 0.0;
-    if (balanceMatch != null) {
-      final rawBalance = balanceMatch.group(1) ?? '0';
-      final cleaned = rawBalance.replaceAll(RegExp(r'[\s\u00A0]'), '').replaceAll(',', '.');
-      balance = double.tryParse(cleaned) ?? 0.0;
+    // 1. Извлечение из DOM таблиц (.b-account или любые таблицы «ключ - значение»)
+    String? foundFullName;
+    String? foundAccount;
+    String? foundTariff;
+    double? foundBalance;
+
+    final allRows = doc.querySelectorAll('tr');
+    for (final tr in allRows) {
+      final tds = tr.querySelectorAll('td');
+      if (tds.length >= 2) {
+        final key = tds[0].text.trim().toLowerCase();
+        final val = tds[1].text.trim();
+
+        if (val.isNotEmpty) {
+          if (foundFullName == null &&
+              (key.contains('фио') ||
+                  key.contains('абонент') ||
+                  key.contains('клиент') ||
+                  key.contains('владелец') ||
+                  key.contains('плательщик') ||
+                  key.contains('пользователь'))) {
+            if (val.toLowerCase() != 'абонент' && val.toLowerCase() != 'клиент') {
+              foundFullName = val;
+            }
+          }
+
+          if (foundAccount == null &&
+              (key.contains('счет') ||
+                  key.contains('счёт') ||
+                  key.contains('договор') ||
+                  key.contains('аккаунт') ||
+                  key.contains('лицевой'))) {
+            final m = RegExp(r'([0-9]{3,})').firstMatch(val);
+            if (m != null) {
+              foundAccount = m.group(1);
+            }
+          }
+
+          if (foundTariff == null &&
+              (key.contains('тариф') || key.contains('услуга') || key.contains('пакет'))) {
+            foundTariff = val;
+          }
+
+          if (foundBalance == null &&
+              (key.contains('баланс') || key.contains('остаток'))) {
+            final m = RegExp(r'(-?[\d\s\u00A0]+(?:[.,]\d+)?)').firstMatch(val);
+            if (m != null) {
+              final cleaned = m.group(1)!.replaceAll(RegExp(r'[\s\u00A0]'), '').replaceAll(',', '.');
+              foundBalance = double.tryParse(cleaned);
+            }
+          }
+        }
+      }
     }
 
-    // Счет
-    final accountMatch = RegExp(r'(?:Электронный|Лицевой)\s+счёт[\s:]*([0-9]{3,})').firstMatch(text);
-    final account = accountMatch?.group(1) ?? '';
+    final text = doc.body?.text ?? '';
 
-    // ФИО
-    final fioMatch = RegExp(r'Полное ФИО[\s:]*(.+?)(?=\n|Тарифный)').firstMatch(text);
-    final fullName = fioMatch?.group(1)?.trim() ?? 'Абонент';
+    // 2. Баланс (если не найден в таблице)
+    if (foundBalance == null) {
+      final balanceMatch = RegExp(
+        r'(?:Основной\s+|Текущий\s+)?Баланс[\s:]*(-?[\d\s\u00A0]+(?:[.,]\d+)?)\s*(?:руб\.?|₽|р\.?)?',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (balanceMatch != null) {
+        final rawBalance = balanceMatch.group(1) ?? '0';
+        final cleaned = rawBalance.replaceAll(RegExp(r'[\s\u00A0]'), '').replaceAll(',', '.');
+        foundBalance = double.tryParse(cleaned);
+      }
+    }
 
-    // Тариф
-    final tariffMatch = RegExp(r'Тарифный план[\s:]*(.+?)(?=\n|Баланс|Лицевой)').firstMatch(text);
-    final tariff = tariffMatch?.group(1)?.trim() ?? 'Неизвестный тариф';
+    // 3. Счет / Договор (с поддержкой буквы «е» и «ё»)
+    if (foundAccount == null) {
+      final accountMatch = RegExp(
+        r'(?:(?:Электронный|Лицевой|Основной)\s+)?сч[её]т[\s:]*([0-9]{3,})',
+        caseSensitive: false,
+      ).firstMatch(text) ??
+      RegExp(
+        r'Договор(?:[а\s№:]+)?([0-9]{3,})',
+        caseSensitive: false,
+      ).firstMatch(text);
+      foundAccount = accountMatch?.group(1);
+    }
+
+    // 4. ФИО
+    if (foundFullName == null) {
+      final fioMatch = RegExp(
+        r'(?:Полное\s+)?(?:ФИО|Ф\.И\.О\.)[\s:]*(.+?)(?=\n|<|\r|$|Тариф|Баланс|Лицевой)',
+        caseSensitive: false,
+      ).firstMatch(text) ??
+      RegExp(
+        r'(?:Абонент|Клиент|Плательщик)[\s:]*([А-ЯЁ][а-яё\-]+(?:[ \t\u00A0]+[А-ЯЁ][а-яё\-]+){1,2})',
+      ).firstMatch(text);
+      
+      final matchedName = fioMatch?.group(1)?.trim();
+      if (matchedName != null && matchedName.isNotEmpty && matchedName.toLowerCase() != 'абонент') {
+        foundFullName = matchedName;
+      }
+    }
+
+    // 5. Тариф
+    if (foundTariff == null) {
+      final tariffMatch = RegExp(
+        r'(?:Тарифный\s+план|Текущий\s+тариф|Тариф)[\s:]*(.+?)(?=\n|<|\r|$|Баланс|Лицевой|Основной|Счет|Счёт)',
+        caseSensitive: false,
+      ).firstMatch(text);
+      foundTariff = tariffMatch?.group(1)?.trim();
+    }
 
     return CabinetData(
-      balance: balance,
-      account: account,
-      fullName: fullName,
-      tariff: tariff,
+      balance: foundBalance ?? 0.0,
+      account: foundAccount ?? '',
+      fullName: (foundFullName != null && foundFullName.isNotEmpty) ? foundFullName : 'Абонент',
+      tariff: (foundTariff != null && foundTariff.isNotEmpty) ? foundTariff : 'Неизвестный тариф',
       rawHtml: htmlString,
     );
   }
@@ -182,7 +267,31 @@ class CabinetParser {
 
   static Future<CabinetData?> fetchCabinetData(String appToken) async {
     final htmlString = await _fetchHtml(appToken, oper: 'info');
-    return parseCabinetHtml(htmlString);
+    var data = parseCabinetHtml(htmlString);
+
+    // Если тариф не указан на главной странице oper=info (в UTM5 тарифы часто лежат на oper=tariffs)
+    if (data.tariff == 'Неизвестный тариф' || data.tariff.isEmpty) {
+      try {
+        final services = await fetchServices(appToken);
+        if (services.isNotEmpty) {
+          final active = services.firstWhere(
+            (s) => s.status.toLowerCase().contains('актив') || s.status.toLowerCase().contains('подключ'),
+            orElse: () => services.first,
+          );
+          data = CabinetData(
+            balance: data.balance,
+            account: data.account,
+            fullName: data.fullName,
+            tariff: active.name,
+            rawHtml: data.rawHtml,
+          );
+        }
+      } catch (e) {
+        debugPrint('CabinetParser fetchServices fallback error: $e');
+      }
+    }
+
+    return data;
   }
 
   static Future<List<PaymentItem>> fetchPayments(String appToken) async {
