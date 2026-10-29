@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/cabinet_parser.dart';
+import '../utils/formatters.dart';
 
 class PassportFormSheet extends StatefulWidget {
   final VoidCallback? onSaved;
@@ -200,15 +201,17 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
               TextFormField(
                 controller: _passportController,
                 keyboardType: TextInputType.number,
+                inputFormatters: [PassportInputFormatter()],
                 decoration: InputDecoration(
-                  hintText: 'СССС-НННННН',
+                  hintText: '1234-567890',
                   filled: true,
                   fillColor: context.p.card,
                   isDense: true,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 validator: (val) {
-                  if (val == null || val.trim().length < 10) {
+                  final d = (val ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (d.length != 10) {
                     return 'Введите 10 цифр серии и номера (СССС-НННННН)';
                   }
                   return null;
@@ -225,16 +228,18 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
               TextFormField(
                 controller: _issueDateController,
                 keyboardType: TextInputType.datetime,
+                inputFormatters: [DateInputFormatter()],
                 decoration: InputDecoration(
-                  hintText: 'ДД.ММ.ГГГГ',
+                  hintText: '12.12.2010',
                   filled: true,
                   fillColor: context.p.card,
                   isDense: true,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 validator: (val) {
-                  if (val == null || val.trim().length < 8) {
-                    return 'Введите дату выдачи (ДД.ММ.ГГГГ)';
+                  final d = (val ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (d.length != 8) {
+                    return 'Введите 8 цифр даты выдачи (ДД.ММ.ГГГГ)';
                   }
                   return null;
                 },
@@ -274,16 +279,18 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
               TextFormField(
                 controller: _birthDateController,
                 keyboardType: TextInputType.datetime,
+                inputFormatters: [DateInputFormatter()],
                 decoration: InputDecoration(
-                  hintText: 'ДД.ММ.ГГГГ',
+                  hintText: '12.12.2010',
                   filled: true,
                   fillColor: context.p.card,
                   isDense: true,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 validator: (val) {
-                  if (val == null || val.trim().length < 8) {
-                    return 'Введите дату рождения (ДД.ММ.ГГГГ)';
+                  final d = (val ?? '').replaceAll(RegExp(r'\D'), '');
+                  if (d.length != 8) {
+                    return 'Введите 8 цифр даты рождения (ДД.ММ.ГГГГ)';
                   }
                   return null;
                 },
