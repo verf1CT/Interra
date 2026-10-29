@@ -152,7 +152,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     OutlinedButton.icon(
                       onPressed: _openWebCabinet,
                       icon: const Icon(Icons.open_in_browser, size: 18),
-                      label: const Text('Заполнить на сайте'),
+                      label: const Text('Открыть кабинет на сайте'),
                     ),
                   ],
                 ),
