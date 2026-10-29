@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../config.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/balance_store.dart';
@@ -13,6 +11,9 @@ import 'register_screen.dart';
 import 'settings_screen.dart';
 import 'payments_history_screen.dart';
 import 'services_screen.dart';
+import 'premium_tv_screen.dart';
+import '../widgets/payment_modal.dart';
+import '../widgets/passport_form_sheet.dart';
 
 class CabinetScreen extends StatefulWidget {
   const CabinetScreen({super.key});
@@ -109,19 +110,20 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   }
 
   Future<void> _openPayment() async {
-    final url = Uri.parse(AppConfig.portalUrl); 
-    try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('Не удалось открыть оплату: $e');
-    }
+    final account = _data?.account ?? '';
+    await PaymentModal.show(context, account: account);
+  }
+
+  void _openPassportForm() {
+    PassportFormSheet.show(context, onSaved: () => _refresh());
   }
 
   String get _appBarTitle {
     switch (_currentIndex) {
       case 0: return 'Личный кабинет';
-      case 1: return 'История платежей';
-      case 2: return 'Услуги и тарифы';
+      case 1: return 'Услуги и тарифы';
+      case 2: return 'Премиум ТВ';
+      case 3: return 'История операций';
       default: return 'Личный кабинет';
     }
   }
@@ -149,8 +151,9 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         index: _currentIndex,
         children: [
           _buildHomeTab(),
+          ServicesScreen(onOpenPassportForm: _openPassportForm),
+          const PremiumTvScreen(),
           const PaymentsHistoryScreen(),
-          const ServicesScreen(),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -187,9 +190,10 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         ? _data!.fullName
         : (_data!.account.isNotEmpty ? 'Договор № ${_data!.account}' : 'Абонент');
     final displayAccount = _data!.account.isNotEmpty ? _data!.account : '—';
-    final displayTariff = (_data!.tariff.isNotEmpty && _data!.tariff != 'Неизвестный тариф')
-        ? _data!.tariff
-        : 'Основной тариф';
+    final hasTariff = _data!.tariff.isNotEmpty &&
+        _data!.tariff != 'Нет тарифа' &&
+        _data!.tariff != 'Неизвестный тариф';
+    final displayTariff = hasTariff ? _data!.tariff : 'Нет тарифа';
 
     return Container(
       decoration: BoxDecoration(
@@ -210,6 +214,21 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
             displayName,
             style: TextStyle(fontSize: 18, color: context.p.ink, fontWeight: FontWeight.w700),
           ),
+          if (_data!.address.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.location_on_outlined, size: 15, color: context.p.inkMute),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _data!.address,
+                    style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 16),
@@ -240,12 +259,44 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                   const SizedBox(height: 4),
                   Text(
                     displayTariff,
-                    style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: hasTariff ? context.p.ink : AppColors.brand,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
+          if (!hasTariff || _data!.needsPassportData) ...[
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _openPassportForm,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.brand),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Требуются данные для тарифа. Заполнить',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brand),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 16, color: AppColors.brand),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -286,12 +337,16 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           label: 'Главная',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.history_rounded),
-          label: 'История',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.miscellaneous_services_rounded),
           label: 'Услуги',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.tv_rounded),
+          label: 'Премиум ТВ',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_rounded),
+          label: 'История',
         ),
       ],
     );

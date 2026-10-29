@@ -11,6 +11,9 @@ class CabinetData {
   final String account;
   final String fullName;
   final String tariff;
+  final String address;
+  final String login;
+  final bool needsPassportData;
   final String rawHtml;
 
   CabinetData({
@@ -18,6 +21,9 @@ class CabinetData {
     required this.account,
     required this.fullName,
     required this.tariff,
+    this.address = '',
+    this.login = '',
+    this.needsPassportData = false,
     required this.rawHtml,
   });
 }
@@ -25,12 +31,16 @@ class CabinetData {
 class PaymentItem {
   final String date;
   final double amount;
+  final String operation;
   final String comment;
+  final String operator;
 
   PaymentItem({
     required this.date,
     required this.amount,
-    required this.comment,
+    this.operation = '',
+    this.comment = '',
+    this.operator = '',
   });
 }
 
@@ -133,6 +143,8 @@ class CabinetParser {
     String? foundFullName;
     String? foundAccount;
     String? foundTariff;
+    String? foundAddress;
+    String? foundLogin;
     double? foundBalance;
 
     // 1. Приоритетно ищем в таблице .b-account (основная таблица абонента в UTM5)
@@ -182,6 +194,17 @@ class CabinetParser {
               final m = RegExp(r'([0-9]{3,})').firstMatch(val);
               if (m != null && m.group(1) != '800' && m.group(1) != '7700010') {
                 foundAccount = m.group(1);
+              }
+            }
+
+            // Адрес абонента / подключения
+            if (foundAddress == null &&
+                (key.contains('адрес') ||
+                    key.contains('место установки') ||
+                    key.contains('подключение') ||
+                    key == 'адрес:')) {
+              if (val.length >= 3 && !val.contains('8-800') && !val.contains('Трубников')) {
+                foundAddress = val;
               }
             }
 
@@ -261,7 +284,20 @@ class CabinetParser {
       }
     }
 
-    // 4. Счет / Договор (с поддержкой буквы «е» и «ё»)
+    // 4. Счет / Договор
+    if (foundAccount == null) {
+      final syspayAcc = RegExp(
+        r'Ваш\s+лицевой\s+счет(?:[^\d\n\r]*?)–?\s*([0-9]{3,})',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (syspayAcc != null) {
+        final a = syspayAcc.group(1);
+        if (a != null && a != '800' && a != '7700010') {
+          foundAccount = a;
+        }
+      }
+    }
+
     if (foundAccount == null) {
       final accountMatch = RegExp(
         r'(?:(?:Электронный|Лицевой|Основной)\s+)?(?:сч[её]т|л/?с|договор)(?:[а-яА-ЯёЁ\s№:]*?)([0-9]{3,})',
@@ -273,7 +309,35 @@ class CabinetParser {
       }
     }
 
-    // 5. ФИО через регулярное выражение
+    // 5. Обработка формата "Клиент: Имя Фамилия (АДРЕС / ЛОГИН)"
+    final clientWithAddress = RegExp(
+      r'Клиент:\s*([^(<\n\r]+?)(?:\s*\((.+)\))?(?:\n|<|$)',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (clientWithAddress != null) {
+      final namePart = clientWithAddress.group(1)?.trim();
+      final paren = clientWithAddress.group(2)?.trim();
+      if (foundFullName == null && namePart != null && _isValidName(namePart)) {
+        foundFullName = namePart;
+      }
+      if (paren != null && paren.isNotEmpty) {
+        if (paren.contains('/')) {
+          final idx = paren.lastIndexOf('/');
+          final addrPart = paren.substring(0, idx).trim();
+          final loginPart = paren.substring(idx + 1).trim();
+          if (foundAddress == null && addrPart.isNotEmpty) {
+            foundAddress = addrPart;
+          }
+          if (loginPart.isNotEmpty) {
+            foundLogin = loginPart;
+          }
+        } else {
+          foundAddress ??= paren;
+        }
+      }
+    }
+
+    // 6. ФИО через регулярное выражение
     if (foundFullName == null) {
       final fioMatch = RegExp(
         r'(?:^|[\s\n\r>])(?:Полное\s+)?(?:ФИО|Ф\.И\.О\.)\s*[:\-]\s*(.+?)(?=\n|\r|<|$|Тариф|Баланс|Лицевой|Основной|Счет|Счёт)',
@@ -290,13 +354,25 @@ class CabinetParser {
       }
     }
 
-    // 6. Тариф через регулярное выражение с обязательным разделителем : или -
-    if (foundTariff == null) {
-      final tariffMatch = RegExp(
-        r'(?:^|[\s\n\r>])(?:Тарифный\s+план|Текущий\s+тариф|Тариф)\s*[:\-]\s*(.+?)(?=\n|\r|<|$|Баланс|Лицевой|Основной|Счет|Счёт|ФИО)',
+    // 7. Адрес через регулярное выражение
+    if (foundAddress == null) {
+      final addrMatch = RegExp(
+        r'(?:^|[\s\n\r>])(?:Адрес\s+подключения|Адрес\s+установки|Адрес)\s*[:\-]\s*(.+?)(?=\n|\r|<|$|Тариф|Баланс|Лицевой|Договор|Клиент)',
         caseSensitive: false,
       ).firstMatch(text);
-      final rawT = tariffMatch?.group(1)?.trim();
+      final a = addrMatch?.group(1)?.trim();
+      if (a != null && a.length >= 3 && !a.contains('8-800') && !a.contains('Трубников')) {
+        foundAddress = a;
+      }
+    }
+
+    // 8. Тариф через регулярное выражение
+    if (foundTariff == null) {
+      final activeTariffMatch = RegExp(
+        r'(?:^|[\s\n\r>])(?:Действующий\s+тариф|Текущий\s+тариф|Тарифный\s+план|Тариф)\s*[:\-]\s*(.+?)(?=\n|\r|<|$|Баланс|Лицевой|Основной|Счет|Счёт|Клиент|Не\s+хватает)',
+        caseSensitive: false,
+      ).firstMatch(text);
+      final rawT = activeTariffMatch?.group(1)?.trim();
       if (rawT != null &&
           !rawT.toLowerCase().contains('тарифы') &&
           !rawT.contains('PremiumTV') &&
@@ -311,13 +387,20 @@ class CabinetParser {
         : (safeAccount.isNotEmpty ? 'Договор № $safeAccount' : 'Абонент');
     final safeTariff = (foundTariff != null && foundTariff.isNotEmpty)
         ? foundTariff
-        : 'Безлимитный интернет';
+        : 'Нет тарифа';
+
+    final needsPassport = text.contains('Не хватает учётных данных') ||
+        text.contains('ввести паспортные данные') ||
+        safeTariff == 'Нет тарифа';
 
     return CabinetData(
       balance: foundBalance ?? 0.0,
       account: safeAccount,
       fullName: safeFullName,
       tariff: safeTariff,
+      address: foundAddress ?? '',
+      login: foundLogin ?? '',
+      needsPassportData: needsPassport,
       rawHtml: htmlString,
     );
   }
@@ -337,33 +420,73 @@ class CabinetParser {
       final rows = table.querySelectorAll('tr');
       if (rows.length < 2) continue;
 
-      final headerText = rows[0].text.toLowerCase();
-      if (headerText.contains('дата') &&
-          (headerText.contains('сумма') ||
-              headerText.contains('приход') ||
-              headerText.contains('платеж') ||
-              headerText.contains('расход'))) {
-        for (int i = 1; i < rows.length; i++) {
-          final cells = rows[i].querySelectorAll('td');
-          if (cells.length >= 2) {
-            final date = cells[0].text.trim();
-            final rawAmount = cells[1]
-                .text
-                .trim()
-                .replaceAll('−', '-')
-                .replaceAll(RegExp(r'[\s\u00A0]'), '')
-                .replaceAll(',', '.');
-            final amount = double.tryParse(rawAmount) ?? 0.0;
-            final comment = cells.length > 2 ? cells[2].text.trim() : '';
-
-            if (date.isNotEmpty &&
-                (date.contains('.') || date.contains('-') || date.contains('/'))) {
-              items.add(PaymentItem(date: date, amount: amount, comment: comment));
-            }
-          }
+      int headerRowIdx = -1;
+      List<String> headers = [];
+      for (int i = 0; i < rows.length && i < 3; i++) {
+        final rowCells = rows[i].querySelectorAll('th, td');
+        final txt = rows[i].text.toLowerCase();
+        if (txt.contains('выполнено') ||
+            txt.contains('дата') ||
+            txt.contains('операция') ||
+            txt.contains('сумма') ||
+            txt.contains('приход') ||
+            txt.contains('платеж') ||
+            txt.contains('расход')) {
+          headerRowIdx = i;
+          headers = rowCells.map((c) => c.text.trim().toLowerCase()).toList();
+          break;
         }
-        if (items.isNotEmpty) break;
       }
+
+      if (headerRowIdx == -1) continue;
+
+      int dateCol = headers.indexWhere((h) => h.contains('выполнено') || h.contains('дата') || h.contains('время'));
+      if (dateCol == -1) dateCol = 0;
+      int operatorCol = headers.indexWhere((h) => h.contains('оператор'));
+      int operationCol = headers.indexWhere((h) => h.contains('операция') || h.contains('тип'));
+      int amountCol = headers.indexWhere((h) => h.contains('сумма') || h.contains('приход') || h.contains('расход') || h.contains('платеж'));
+      int commentCol = headers.indexWhere((h) => h.contains('комментарий') || h.contains('примечание'));
+
+      for (int i = headerRowIdx + 1; i < rows.length; i++) {
+        final cells = rows[i].querySelectorAll('td');
+        if (cells.length < 2) continue;
+
+        final date = (dateCol >= 0 && dateCol < cells.length) ? cells[dateCol].text.trim() : '';
+        final op = (operationCol >= 0 && operationCol < cells.length) ? cells[operationCol].text.trim() : '';
+        final operName = (operatorCol >= 0 && operatorCol < cells.length) ? cells[operatorCol].text.trim() : '';
+        final comm = (commentCol >= 0 && commentCol < cells.length) ? cells[commentCol].text.trim() : '';
+
+        double amount = 0.0;
+        if (amountCol >= 0 && amountCol < cells.length) {
+          final rawAmount = cells[amountCol]
+              .text
+              .trim()
+              .replaceAll('−', '-')
+              .replaceAll(RegExp(r'[\s\u00A0]'), '')
+              .replaceAll(',', '.');
+          amount = double.tryParse(rawAmount) ?? 0.0;
+        } else if (cells.length >= 2) {
+          final rawAmount = cells[1]
+              .text
+              .trim()
+              .replaceAll('−', '-')
+              .replaceAll(RegExp(r'[\s\u00A0]'), '')
+              .replaceAll(',', '.');
+          amount = double.tryParse(rawAmount) ?? 0.0;
+        }
+
+        if (date.isNotEmpty &&
+            (date.contains('.') || date.contains('-') || date.contains('/'))) {
+          items.add(PaymentItem(
+            date: date,
+            amount: amount,
+            operation: op,
+            operator: operName,
+            comment: comm.isNotEmpty ? comm : op,
+          ));
+        }
+      }
+      if (items.isNotEmpty) break;
     }
     return items;
   }
@@ -446,7 +569,7 @@ class CabinetParser {
     var data = parseCabinetHtml(htmlString);
 
     // Если тариф не указан на главной странице oper=info (в UTM5 тарифы часто лежат на oper=tariffs)
-    if (data.tariff == 'Безлимитный интернет' ||
+    if (data.tariff == 'Нет тарифа' ||
         data.tariff == 'Неизвестный тариф' ||
         data.tariff.isEmpty) {
       try {
@@ -459,13 +582,18 @@ class CabinetParser {
                 s.status.toLowerCase().contains('включ'),
             orElse: () => services.first,
           );
-          data = CabinetData(
-            balance: data.balance,
-            account: data.account,
-            fullName: data.fullName,
-            tariff: active.name,
-            rawHtml: data.rawHtml,
-          );
+          if (active.name.isNotEmpty && !active.name.toLowerCase().contains('нет тарифа')) {
+            data = CabinetData(
+              balance: data.balance,
+              account: data.account,
+              fullName: data.fullName,
+              tariff: active.name,
+              address: data.address,
+              login: data.login,
+              needsPassportData: data.needsPassportData,
+              rawHtml: data.rawHtml,
+            );
+          }
         }
       } catch (e) {
         debugPrint('CabinetParser fetchServices fallback error: $e');
@@ -476,12 +604,66 @@ class CabinetParser {
   }
 
   static Future<List<PaymentItem>> fetchPayments(String appToken) async {
-    final htmlString = await _fetchHtml(appToken, oper: 'payments');
-    return parsePaymentsHtml(htmlString);
+    // Пробуем oper=reports (отчеты и операции за месяц), oper=payments, oper=operations
+    for (final op in ['reports', 'payments', 'operations']) {
+      try {
+        final html = await _fetchHtml(appToken, oper: op);
+        final list = parsePaymentsHtml(html);
+        if (list.isNotEmpty) return list;
+      } catch (e) {
+        debugPrint('fetchPayments ($op) error: $e');
+      }
+    }
+    return [];
   }
 
   static Future<List<ServiceItem>> fetchServices(String appToken) async {
     final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
     return parseServicesHtml(htmlString);
+  }
+
+  /// Активация карты экспресс-оплаты или сертификата
+  static Future<bool> activateCertificate(String appToken, String code) async {
+    final r = await BillingApi.openCabinet(appToken);
+    if (!r.isOk || r.data == null) throw Exception('auth_expired');
+    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'cards');
+    try {
+      final res = await SecureHttp.post(
+        Uri.parse(liveUrl),
+        body: {'card_code': code, 'submit': '1'},
+      ).timeout(const Duration(seconds: 15));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Отправка паспортных данных для выбора тарифа
+  static Future<bool> submitPassportData({
+    required String appToken,
+    required String passportSeriesNumber,
+    required String issueDate,
+    required String issuedBy,
+    required String birthDate,
+  }) async {
+    final r = await BillingApi.openCabinet(appToken);
+    if (!r.isOk || r.data == null) throw Exception('auth_expired');
+    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'tariffs');
+    try {
+      final res = await SecureHttp.post(
+        Uri.parse(liveUrl),
+        body: {
+          'passport': passportSeriesNumber,
+          'passport_date': issueDate,
+          'passport_who': issuedBy,
+          'birth_date': birthDate,
+          'agreement': '1',
+          'submit': '1',
+        },
+      ).timeout(const Duration(seconds: 15));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

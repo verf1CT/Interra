@@ -288,5 +288,81 @@ void main() {
       expect(data.fullName, 'Договор № 778899');
       expect(data.tariff, 'Комфорт 200');
     });
+
+    test('parseCabinetHtml correctly parses address, login, and "Нет тарифа" with passport required', () {
+      const html = '''
+        <html>
+        <body>
+          <p>Клиент: Мешкой Михаил Максимович (ХВОЙНАЯ (МОЛОДЕЖНЫЙ) 5- / 216997test)</p>
+          <p>Действующий тариф: Нет тарифа</p>
+          <p>Не хватает учётных данных.</p>
+          <p>Для выбора тарифа необходимо ввести паспортные данные.</p>
+          <p>Ваш лицевой счет для оплаты в платежных системах – 276997</p>
+          <p>Основной баланс: 10 000 руб.</p>
+        </body>
+        </html>
+      ''';
+
+      final data = CabinetParser.parseCabinetHtml(html);
+
+      expect(data.fullName, 'Мешкой Михаил Максимович');
+      expect(data.address, 'ХВОЙНАЯ (МОЛОДЕЖНЫЙ) 5-');
+      expect(data.login, '216997test');
+      expect(data.account, '276997');
+      expect(data.tariff, 'Нет тарифа');
+      expect(data.needsPassportData, true);
+      expect(data.balance, 10000.0);
+    });
+
+    test('parsePaymentsHtml correctly parses NetUP UTM5 .b-operation table', () {
+      const html = '''
+        <html>
+        <body>
+          <table class="b-operation">
+            <tr class="thead">
+              <td>выполнено</td>
+              <td>оператор</td>
+              <td>операция</td>
+              <td>пользователь</td>
+              <td>сумма</td>
+              <td>комментарий</td>
+            </tr>
+            <tr>
+              <td>16-10-2026 23:59</td>
+              <td>SYSTEM</td>
+              <td>отключен</td>
+              <td>Мешкой Михаил Максимович</td>
+              <td>0.00</td>
+              <td>32</td>
+            </tr>
+            <tr>
+              <td>17-10-2026 08:35</td>
+              <td>SYSTEM</td>
+              <td>включен</td>
+              <td>Мешкой Михаил Максимович</td>
+              <td>0.00</td>
+              <td>32</td>
+            </tr>
+          </table>
+          <p>За октябрь 2026 года платежей на сумму : 0 руб.</p>
+        </body>
+        </html>
+      ''';
+
+      final items = CabinetParser.parsePaymentsHtml(html);
+
+      expect(items.length, 2);
+      expect(items[0].date, '16-10-2026 23:59');
+      expect(items[0].operator, 'SYSTEM');
+      expect(items[0].operation, 'отключен');
+      expect(items[0].amount, 0.0);
+      expect(items[0].comment, '32');
+
+      expect(items[1].date, '17-10-2026 08:35');
+      expect(items[1].operator, 'SYSTEM');
+      expect(items[1].operation, 'включен');
+      expect(items[1].amount, 0.0);
+      expect(items[1].comment, '32');
+    });
   });
 }
