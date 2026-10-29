@@ -183,6 +183,14 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   }
 
   Widget _buildInfoCard() {
+    final displayName = (_data!.fullName.isNotEmpty && _data!.fullName != 'Абонент')
+        ? _data!.fullName
+        : (_data!.account.isNotEmpty ? 'Договор № ${_data!.account}' : 'Абонент');
+    final displayAccount = _data!.account.isNotEmpty ? _data!.account : '—';
+    final displayTariff = (_data!.tariff.isNotEmpty && _data!.tariff != 'Неизвестный тариф')
+        ? _data!.tariff
+        : 'Основной тариф';
+
     return Container(
       decoration: BoxDecoration(
         color: context.p.card,
@@ -199,7 +207,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           ),
           const SizedBox(height: 4),
           Text(
-            _data!.fullName,
+            displayName,
             style: TextStyle(fontSize: 18, color: context.p.ink, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
@@ -217,7 +225,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _data!.account,
+                    displayAccount,
                     style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
                   ),
                 ],
@@ -231,7 +239,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _data!.tariff,
+                    displayTariff,
                     style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
                   ),
                 ],
