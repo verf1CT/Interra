@@ -198,5 +198,95 @@ void main() {
       expect(services[0].cost, '500 руб.');
       expect(services[0].status, 'Активна');
     });
+
+    test('parseCabinetHtml strictly ignores .b-informer phone/address and .b-tab navigation', () {
+      const html = '''
+        <html>
+        <body>
+          <div class="sidebar">
+            <div class="nav-footer">
+              <a href="tel:88007700010">8 800 77-000-10</a>
+            </div>
+          </div>
+          <table class="b-informer">
+            <tr>
+              <td>Для абонентов:</td>
+              <td>Единый круглосуточный телефон: 8-800-77-000-10 (звонок бесплатный) .Центр обслуживания: ул. Трубников, 24Помощь: https://pervouralsk.interra.ru/help/</td>
+            </tr>
+          </table>
+          <table class="b-tab">
+            <tr>
+              <td>Тарифы</td>
+              <td>Premium TV</td>
+              <td>Пополнение</td>
+            </tr>
+          </table>
+          <table class="b-account">
+            <tr>
+              <td align="right"><b>Основной баланс:</b></td>
+              <td>10 000 руб.</td>
+            </tr>
+            <tr>
+              <td align="right"><b>Лицевой счет:</b></td>
+              <td>458921</td>
+            </tr>
+            <tr>
+              <td align="right"><b>Абонент:</b></td>
+              <td>Косолапов Иван Александрович</td>
+            </tr>
+          </table>
+          <table class="tlt">
+            <tr>
+              <td>Интернет 100 Мбит/с</td>
+              <td>650.00 руб.</td>
+              <td>Активна</td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      ''';
+
+      final data = CabinetParser.parseCabinetHtml(html);
+
+      expect(data.balance, 10000.0);
+      expect(data.account, '458921');
+      expect(data.account != '800', true);
+      expect(data.fullName, 'Косолапов Иван Александрович');
+      expect(data.fullName.contains('8-800'), false);
+      expect(data.tariff, 'Интернет 100 Мбит/с');
+      expect(data.tariff.contains('PremiumTV'), false);
+    });
+
+    test('parseCabinetHtml falls back to contract number when subscriber name is absent', () {
+      const html = '''
+        <html>
+        <body>
+          <table class="b-account">
+            <tr>
+              <td align="right"><b>Основной баланс:</b></td>
+              <td>1 250 руб.</td>
+            </tr>
+            <tr>
+              <td align="right"><b>Лицевой счет:</b></td>
+              <td>778899</td>
+            </tr>
+          </table>
+          <table class="tlt">
+            <tr>
+              <td>Комфорт 200</td>
+              <td>800.00 руб.</td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      ''';
+
+      final data = CabinetParser.parseCabinetHtml(html);
+
+      expect(data.balance, 1250.0);
+      expect(data.account, '778899');
+      expect(data.fullName, 'Договор № 778899');
+      expect(data.tariff, 'Комфорт 200');
+    });
   });
 }
