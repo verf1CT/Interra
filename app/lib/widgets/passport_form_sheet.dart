@@ -373,7 +373,7 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.open_in_browser, size: 20),
-                label: const Text('Заполнить на сайте stat.interra.ru'),
+                label: const Text('Открыть кабинет на stat.interra.ru'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   side: BorderSide(color: context.p.line),

@@ -638,15 +638,35 @@ class CabinetParser {
     }
   }
 
-  /// Ссылка на веб-версию страницы с тарифами/паспортом с авторизованной сессией
-  static Future<String?> getTariffsWebUrl(String appToken) async {
+  /// Ссылка на веб-версию личного кабинета с авторизованной сессией.
+  /// По умолчанию открывает `oper=info`, так как именно на ней UTM5 авторизует
+  /// сессию в браузере. Если открыть `oper=tariffs` напрямую на чистой сессии,
+  /// UTM5 сбрасывает на пустую форму входа.
+  static Future<String?> getTariffsWebUrl(String appToken,
+      {bool preferInfo = true}) async {
     try {
       final r = await BillingApi.openCabinet(appToken);
       if (!r.isOk || r.data == null) return null;
-      return AppConfig.cabinetUrl(r.data!, oper: 'tariffs');
+      return AppConfig.cabinetUrl(r.data!, oper: preferInfo ? 'info' : 'tariffs');
     } catch (_) {
       return null;
     }
+  }
+
+  /// Извлекает Cookie-пары из заголовка `set-cookie`
+  static String? _extractCookieHeader(String? setCookie) {
+    if (setCookie == null || setCookie.isEmpty) return null;
+    final parts = setCookie.split(RegExp(r',(?=[^;]+?=)'));
+    final cookiePairs = <String>[];
+    for (final part in parts) {
+      final firstSection = part.split(';').first.trim();
+      if (firstSection.contains('=')) {
+        cookiePairs.add(firstSection);
+      }
+    }
+    return cookiePairs.isNotEmpty
+        ? cookiePairs.join('; ')
+        : setCookie.split(';').first.trim();
   }
 
   /// Парсит HTML формы ввода паспорта и собирает Map параметров для отправки в биллинг
@@ -674,81 +694,86 @@ class CabinetParser {
     final form = doc.querySelector('form');
     final Map<String, String> formData = {};
 
-    if (form != null) {
-      // Hidden поля (login, oper, uid, session и др.)
-      for (final el in form.querySelectorAll('input[type="hidden"]')) {
-        final name = el.attributes['name'];
-        if (name != null && name.isNotEmpty) {
-          formData[name] = el.attributes['value'] ?? '';
-        }
-      }
+    // Ищем поля внутри формы или по всему документу (если в разметке UTM5 нарушена вложенность)
+    final contextElement = form ?? doc.body ?? doc;
 
-      // Текстовые поля
-      final textInputs = form.querySelectorAll(
-        'input[type="text"], input[type="tel"], input[type="number"], input:not([type])',
-      );
-
-      final values = [
-        formattedPassport,
-        formattedIssueDate,
-        formattedIssuedBy,
-        formattedBirthDate,
-      ];
-
-      for (var i = 0; i < textInputs.length; i++) {
-        final input = textInputs[i];
-        final name = input.attributes['name'];
-        if (name == null || name.isEmpty) continue;
-
-        final nameLower = name.toLowerCase();
-        if (nameLower.contains('birth') ||
-            nameLower.contains('rojd') ||
-            nameLower.contains('born')) {
-          formData[name] = formattedBirthDate;
-        } else if (nameLower.contains('issue') ||
-            nameLower.contains('vidan') ||
-            nameLower.contains('kogda')) {
-          formData[name] = formattedIssueDate;
-        } else if (nameLower.contains('who') ||
-            nameLower.contains('kem') ||
-            nameLower.contains('org')) {
-          formData[name] = formattedIssuedBy;
-        } else if (nameLower.contains('pass') ||
-            nameLower.contains('ser') ||
-            (nameLower.contains('num') && !nameLower.contains('date'))) {
-          formData[name] = formattedPassport;
-        } else if (nameLower.contains('date')) {
-          formData[name] = (i == 3) ? formattedBirthDate : formattedIssueDate;
-        } else if (i < values.length) {
-          formData[name] = values[i];
-        }
-      }
-
-      // Чекбокс согласия
-      for (final el in form.querySelectorAll('input[type="checkbox"]')) {
-        final name = el.attributes['name'];
-        if (name != null && name.isNotEmpty) {
-          formData[name] = el.attributes['value'] ?? '1';
-        }
-      }
-
-      // Submit кнопка
-      for (final el
-          in form.querySelectorAll('input[type="submit"], button[type="submit"]')) {
-        final name = el.attributes['name'];
-        if (name != null && name.isNotEmpty) {
-          formData[name] = el.attributes['value'] ?? '1';
-        }
+    for (final el in contextElement.querySelectorAll('input[type="hidden"]')) {
+      final name = el.attributes['name'];
+      if (name != null && name.isNotEmpty) {
+        formData[name] = el.attributes['value'] ?? '';
       }
     }
 
-    // Всегда подстраховываемся базовыми именами параметров
+    final textInputs = contextElement.querySelectorAll(
+      'input[type="text"], input[type="tel"], input[type="number"], input:not([type])',
+    );
+
+    final values = [
+      formattedPassport,
+      formattedIssueDate,
+      formattedIssuedBy,
+      formattedBirthDate,
+    ];
+
+    for (var i = 0; i < textInputs.length; i++) {
+      final input = textInputs[i];
+      final name = input.attributes['name'];
+      if (name == null || name.isEmpty) continue;
+
+      final nameLower = name.toLowerCase();
+      if (nameLower.contains('birth') ||
+          nameLower.contains('rojd') ||
+          nameLower.contains('born')) {
+        formData[name] = formattedBirthDate;
+      } else if (nameLower.contains('issue') ||
+          nameLower.contains('vidan') ||
+          nameLower.contains('kogda')) {
+        formData[name] = formattedIssueDate;
+      } else if (nameLower.contains('who') ||
+          nameLower.contains('kem') ||
+          nameLower.contains('org')) {
+        formData[name] = formattedIssuedBy;
+      } else if (nameLower.contains('pass') ||
+          nameLower.contains('ser') ||
+          (nameLower.contains('num') && !nameLower.contains('date'))) {
+        formData[name] = formattedPassport;
+      } else if (nameLower.contains('date')) {
+        formData[name] = (i == 3) ? formattedBirthDate : formattedIssueDate;
+      } else if (i < values.length) {
+        formData[name] = values[i];
+      }
+    }
+
+    // Чекбокс согласия
+    for (final el in contextElement.querySelectorAll('input[type="checkbox"]')) {
+      final name = el.attributes['name'];
+      if (name != null && name.isNotEmpty) {
+        formData[name] = el.attributes['value'] ?? '1';
+      }
+    }
+
+    // Submit кнопка
+    for (final el in contextElement
+        .querySelectorAll('input[type="submit"], button[type="submit"]')) {
+      final name = el.attributes['name'];
+      if (name != null && name.isNotEmpty) {
+        formData[name] = el.attributes['value'] ?? 'записать данные';
+      }
+    }
+
+    // Всегда подстраховываемся всеми известными именами полей UTM5
+    formData.putIfAbsent('doc_num', () => formattedPassport);
     formData.putIfAbsent('passport', () => formattedPassport);
+    formData.putIfAbsent('doc_date', () => formattedIssueDate);
     formData.putIfAbsent('passport_date', () => formattedIssueDate);
+    formData.putIfAbsent('doc_org', () => formattedIssuedBy);
     formData.putIfAbsent('passport_who', () => formattedIssuedBy);
     formData.putIfAbsent('birth_date', () => formattedBirthDate);
     formData.putIfAbsent('agreement', () => '1');
-    formData.putIfAbsent('submit', () => '1');
+    formData.putIfAbsent('agree', () => '1');
+    formData.putIfAbsent('submit', () => 'записать данные');
+    formData.putIfAbsent('save', () => 'записать данные');
+    formData.putIfAbsent('oper', () => 'tariffs');
 
     return formData;
   }
@@ -773,24 +798,52 @@ class CabinetParser {
   }) async {
     final r = await BillingApi.openCabinet(appToken);
     if (!r.isOk || r.data == null) throw Exception('auth_expired');
+
     final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'tariffs');
+    final infoUrl = AppConfig.cabinetUrl(r.data!, oper: 'info');
 
     try {
-      // 1. Загружаем текущую страницу oper=tariffs для разбора формы
-      final getRes = await SecureHttp.get(Uri.parse(liveUrl))
-          .timeout(const Duration(seconds: 15));
+      // 1. Инициализируем сессию через oper=info (в UTM5 куки авторизации рождаются здесь)
+      String? sessionCookie;
+      try {
+        final infoRes = await SecureHttp.get(Uri.parse(infoUrl))
+            .timeout(const Duration(seconds: 15));
+        sessionCookie = _extractCookieHeader(infoRes.headers['set-cookie']);
+      } catch (e) {
+        debugPrint('CabinetParser init session error: $e');
+      }
+
+      // 2. Загружаем текущую страницу oper=tariffs для разбора формы
+      final getRes = await SecureHttp.get(
+        Uri.parse(liveUrl),
+      ).timeout(const Duration(seconds: 15));
       if (getRes.statusCode != 200) throw Exception('network_error');
+
+      // Обновляем куки, если пришли свежие
+      final tariffsCookie = _extractCookieHeader(getRes.headers['set-cookie']);
+      if (tariffsCookie != null && tariffsCookie.isNotEmpty) {
+        sessionCookie = sessionCookie != null
+            ? '$sessionCookie; $tariffsCookie'
+            : tariffsCookie;
+      }
 
       final html = decodeResponseBody(getRes.bodyBytes);
       final doc = parser.parse(html);
       _checkAuth(doc);
 
       final form = doc.querySelector('form');
-      Uri postUri = Uri.parse(liveUrl);
+      final originalUri = Uri.parse(liveUrl);
+      Uri postUri = originalUri;
       if (form != null) {
         final formAction = form.attributes['action']?.trim();
         if (formAction != null && formAction.isNotEmpty) {
-          postUri = postUri.resolve(formAction);
+          final resolved = originalUri.resolve(formAction);
+          // СОХРАНЯЕМ параметры (?login=...&oper=tariffs), иначе resolve('aaainfo')
+          // отсекает query string и запрос становится анонимным!
+          final queryParams =
+              Map<String, String>.from(originalUri.queryParameters);
+          queryParams.addAll(resolved.queryParameters);
+          postUri = resolved.replace(queryParameters: queryParams);
         }
       }
 
@@ -802,13 +855,23 @@ class CabinetParser {
         birthDate: birthDate,
       );
 
-      // 2. Отправляем заполненную форму
+      // Дублируем login и oper в тело POST
+      if (originalUri.queryParameters.containsKey('login')) {
+        formData['login'] = originalUri.queryParameters['login']!;
+      }
+      formData['oper'] = 'tariffs';
+
+      // 3. Отправляем заполненную форму с queryParams, Referer и Cookie
+      final headers = {
+        'Referer': liveUrl,
+        'Origin': AppConfig.billingBase,
+        if (sessionCookie != null && sessionCookie.isNotEmpty)
+          'Cookie': sessionCookie,
+      };
+
       final res = await SecureHttp.post(
         postUri,
-        headers: {
-          'Referer': liveUrl,
-          'Origin': AppConfig.billingBase,
-        },
+        headers: headers,
         body: formData,
       ).timeout(const Duration(seconds: 15));
 
@@ -816,11 +879,12 @@ class CabinetParser {
         return false;
       }
 
-      // 3. Проверяем, приняты ли данные сервером
+      // 4. Проверяем, приняты ли данные сервером
       final responseBody = decodeResponseBody(res.bodyBytes);
       final ok = isPassportSavedSuccessfully(responseBody);
       if (!ok) {
-        debugPrint('CabinetParser submitPassportData: server still requires passport');
+        debugPrint(
+            'CabinetParser submitPassportData: server still requires passport');
       }
       return ok;
     } catch (e) {
