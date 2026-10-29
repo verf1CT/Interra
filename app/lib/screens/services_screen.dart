@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/cabinet_parser.dart';
 import '../services/auth_store.dart';
 import '../widgets/passport_form_sheet.dart';
@@ -54,11 +55,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   void _openPassport() {
-    if (widget.onOpenPassportForm != null) {
-      widget.onOpenPassportForm!();
-    } else {
-      PassportFormSheet.show(context, onSaved: _loadData);
-    }
+    PassportFormSheet.show(context, onSaved: () {
+      _loadData();
+      widget.onOpenPassportForm?.call();
+    });
+  }
+
+  Future<void> _openWebCabinet() async {
+    try {
+      final token = await AuthStore().appToken;
+      if (token == null) return;
+      final url = await CabinetParser.getTariffsWebUrl(token);
+      if (url != null) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -129,10 +140,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: _openPassport,
-                  icon: const Icon(Icons.edit_document, size: 18),
-                  label: const Text('Ввести паспортные данные'),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: _openPassport,
+                      icon: const Icon(Icons.edit_document, size: 18),
+                      label: const Text('Ввести паспортные данные'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _openWebCabinet,
+                      icon: const Icon(Icons.open_in_browser, size: 18),
+                      label: const Text('Заполнить на сайте'),
+                    ),
+                  ],
                 ),
               ],
             ),

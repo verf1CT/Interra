@@ -364,5 +364,99 @@ void main() {
       expect(items[1].amount, 0.0);
       expect(items[1].comment, '32');
     });
+
+    test('buildPassportFormData dynamically extracts form fields, formats passport & dates', () {
+      const html = '''
+        <html>
+        <body>
+          <form action="aaainfo" method="POST">
+            <input type="hidden" name="login" value="test_token_123">
+            <input type="hidden" name="oper" value="tariffs">
+            <input type="hidden" name="action" value="save_doc">
+            <table>
+              <tr>
+                <td>десять цифр, серия и номер паспорта СССС-НННННН:</td>
+                <td><input type="text" name="doc_num" value=""></td>
+              </tr>
+              <tr>
+                <td>дата когда выдан паспорт ДД.ММ.ГГГГ:</td>
+                <td><input type="text" name="doc_date" value=""></td>
+              </tr>
+              <tr>
+                <td>кем выдан паспорт:</td>
+                <td><input type="text" name="doc_org" value=""></td>
+              </tr>
+              <tr>
+                <td>дата рождения абонента ДД.ММ.ГГГГ:</td>
+                <td><input type="text" name="birth_date" value=""></td>
+              </tr>
+              <tr>
+                <td>с Соглашением о предоставлении услуг ознакомлен</td>
+                <td><input type="checkbox" name="agree" value="1"></td>
+              </tr>
+            </table>
+            <input type="submit" name="save_btn" value="записать данные">
+          </form>
+        </body>
+        </html>
+      ''';
+
+      final formData = CabinetParser.buildPassportFormData(
+        html,
+        passport: '6504 123456',
+        issueDate: '15/08/2014',
+        issuedBy: 'Отделом УФМС Первоуральск',
+        birthDate: '01-05-1992',
+      );
+
+      // Hidden fields
+      expect(formData['login'], 'test_token_123');
+      expect(formData['oper'], 'tariffs');
+      expect(formData['action'], 'save_doc');
+
+      // Mapped inputs with normalized formats
+      expect(formData['doc_num'], '6504-123456');
+      expect(formData['doc_date'], '15.08.2014');
+      expect(formData['doc_org'], 'Отделом УФМС Первоуральск');
+      expect(formData['birth_date'], '01.05.1992');
+
+      // Checkbox and submit
+      expect(formData['agree'], '1');
+      expect(formData['save_btn'], 'записать данные');
+
+      // Fallback keys also present
+      expect(formData['passport'], '6504-123456');
+      expect(formData['passport_date'], '15.08.2014');
+      expect(formData['passport_who'], 'Отделом УФМС Первоуральск');
+      expect(formData['agreement'], '1');
+    });
+
+    test('isPassportSavedSuccessfully correctly detects validation failure or success', () {
+      const failedHtml = '''
+        <html>
+        <body>
+          <p>Не хватает учётных данных.</p>
+          <p>Для выбора тарифа необходимо ввести паспортные данные.</p>
+          <form><input type="text" name="doc_num"></form>
+        </body>
+        </html>
+      ''';
+
+      const successHtml = '''
+        <html>
+        <body>
+          <h3>Доступные тарифные планы</h3>
+          <table class="tariffs">
+            <tr><td>Комфорт 100</td><td>550 руб.</td></tr>
+            <tr><td>Комфорт 200</td><td>750 руб.</td></tr>
+          </table>
+        </body>
+        </html>
+      ''';
+
+      expect(CabinetParser.isPassportSavedSuccessfully(failedHtml), false);
+      expect(CabinetParser.isPassportSavedSuccessfully(''), false);
+      expect(CabinetParser.isPassportSavedSuccessfully(successHtml), true);
+    });
   });
 }

@@ -638,6 +638,131 @@ class CabinetParser {
     }
   }
 
+  /// Ссылка на веб-версию страницы с тарифами/паспортом с авторизованной сессией
+  static Future<String?> getTariffsWebUrl(String appToken) async {
+    try {
+      final r = await BillingApi.openCabinet(appToken);
+      if (!r.isOk || r.data == null) return null;
+      return AppConfig.cabinetUrl(r.data!, oper: 'tariffs');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Парсит HTML формы ввода паспорта и собирает Map параметров для отправки в биллинг
+  @visibleForTesting
+  static Map<String, String> buildPassportFormData(
+    String html, {
+    required String passport,
+    required String issueDate,
+    required String issuedBy,
+    required String birthDate,
+  }) {
+    // 10 цифр паспорта приводим к формату СССС-НННННН
+    final digitsOnly = passport.replaceAll(RegExp(r'\D'), '');
+    final formattedPassport = (digitsOnly.length == 10)
+        ? '${digitsOnly.substring(0, 4)}-${digitsOnly.substring(4)}'
+        : passport.trim();
+
+    final formattedIssueDate =
+        issueDate.trim().replaceAll('/', '.').replaceAll('-', '.');
+    final formattedBirthDate =
+        birthDate.trim().replaceAll('/', '.').replaceAll('-', '.');
+    final formattedIssuedBy = issuedBy.trim();
+
+    final doc = parser.parse(html);
+    final form = doc.querySelector('form');
+    final Map<String, String> formData = {};
+
+    if (form != null) {
+      // Hidden поля (login, oper, uid, session и др.)
+      for (final el in form.querySelectorAll('input[type="hidden"]')) {
+        final name = el.attributes['name'];
+        if (name != null && name.isNotEmpty) {
+          formData[name] = el.attributes['value'] ?? '';
+        }
+      }
+
+      // Текстовые поля
+      final textInputs = form.querySelectorAll(
+        'input[type="text"], input[type="tel"], input[type="number"], input:not([type])',
+      );
+
+      final values = [
+        formattedPassport,
+        formattedIssueDate,
+        formattedIssuedBy,
+        formattedBirthDate,
+      ];
+
+      for (var i = 0; i < textInputs.length; i++) {
+        final input = textInputs[i];
+        final name = input.attributes['name'];
+        if (name == null || name.isEmpty) continue;
+
+        final nameLower = name.toLowerCase();
+        if (nameLower.contains('birth') ||
+            nameLower.contains('rojd') ||
+            nameLower.contains('born')) {
+          formData[name] = formattedBirthDate;
+        } else if (nameLower.contains('issue') ||
+            nameLower.contains('vidan') ||
+            nameLower.contains('kogda')) {
+          formData[name] = formattedIssueDate;
+        } else if (nameLower.contains('who') ||
+            nameLower.contains('kem') ||
+            nameLower.contains('org')) {
+          formData[name] = formattedIssuedBy;
+        } else if (nameLower.contains('pass') ||
+            nameLower.contains('ser') ||
+            (nameLower.contains('num') && !nameLower.contains('date'))) {
+          formData[name] = formattedPassport;
+        } else if (nameLower.contains('date')) {
+          formData[name] = (i == 3) ? formattedBirthDate : formattedIssueDate;
+        } else if (i < values.length) {
+          formData[name] = values[i];
+        }
+      }
+
+      // Чекбокс согласия
+      for (final el in form.querySelectorAll('input[type="checkbox"]')) {
+        final name = el.attributes['name'];
+        if (name != null && name.isNotEmpty) {
+          formData[name] = el.attributes['value'] ?? '1';
+        }
+      }
+
+      // Submit кнопка
+      for (final el
+          in form.querySelectorAll('input[type="submit"], button[type="submit"]')) {
+        final name = el.attributes['name'];
+        if (name != null && name.isNotEmpty) {
+          formData[name] = el.attributes['value'] ?? '1';
+        }
+      }
+    }
+
+    // Всегда подстраховываемся базовыми именами параметров
+    formData.putIfAbsent('passport', () => formattedPassport);
+    formData.putIfAbsent('passport_date', () => formattedIssueDate);
+    formData.putIfAbsent('passport_who', () => formattedIssuedBy);
+    formData.putIfAbsent('birth_date', () => formattedBirthDate);
+    formData.putIfAbsent('agreement', () => '1');
+    formData.putIfAbsent('submit', () => '1');
+
+    return formData;
+  }
+
+  /// Проверяет по HTML ответа биллинга, сохранились ли паспортные данные
+  @visibleForTesting
+  static bool isPassportSavedSuccessfully(String responseHtml) {
+    if (responseHtml.trim().isEmpty) return false;
+    final stillMissing = responseHtml.contains('Не хватает учётных данных') ||
+        responseHtml.contains('ввести паспортные данные') ||
+        responseHtml.contains('Для выбора тарифа необходимо ввести');
+    return !stillMissing;
+  }
+
   /// Отправка паспортных данных для выбора тарифа
   static Future<bool> submitPassportData({
     required String appToken,
@@ -649,20 +774,57 @@ class CabinetParser {
     final r = await BillingApi.openCabinet(appToken);
     if (!r.isOk || r.data == null) throw Exception('auth_expired');
     final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'tariffs');
+
     try {
+      // 1. Загружаем текущую страницу oper=tariffs для разбора формы
+      final getRes = await SecureHttp.get(Uri.parse(liveUrl))
+          .timeout(const Duration(seconds: 15));
+      if (getRes.statusCode != 200) throw Exception('network_error');
+
+      final html = decodeResponseBody(getRes.bodyBytes);
+      final doc = parser.parse(html);
+      _checkAuth(doc);
+
+      final form = doc.querySelector('form');
+      Uri postUri = Uri.parse(liveUrl);
+      if (form != null) {
+        final formAction = form.attributes['action']?.trim();
+        if (formAction != null && formAction.isNotEmpty) {
+          postUri = postUri.resolve(formAction);
+        }
+      }
+
+      final formData = buildPassportFormData(
+        html,
+        passport: passportSeriesNumber,
+        issueDate: issueDate,
+        issuedBy: issuedBy,
+        birthDate: birthDate,
+      );
+
+      // 2. Отправляем заполненную форму
       final res = await SecureHttp.post(
-        Uri.parse(liveUrl),
-        body: {
-          'passport': passportSeriesNumber,
-          'passport_date': issueDate,
-          'passport_who': issuedBy,
-          'birth_date': birthDate,
-          'agreement': '1',
-          'submit': '1',
+        postUri,
+        headers: {
+          'Referer': liveUrl,
+          'Origin': AppConfig.billingBase,
         },
+        body: formData,
       ).timeout(const Duration(seconds: 15));
-      return res.statusCode == 200;
-    } catch (_) {
+
+      if (res.statusCode != 200 && res.statusCode != 302 && res.statusCode != 303) {
+        return false;
+      }
+
+      // 3. Проверяем, приняты ли данные сервером
+      final responseBody = decodeResponseBody(res.bodyBytes);
+      final ok = isPassportSavedSuccessfully(responseBody);
+      if (!ok) {
+        debugPrint('CabinetParser submitPassportData: server still requires passport');
+      }
+      return ok;
+    } catch (e) {
+      debugPrint('CabinetParser submitPassportData error: $e');
       return false;
     }
   }
