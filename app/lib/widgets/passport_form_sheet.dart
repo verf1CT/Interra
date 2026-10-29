@@ -31,6 +31,7 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
   
   bool _agreed = false;
   bool _submitting = false;
+  bool _openingWeb = false;
   String? _errorMessage;
 
   @override
@@ -40,6 +41,24 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
     _issuedByController.dispose();
     _birthDateController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openOnWeb() async {
+    setState(() => _openingWeb = true);
+    try {
+      final token = await AuthStore().appToken;
+      if (token == null) throw Exception('auth_expired');
+      final url = await CabinetParser.getTariffsWebUrl(token);
+      if (url != null) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } else {
+        setState(() => _errorMessage = 'Не удалось сформировать ссылку для входа в кабинет');
+      }
+    } catch (_) {
+      setState(() => _errorMessage = 'Ошибка сессии. Попробуйте перезайти в приложение.');
+    } finally {
+      if (mounted) setState(() => _openingWeb = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -73,19 +92,20 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
           widget.onSaved?.call();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Паспортные данные сохранены. Теперь можно выбрать тариф!'),
+              content: Text('Паспортные данные успешно сохранены!'),
               backgroundColor: AppColors.brand,
             ),
           );
         } else {
-          setState(() => _errorMessage = 'Не удалось записать данные. Проверьте правильность заполнения.');
+          setState(() => _errorMessage =
+              'Сервер биллинга не сохранил данные (возможно, формат отклонён). Нажмите «Заполнить на сайте» ниже, чтобы открыть официальную форму.');
         }
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           _submitting = false;
-          _errorMessage = 'Ошибка отправки данных. Попробуйте позже.';
+          _errorMessage = 'Ошибка отправки данных. Попробуйте открыть форму на сайте.';
         });
       }
     }
@@ -317,7 +337,7 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
 
               // Кнопка: Записать данные
               FilledButton(
-                onPressed: _submitting ? null : _submit,
+                onPressed: (_submitting || _openingWeb) ? null : _submit,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -333,6 +353,25 @@ class _PassportFormSheetState extends State<PassportFormSheet> {
                         'Записать данные',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
+              ),
+              const SizedBox(height: 10),
+
+              // Кнопка: Заполнить на сайте (с авторизованной ссылкой)
+              OutlinedButton.icon(
+                onPressed: (_submitting || _openingWeb) ? null : _openOnWeb,
+                icon: _openingWeb
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.open_in_browser, size: 20),
+                label: const Text('Заполнить на сайте stat.interra.ru'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: context.p.line),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ],
           ),
