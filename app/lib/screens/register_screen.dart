@@ -7,6 +7,7 @@ import '../services/auth_store.dart';
 import '../services/billing_api.dart';
 import '../services/push_service.dart';
 import '../services/analytics.dart';
+import '../services/demo_mode.dart';
 import 'cabinet_screen.dart';
 
 /// форматирует ввод телефона как `922 999-99-99` (без кода страны, до 10 цифр)
@@ -291,6 +292,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         FilledButton(
           onPressed: _busy ? null : _submitPhone,
           child: _busy ? _spinner() : const Text('Получить код'),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              await DemoMode.setEnabled(true);
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const CabinetScreen()),
+                );
+              }
+            },
+            icon: const Icon(Icons.photo_camera_rounded, size: 18),
+            label: const Text('Демо-режим для скриншотов'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: context.p.line),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
         ),
       ],
     );

@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../utils/phone.dart';
 import '../services/app_info.dart';
 import '../services/auth_store.dart';
+import '../services/demo_mode.dart';
 import '../services/api_client.dart';
 import '../services/balance_store.dart';
 import '../services/billing_api.dart';
@@ -54,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       cats[c.key] = await NotifyPrefs.isEnabled(c.key);
     }
     setState(() {
-      _phone = phone;
+      _phone = phone ?? (DemoMode.isEnabled.value ? '79221234567' : null);
       _notifications = prefs.getBool('notifications_enabled') ?? true;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
@@ -291,6 +292,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          _sectionTitle('Режим скриншотов'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: DemoMode.isEnabled,
+              builder: (context, enabled, _) => SwitchListTile(
+                secondary: const Icon(Icons.camera_alt_outlined, color: AppColors.brand),
+                title: const Text('Витрина данных (для скриншотов)', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Показывает идеальные демонстрационные данные для Google Play и App Store'),
+                value: enabled,
+                activeTrackColor: AppColors.brand,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                onChanged: (val) async {
+                  await DemoMode.setEnabled(val);
+                  setState(() {
+                    _phone = _phone ?? (val ? '79221234567' : null);
+                  });
+                },
+              ),
             ),
           ),
           const SizedBox(height: 18),

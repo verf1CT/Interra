@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/cabinet_parser.dart';
+import '../services/demo_mode.dart';
 import '../services/auth_store.dart';
 import '../theme.dart';
 
@@ -21,14 +22,22 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    DemoMode.isEnabled.addListener(_onDemoChanged);
     _loadData();
+  }
+
+  void _onDemoChanged() {
+    if (mounted) _loadData();
   }
 
   @override
   void dispose() {
+    DemoMode.isEnabled.removeListener(_onDemoChanged);
     _tabController.dispose();
     super.dispose();
   }
+
+
 
   Future<void> _loadData() async {
     if (!mounted) return;
@@ -36,6 +45,17 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
       _loading = true;
       _error = null;
     });
+
+    if (DemoMode.isEnabled.value) {
+      if (mounted) {
+        setState(() {
+          _payments = DemoMode.demoPayments;
+          _loading = false;
+          _error = null;
+        });
+      }
+      return;
+    }
 
     try {
       final token = await AuthStore().appToken;
@@ -266,6 +286,105 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
   }
 
   Widget _buildSessionsTab() {
+    if (DemoMode.isEnabled.value) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: DemoMode.demoSessions.length,
+        itemBuilder: (context, index) {
+          final s = DemoMode.demoSessions[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.p.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: s.isActive ? AppColors.brand : context.p.line,
+                width: s.isActive ? 1.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.router_rounded,
+                          size: 20,
+                          color: s.isActive ? AppColors.brand : context.p.inkMute,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          s.ip,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: context.p.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: s.isActive
+                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                            : context.p.line,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        s.isActive ? 'Активна сейчас' : 'Завершена',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: s.isActive ? const Color(0xFF10B981) : context.p.inkMute,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Подключение', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
+                        const SizedBox(height: 2),
+                        Text(s.startedAt, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.p.ink)),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('Длительность', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
+                        const SizedBox(height: 2),
+                        Text(s.duration, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.p.ink)),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('Трафик (Вх/Исх)', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
+                        const SizedBox(height: 2),
+                        Text('${s.rxBytes} / ${s.txBytes}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.brand)),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

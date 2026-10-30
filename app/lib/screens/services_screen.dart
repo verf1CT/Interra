@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/cabinet_parser.dart';
+import '../services/demo_mode.dart';
 import '../services/auth_store.dart';
 import '../widgets/passport_form_sheet.dart';
 import '../theme.dart';
@@ -22,7 +23,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   void initState() {
     super.initState();
+    DemoMode.isEnabled.addListener(_onDemoChanged);
     _loadData();
+  }
+
+  void _onDemoChanged() {
+    if (mounted) _loadData();
+  }
+
+  @override
+  void dispose() {
+    DemoMode.isEnabled.removeListener(_onDemoChanged);
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -31,6 +43,17 @@ class _ServicesScreenState extends State<ServicesScreen> {
       _loading = true;
       _error = null;
     });
+
+    if (DemoMode.isEnabled.value) {
+      if (mounted) {
+        setState(() {
+          _services = DemoMode.demoServices;
+          _loading = false;
+          _error = null;
+        });
+      }
+      return;
+    }
 
     try {
       final token = await AuthStore().appToken;
@@ -62,6 +85,17 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 
   Future<void> _openWebCabinet() async {
+    if (DemoMode.isEnabled.value) {
+      if (mounted) {
+        setState(() {
+          _services = DemoMode.demoServices;
+          _loading = false;
+          _error = null;
+        });
+      }
+      return;
+    }
+
     try {
       final token = await AuthStore().appToken;
       if (token == null) return;
@@ -103,8 +137,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Блок паспорта как на Скриншоте 3
-          Container(
+          // Блок паспорта (скрыт в демо-режиме для скриншотов)
+          if (!DemoMode.isEnabled.value)
+            Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.brand.withValues(alpha: 0.08),
@@ -259,6 +294,182 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 ),
               );
             }),
+
+          if (DemoMode.isEnabled.value) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Доступные тарифные планы',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.p.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...DemoMode.availableTariffs.map((t) => _buildDemoTariffCard(t)),
+            const SizedBox(height: 20),
+            Text(
+              'Дополнительные услуги',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.p.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildExtraOption('Статический IP-адрес', '150 ₽ / мес', Icons.public_rounded),
+            const SizedBox(height: 10),
+            _buildExtraOption('Аренда гигабитного роутера Wi-Fi 6', '99 ₽ / мес', Icons.router_rounded),
+            const SizedBox(height: 10),
+            _buildExtraOption('Антивирус Kaspersky Safe Kids', '99 ₽ / мес', Icons.security_rounded),
+            const SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoTariffCard(DemoTariff t) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.p.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: t.isCurrent ? AppColors.brand : context.p.line,
+          width: t.isCurrent ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  t.speed,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (t.badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: t.isCurrent
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : AppColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    t.badge!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: t.isCurrent ? const Color(0xFF10B981) : AppColors.accent,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              Text(
+                t.price,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: context.p.ink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            t.title,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: context.p.ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...t.features.map(
+            (f) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF10B981)),
+                  const SizedBox(width: 8),
+                  Text(
+                    f,
+                    style: TextStyle(fontSize: 13, color: context.p.inkMute),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: t.isCurrent
+                ? OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('Текущий тарифный план'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  )
+                : FilledButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Заявка на подключение тарифа «${t.title}» отправлена')),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brand,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Text('Подключить', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtraOption(String title, String price, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: context.p.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.p.line),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: AppColors.brand),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.p.ink),
+            ),
+          ),
+          Text(
+            price,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.p.inkMute),
+          ),
         ],
       ),
     );

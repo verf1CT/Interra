@@ -7,6 +7,7 @@ import 'services/push_service.dart';
 import 'services/analytics.dart';
 import 'services/quick_actions_service.dart';
 import 'services/update_check.dart';
+import 'services/demo_mode.dart';
 import 'screens/biometric_gate.dart';
 import 'screens/register_screen.dart';
 import 'screens/cabinet_screen.dart';
@@ -14,6 +15,7 @@ import 'widgets/privacy_shield.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await DemoMode.load();
 
   bool registered = false;
   try {
@@ -31,7 +33,7 @@ Future<void> main() async {
 
   // интерфейс показываем ПЕРВЫМ ДЕЛОМ - ничто не должно блокировать первый кадр.
   // Биометрический замок навешивает BiometricGate (через MaterialApp.builder)
-  runApp(InterraApp(loggedIn: registered));
+  runApp(InterraApp(loggedIn: registered || DemoMode.isEnabled.value));
 
   // firebase, телеметрия и push - полностью в фоне и с таймаутом, чтобы
   // инициализация (особенно на iOS без APNs) никогда не подвешивала запуск
