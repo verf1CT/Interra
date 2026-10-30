@@ -6,6 +6,8 @@ import '../services/balance_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/analytics.dart';
 import '../services/quick_actions_service.dart';
+import '../services/demo_mode.dart';
+import 'support_screen.dart';
 import 'diagnostics_screen.dart';
 import 'register_screen.dart';
 import 'settings_screen.dart';
@@ -35,10 +37,15 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.addObserver(this);
     QuickActionsService.homeRequested.addListener(_refreshFromEvent);
     QuickActionsService.paymentRequested.addListener(_openPayment);
+    DemoMode.isEnabled.addListener(_onDemoChanged);
     BalanceStore.restore();
     _refresh();
   }
   
+  void _onDemoChanged() {
+    if (mounted) _refresh();
+  }
+
   void _refreshFromEvent() {
     setState(() => _currentIndex = 0);
     _refresh();
@@ -49,6 +56,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     QuickActionsService.homeRequested.removeListener(_refreshFromEvent);
     QuickActionsService.paymentRequested.removeListener(_openPayment);
+    DemoMode.isEnabled.removeListener(_onDemoChanged);
     super.dispose();
   }
 
@@ -65,6 +73,19 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         _loading = true;
         _error = null;
       });
+    }
+
+    if (DemoMode.isEnabled.value) {
+      final demo = DemoMode.demoCabinetData;
+      await BalanceStore.update(demo.balance, account: demo.account);
+      if (mounted) {
+        setState(() {
+          _data = demo;
+          _loading = false;
+          _error = null;
+        });
+      }
+      return;
     }
 
     final token = await AuthStore().appToken;
@@ -102,6 +123,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   }
 
   void _resetToRegister() {
+    if (DemoMode.isEnabled.value) return;
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const RegisterScreen()),
@@ -177,8 +199,12 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         children: [
           if (_data != null) ...[
             _buildInfoCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            _buildConnectionCard(),
+            const SizedBox(height: 16),
             _buildActionButtons(),
+            const SizedBox(height: 16),
+            _buildPromoCard(),
           ],
         ],
       ),
@@ -205,14 +231,47 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Абонент',
-            style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            displayName,
-            style: TextStyle(fontSize: 18, color: context.p.ink, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Абонент',
+                      style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      displayName,
+                      style: TextStyle(fontSize: 18, color: context.p.ink, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, size: 7, color: Color(0xFF10B981)),
+                    SizedBox(width: 5),
+                    Text(
+                      'Активен',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (_data!.address.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -243,9 +302,29 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                     style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    displayAccount,
-                    style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Text(
+                        displayAccount,
+                        style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () {
+                          if (_data!.account.isNotEmpty) {
+                            Clipboard.setData(ClipboardData(text: _data!.account));
+                            HapticFeedback.lightImpact();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Лицевой счёт ${_data!.account} скопирован'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                        child: Icon(Icons.copy_rounded, size: 16, color: context.p.inkMute),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -269,7 +348,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               ),
             ],
           ),
-          if (!hasTariff || _data!.needsPassportData) ...[
+          if (!DemoMode.isEnabled.value && (!hasTariff || _data!.needsPassportData)) ...[
             const SizedBox(height: 16),
             InkWell(
               onTap: _openPassportForm,
@@ -302,19 +381,287 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _quickActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: context.p.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: context.p.line),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: AppColors.brand, size: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: context.p.ink,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statItem(String label, String value, IconData icon) {
     return Row(
       children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: _openPayment,
-            icon: const Icon(Icons.payment),
-            label: const Text('Пополнить'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        Icon(icon, size: 16, color: context.p.inkMute),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: context.p.inkMute, fontWeight: FontWeight.w500),
+            ),
+            Text(
+              value,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.p.ink),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectionCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.p.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.p.line),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.wifi_rounded, color: AppColors.brand, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Интернет подключён',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: context.p.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Оплачено до 15 ноября 2026 г.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.p.inkMute,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '200 Мбит/с',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _statItem('Пинг', '4 мс', Icons.speed),
+              _statItem('Входящая', '204 Мбит/с', Icons.arrow_downward),
+              _statItem('Исходящая', '198 Мбит/с', Icons.arrow_upward),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F70B7), Color(0xFF1990E6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F70B7).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Интерра ТВ онлайн',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '150+ телеканалов в Full HD на смартфоне, планшете и ТВ',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.white70,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => setState(() => _currentIndex = 2),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0F70B7),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('Смотреть ТВ', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.tv_rounded, color: Colors.white, size: 36),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _openPayment,
+                icon: const Icon(Icons.payment_rounded, size: 20),
+                label: const Text('Пополнить баланс', style: TextStyle(fontWeight: FontWeight.w700)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            IconButton.filledTonal(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Обещанный платёж на 3 дня активирован'),
+                    backgroundColor: AppColors.brand,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.bolt_rounded, size: 22),
+              tooltip: 'Обещанный платёж',
+              style: IconButton.styleFrom(
+                padding: const EdgeInsets.all(15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _quickActionItem(
+              icon: Icons.headset_mic_rounded,
+              label: 'Поддержка',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SupportScreen()),
+              ),
+            ),
+            _quickActionItem(
+              icon: Icons.speed_rounded,
+              label: 'Скорость',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+              ),
+            ),
+            _quickActionItem(
+              icon: Icons.tv_rounded,
+              label: 'Интерра ТВ',
+              onTap: () => setState(() => _currentIndex = 2),
+            ),
+            _quickActionItem(
+              icon: Icons.receipt_long_rounded,
+              label: 'История',
+              onTap: () => setState(() => _currentIndex = 3),
+            ),
+          ],
         ),
       ],
     );
