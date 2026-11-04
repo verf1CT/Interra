@@ -73,8 +73,6 @@ jobs:
     name: Build Android APK/AAB (release)
     needs: test-flutter
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     defaults:
       run:
         working-directory: app
@@ -126,22 +124,77 @@ jobs:
             app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
+  ios-build:
+    name: Build iOS IPA (release)
+    needs: test-flutter
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.4"
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build iOS unsigned IPA
+        run: |
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r -q interra-ios.ipa Payload
+          mv interra-ios.ipa ../../../interra-ios.ipa
+        working-directory: app
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: interra-ios-release
+          path: app/interra-ios.ipa
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push'
+    needs: [android-build, ios-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: interra-android-release
+          path: release-assets/
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: interra-ios-release
+          path: release-assets/
+
       - name: Read app version
-        if: github.event_name == 'push'
         id: ver
         run: |
-          echo "version=$(grep '^version:' pubspec.yaml | sed 's/version: *//')" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep '^version:' app/pubspec.yaml | sed 's/version: *//')" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
-        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: "Сборка ${{ steps.ver.outputs.version }} (#${{ github.run_number }})"
           body: |
             Автосборка из коммита ${{ github.sha }}.
+            Включает сборки для Android (APK, AAB) и iOS (IPA для установки через AltStore/Sideloadly).
           prerelease: true
-          files: |
-            app/build/app/outputs/flutter-apk/app-release.apk
-            app/build/app/outputs/bundle/release/app-release.aab
+          files: release-assets/*
           fail_on_unmatched_files: true
