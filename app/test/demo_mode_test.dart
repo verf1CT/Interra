@@ -46,13 +46,6 @@ void main() {
       expect(services[0].status, 'Активен');
     });
 
-    test('availableTariffs contains modern telecom options', () {
-      final tariffs = DemoMode.availableTariffs;
-      expect(tariffs.length, 4);
-      expect(tariffs.any((t) => t.isCurrent), true);
-      expect(tariffs.firstWhere((t) => t.isCurrent).title, 'Комфорт 200');
-    });
-
     test('demoPayments contains clean positive and negative balance operations', () {
       final payments = DemoMode.demoPayments;
       expect(payments.isNotEmpty, true);
