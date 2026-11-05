@@ -70,11 +70,11 @@ class DemoMode {
 
   static CabinetData get demoCabinetData => CabinetData(
         balance: 1250.00,
-        account: '276997',
-        fullName: 'Михаил Мешкой',
+        account: '123456',
+        fullName: 'Иванов Иван Иванович',
         tariff: 'Комфорт 200',
-        address: 'ул. Хвойная, д. 5',
-        login: '216997',
+        address: 'г. Первоуральск, пр. Ильича, д. 15, кв. 42',
+        login: '123456',
         needsPassportData: false,
         rawHtml: '',
       );
@@ -133,11 +133,25 @@ class DemoMode {
 
   static List<PaymentItem> get demoPayments => [
         PaymentItem(
-          date: '28.10.2026 14:22',
+          date: '04.11.2026 14:22',
           amount: 750.0,
           operation: 'СБП (Система быстрых платежей)',
           comment: 'Зачислено моментально',
           operator: 'СБП',
+        ),
+        PaymentItem(
+          date: '01.11.2026 00:00',
+          amount: -750.0,
+          operation: 'Абонентская плата (Комфорт 200)',
+          comment: 'Списание за ноябрь',
+          operator: 'SYSTEM',
+        ),
+        PaymentItem(
+          date: '25.10.2026 19:10',
+          amount: 750.0,
+          operation: 'Банковская карта (SberPay)',
+          comment: 'Автоплатёж',
+          operator: 'СберБанк',
         ),
         PaymentItem(
           date: '01.10.2026 00:00',
@@ -147,11 +161,11 @@ class DemoMode {
           operator: 'SYSTEM',
         ),
         PaymentItem(
-          date: '25.09.2026 19:10',
-          amount: 750.0,
-          operation: 'Банковская карта (SberPay)',
-          comment: 'Автоплатёж',
-          operator: 'СберБанк',
+          date: '20.09.2026 11:45',
+          amount: 1000.0,
+          operation: 'Система быстрых платежей',
+          comment: 'Пополнение счёта',
+          operator: 'СБП',
         ),
         PaymentItem(
           date: '01.09.2026 00:00',
@@ -160,26 +174,12 @@ class DemoMode {
           comment: 'Списание за сентябрь',
           operator: 'SYSTEM',
         ),
-        PaymentItem(
-          date: '20.08.2026 11:45',
-          amount: 1000.0,
-          operation: 'Система быстрых платежей',
-          comment: 'Пополнение счёта',
-          operator: 'СБП',
-        ),
-        PaymentItem(
-          date: '01.08.2026 00:00',
-          amount: -750.0,
-          operation: 'Абонентская плата (Комфорт 200)',
-          comment: 'Списание за август',
-          operator: 'SYSTEM',
-        ),
       ];
 
   static List<DemoSessionItem> get demoSessions => const [
         DemoSessionItem(
           ip: '178.46.128.45',
-          startedAt: '30.10.2026 08:15',
+          startedAt: '05.11.2026 08:15',
           duration: '5 ч 30 мин',
           rxBytes: '24.6 ГБ',
           txBytes: '4.2 ГБ',
@@ -187,7 +187,7 @@ class DemoMode {
         ),
         DemoSessionItem(
           ip: '178.46.128.45',
-          startedAt: '29.10.2026 00:00',
+          startedAt: '04.11.2026 00:00',
           duration: '23 ч 59 мин',
           rxBytes: '58.1 ГБ',
           txBytes: '8.7 ГБ',
@@ -195,7 +195,7 @@ class DemoMode {
         ),
         DemoSessionItem(
           ip: '178.46.128.45',
-          startedAt: '28.10.2026 00:00',
+          startedAt: '03.11.2026 00:00',
           duration: '23 ч 59 мин',
           rxBytes: '42.3 ГБ',
           txBytes: '6.1 ГБ',
