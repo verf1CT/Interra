@@ -32,7 +32,8 @@ void main() {
     test('demoCabinetData contains valid showcase data', () {
       final data = DemoMode.demoCabinetData;
       expect(data.balance, 1250.0);
-      expect(data.account, '276997');
+      expect(data.account, '123456');
+      expect(data.fullName, 'Иванов Иван Иванович');
       expect(data.tariff, 'Комфорт 200');
       expect(data.needsPassportData, false);
       expect(data.address.isNotEmpty, true);

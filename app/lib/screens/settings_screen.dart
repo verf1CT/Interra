@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       cats[c.key] = await NotifyPrefs.isEnabled(c.key);
     }
     setState(() {
-      _phone = phone ?? (DemoMode.isEnabled.value ? '79221234567' : null);
+      _phone = phone ?? (DemoMode.isEnabled.value ? '79991234567' : null);
       _notifications = prefs.getBool('notifications_enabled') ?? true;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
@@ -310,7 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onChanged: (val) async {
                   await DemoMode.setEnabled(val);
                   setState(() {
-                    _phone = _phone ?? (val ? '79221234567' : null);
+                    _phone = _phone ?? (val ? '79991234567' : null);
                   });
                 },
               ),
