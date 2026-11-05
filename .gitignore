@@ -38,3 +38,4 @@ app/android/key.properties
 .DS_Store
 Thumbs.db
 *.bak
+scripts/.last_synced_release.txt
