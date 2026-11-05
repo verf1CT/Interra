@@ -622,15 +622,44 @@ class CabinetParser {
     return parseServicesHtml(htmlString);
   }
 
-  /// Активация карты экспресс-оплаты или сертификата
-  static Future<bool> activateCertificate(String appToken, String code) async {
+  /// Активация карты экспресс-оплаты или сертификата по номеру и пин-коду
+  static Future<bool> activateCertificate(
+    String appToken, {
+    required String number,
+    required String pin,
+  }) async {
     final r = await BillingApi.openCabinet(appToken);
     if (!r.isOk || r.data == null) throw Exception('auth_expired');
     final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'cards');
     try {
       final res = await SecureHttp.post(
         Uri.parse(liveUrl),
-        body: {'card_code': code, 'submit': '1'},
+        body: {
+          'number': number,
+          'pin': pin,
+          'card_num': number,
+          'card_pin': pin,
+          'cert_num': number,
+          'cert_pin': pin,
+          'submit': '1',
+          'activate': '1',
+        },
+      ).timeout(const Duration(seconds: 15));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Отвязать все сторонние приложения и мобильные сессии в биллинге UTM5
+  static Future<bool> unlinkAllApps(String appToken) async {
+    final r = await BillingApi.openCabinet(appToken);
+    if (!r.isOk || r.data == null) throw Exception('auth_expired');
+    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'sms');
+    try {
+      final res = await SecureHttp.post(
+        Uri.parse(liveUrl),
+        body: {'unlink_all': '1', 'clear_apps': '1', 'submit': '1'},
       ).timeout(const Duration(seconds: 15));
       return res.statusCode == 200;
     } catch (_) {

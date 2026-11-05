@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/cabinet_parser.dart';
+import '../services/demo_mode.dart';
 
 class PaymentModal extends StatefulWidget {
   final String account;
@@ -24,14 +25,17 @@ class PaymentModal extends StatefulWidget {
 }
 
 class _PaymentModalState extends State<PaymentModal> {
-  final TextEditingController _certController = TextEditingController();
+  final TextEditingController _certNumController = TextEditingController();
+  final TextEditingController _certPinController = TextEditingController();
+  bool _obscurePin = true;
   bool _activating = false;
   String? _certMessage;
   bool _certSuccess = false;
 
   @override
   void dispose() {
-    _certController.dispose();
+    _certNumController.dispose();
+    _certPinController.dispose();
     super.dispose();
   }
 
@@ -57,29 +61,55 @@ class _PaymentModalState extends State<PaymentModal> {
   }
 
   Future<void> _activateCertificate() async {
-    final code = _certController.text.trim();
-    if (code.isEmpty) return;
+    final number = _certNumController.text.trim();
+    final pin = _certPinController.text.trim();
+    if (number.isEmpty || pin.isEmpty) {
+      setState(() {
+        _certMessage = 'Укажите номер и пин-код сертификата';
+        _certSuccess = false;
+      });
+      return;
+    }
 
     setState(() {
       _activating = true;
       _certMessage = null;
     });
 
+    if (DemoMode.isEnabled.value) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (mounted) {
+        setState(() {
+          _activating = false;
+          _certSuccess = true;
+          _certMessage = 'Сертификат успешно активирован! Зачислено 500 ₽';
+        });
+        _certNumController.clear();
+        _certPinController.clear();
+      }
+      return;
+    }
+
     try {
       final token = await AuthStore().appToken;
       if (token == null) throw Exception('auth_expired');
 
-      final ok = await CabinetParser.activateCertificate(token, code);
+      final ok = await CabinetParser.activateCertificate(
+        token,
+        number: number,
+        pin: pin,
+      );
       if (mounted) {
         setState(() {
           _activating = false;
           _certSuccess = ok;
           _certMessage = ok
               ? 'Сертификат успешно активирован!'
-              : 'Не удалось активировать. Проверьте правильность кода.';
+              : 'Не удалось активировать. Проверьте правильность номера и пин-кода.';
         });
         if (ok) {
-          _certController.clear();
+          _certNumController.clear();
+          _certPinController.clear();
         }
       }
     } catch (_) {
@@ -250,69 +280,130 @@ class _PaymentModalState extends State<PaymentModal> {
 
             // Секция: Сертификаты и карты оплаты
             Text(
-              'Оплата сертификатом или картой',
+              'Активация сертификата или карты оплаты',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
                 color: context.p.ink,
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _certController,
-                    decoration: InputDecoration(
-                      hintText: 'Код карты или сертификата',
-                      isDense: true,
-                      filled: true,
-                      fillColor: context.p.card,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: context.p.line),
-                      ),
-                    ),
-                  ),
+            const SizedBox(height: 6),
+            Text(
+              'Введите номер и защитный пин-код с карты или подарочного сертификата',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: context.p.inkMute,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _certNumController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Номер сертификата',
+                hintText: 'Например, 12345678',
+                isDense: true,
+                filled: true,
+                fillColor: context.p.card,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _activating ? null : _activateCertificate,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _activating
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Активировать'),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.p.line),
                 ),
-              ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _certPinController,
+              obscureText: _obscurePin,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Пин-код сертификата',
+                hintText: 'Код под защитным слоем',
+                isDense: true,
+                filled: true,
+                fillColor: context.p.card,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePin
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _obscurePin = !_obscurePin),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.p.line),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _activating ? null : _activateCertificate,
+              icon: _activating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check_circle_outline_rounded, size: 20),
+              label: const Text(
+                'Активировать сертификат',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             if (_certMessage != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _certMessage!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: _certSuccess ? AppColors.brand : AppColors.danger,
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (_certSuccess ? AppColors.ok : AppColors.danger)
+                      .withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: (_certSuccess ? AppColors.ok : AppColors.danger)
+                        .withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _certSuccess
+                          ? Icons.check_circle_rounded
+                          : Icons.error_outline_rounded,
+                      size: 18,
+                      color: _certSuccess ? AppColors.ok : AppColors.danger,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _certMessage!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _certSuccess ? AppColors.ok : AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
