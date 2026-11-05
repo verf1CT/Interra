@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../utils/phone.dart';
 import '../services/app_info.dart';
 import '../services/auth_store.dart';
+import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
 import '../services/api_client.dart';
 import '../services/balance_store.dart';
@@ -31,6 +32,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String? _phone;
   bool _notifications = true;
+  bool _smsNotifications = true;
+  int _linkedAppsCount = 9;
+  bool _unlinkingApps = false;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
   bool _pinSet = false;
@@ -57,6 +61,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _phone = phone ?? (DemoMode.isEnabled.value ? '79991234567' : null);
       _notifications = prefs.getBool('notifications_enabled') ?? true;
+      _smsNotifications = prefs.getBool('sms_notifications_enabled') ?? true;
+      _linkedAppsCount = prefs.getInt('linked_apps_count') ?? 9;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
       _pinSet = pinSet;
@@ -190,6 +196,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _categories[key] = value);
     // обновляем сегменты на бэкенде (best-effort, сеть может отсутствовать)
     PushService.registerCurrentToken();
+  }
+
+  Future<void> _toggleSmsNotifications(bool value) async {
+    setState(() => _smsNotifications = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('sms_notifications_enabled', value);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(value
+            ? 'SMS-уведомления за сутки до блокировки включены'
+            : 'SMS-уведомления отключены'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _confirmUnlinkApps() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Отвязать все приложения?'),
+        content: const Text(
+          'Это завершит авторизованные сессии на всех остальных устройствах. Текущее приложение останется активным.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Отвязать все'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _unlinkingApps = true);
+
+    try {
+      final token = await AuthStore().appToken;
+      if (token != null && !DemoMode.isEnabled.value) {
+        await CabinetParser.unlinkAllApps(token);
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('linked_apps_count', 1);
+
+      if (mounted) {
+        setState(() {
+          _linkedAppsCount = 1;
+          _unlinkingApps = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Все сторонние приложения успешно отвязаны'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _unlinkingApps = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось отвязать приложения. Попробуйте позже.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _logout() async {
@@ -372,6 +452,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          const SizedBox(height: 18),
+          _sectionTitle('SMS-уведомления и сессии'),
+          _card(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.sms_outlined),
+                  title: const Text('SMS за сутки до блокировки'),
+                  subtitle: const Text(
+                      'Оповещение об истекающем тарифе или кредите с 11 до 21 ч.'),
+                  value: _smsNotifications,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  onChanged: _toggleSmsNotifications,
+                ),
+                const Divider(height: 1, thickness: 1, indent: 68),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: const Icon(Icons.devices_other_rounded),
+                  title: Text('Привязано приложений: $_linkedAppsCount'),
+                  subtitle: const Text('Активные мобильные сессии в биллинге'),
+                  trailing: OutlinedButton(
+                    onPressed: _unlinkingApps ? null : _confirmUnlinkApps,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: _unlinkingApps
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Отвязать все',
+                            style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
           _sectionTitle('Безопасность'),
           _card(
             padding: EdgeInsets.zero,
