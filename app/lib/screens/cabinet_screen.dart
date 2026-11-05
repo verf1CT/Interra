@@ -200,8 +200,6 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           if (_data != null) ...[
             _buildInfoCard(),
             const SizedBox(height: 16),
-            _buildConnectionCard(),
-            const SizedBox(height: 16),
             _buildActionButtons(),
             const SizedBox(height: 16),
             _buildPromoCard(),
@@ -426,105 +424,6 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _statItem(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: context.p.inkMute),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: context.p.inkMute, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              value,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.p.ink),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConnectionCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.p.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.p.line),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.brand.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.wifi_rounded, color: AppColors.brand, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Интернет подключён',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.p.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Оплачено до 15 ноября 2026 г.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.p.inkMute,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '200 Мбит/с',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF10B981),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _statItem('Пинг', '4 мс', Icons.speed),
-              _statItem('Входящая', '204 Мбит/с', Icons.arrow_downward),
-              _statItem('Исходящая', '198 Мбит/с', Icons.arrow_upward),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPromoCard() {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -600,38 +499,15 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _openPayment,
-                icon: const Icon(Icons.payment_rounded, size: 20),
-                label: const Text('Пополнить баланс', style: TextStyle(fontWeight: FontWeight.w700)),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.brand,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            IconButton.filledTonal(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Обещанный платёж на 3 дня активирован'),
-                    backgroundColor: AppColors.brand,
-                  ),
-                );
-              },
-              icon: const Icon(Icons.bolt_rounded, size: 22),
-              tooltip: 'Обещанный платёж',
-              style: IconButton.styleFrom(
-                padding: const EdgeInsets.all(15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
-          ],
+        FilledButton.icon(
+          onPressed: _openPayment,
+          icon: const Icon(Icons.payment_rounded, size: 20),
+          label: const Text('Пополнить баланс', style: TextStyle(fontWeight: FontWeight.w700)),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.brand,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
         ),
         const SizedBox(height: 16),
         Row(

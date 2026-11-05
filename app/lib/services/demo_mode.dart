@@ -2,24 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cabinet_parser.dart';
 
-class DemoTariff {
-  final String title;
-  final String speed;
-  final String price;
-  final List<String> features;
-  final bool isCurrent;
-  final String? badge;
-
-  const DemoTariff({
-    required this.title,
-    required this.speed,
-    required this.price,
-    required this.features,
-    this.isCurrent = false,
-    this.badge,
-  });
-}
-
 class DemoSessionItem {
   final String ip;
   final String startedAt;
@@ -94,40 +76,6 @@ class DemoMode {
           name: 'Умный домофон Интерра (видеокамера и архив)',
           cost: 'Включено',
           status: 'Активно',
-        ),
-      ];
-
-  static List<DemoTariff> get availableTariffs => const [
-        DemoTariff(
-          title: 'Базовый 100',
-          speed: '100 Мбит/с',
-          price: '550 ₽/мес',
-          features: ['Безлимитный интернет', 'Оптический канал', 'Поддержка 24/7'],
-          isCurrent: false,
-        ),
-        DemoTariff(
-          title: 'Комфорт 200',
-          speed: '200 Мбит/с',
-          price: '750 ₽/мес',
-          features: ['Сверхбыстрый интернет', '150+ каналов ТВ', 'Без ограничений по трафику'],
-          isCurrent: true,
-          badge: 'Ваш тариф',
-        ),
-        DemoTariff(
-          title: 'Максимум 500',
-          speed: '500 Мбит/с',
-          price: '950 ₽/мес',
-          features: ['Ультра-скорость для гейминга', '4K видео без буферизации', 'Wi-Fi 6 роутер'],
-          isCurrent: false,
-          badge: 'Хит продаж',
-        ),
-        DemoTariff(
-          title: 'Гигабит 1000',
-          speed: '1 Гбит/с',
-          price: '1 200 ₽/мес',
-          features: ['Максимальная скорость в городе', 'Выделенный статический IP', 'Премиум ТВ пакет'],
-          isCurrent: false,
-          badge: 'Премиум',
         ),
       ];
 
