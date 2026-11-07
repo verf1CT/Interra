@@ -47,6 +47,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // повторную отправку на 60 секунд и показываем обратный отсчёт
   Timer? _resendTimer;
   int _resendLeft = 0;
+  int _logoTapCount = 0;
+  DateTime? _lastLogoTap;
+
+  void _onLogoTap() async {
+    final now = DateTime.now();
+    if (_lastLogoTap != null && now.difference(_lastLogoTap!) > const Duration(seconds: 2)) {
+      _logoTapCount = 0;
+    }
+    _lastLogoTap = now;
+    _logoTapCount++;
+    if (_logoTapCount >= 5) {
+      _logoTapCount = 0;
+      final newState = !DemoMode.isEnabled.value;
+      await DemoMode.setEnabled(newState);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(newState ? 'Демо-режим включён' : 'Демо-режим выключен'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      if (newState) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CabinetScreen()),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -212,16 +240,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Image.asset(
-                      'assets/splash_logo.png',
-                      fit: BoxFit.cover,
+                  GestureDetector(
+                    onTap: _onLogoTap,
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Image.asset(
+                        'assets/splash_logo.png',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

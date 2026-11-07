@@ -10,9 +10,9 @@ void main() {
   });
 
   group('DemoMode', () {
-    test('defaults to true on first load (screenshot showcase build)', () async {
+    test('defaults to false on first load (production build)', () async {
       await DemoMode.load();
-      expect(DemoMode.isEnabled.value, true);
+      expect(DemoMode.isEnabled.value, false);
     });
 
     test('can be toggled and persisted in SharedPreferences', () async {
