@@ -20,7 +20,7 @@ void main() {
       expect(DemoMode.isEnabled.value, false);
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('demo_screenshot_mode_enabled'), false);
+      expect(prefs.getBool('qa_secret_demo_enabled_v2'), false);
 
       await DemoMode.load();
       expect(DemoMode.isEnabled.value, false);

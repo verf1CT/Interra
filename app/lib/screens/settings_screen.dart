@@ -374,28 +374,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          _sectionTitle('Режим скриншотов'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: DemoMode.isEnabled,
-              builder: (context, enabled, _) => SwitchListTile(
-                secondary: const Icon(Icons.camera_alt_outlined, color: AppColors.brand),
-                title: const Text('Витрина данных (для скриншотов)', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Показывает идеальные демонстрационные данные для Google Play и App Store'),
-                value: enabled,
-                activeTrackColor: AppColors.brand,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                onChanged: (val) async {
-                  await DemoMode.setEnabled(val);
-                  setState(() {
-                    _phone = _phone ?? (val ? '79991234567' : null);
-                  });
-                },
-              ),
-            ),
-          ),
+
           const SizedBox(height: 18),
           _sectionTitle('Оформление'),
           _card(
