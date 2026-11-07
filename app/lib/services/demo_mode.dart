@@ -26,19 +26,19 @@ class DemoSessionItem {
 class DemoMode {
   static const String _prefKey = 'demo_screenshot_mode_enabled';
 
-  /// По умолчанию ВКЛЮЧЕН для этой сборки (сборка для скриншотов)
-  static final ValueNotifier<bool> isEnabled = ValueNotifier<bool>(true);
+  /// По умолчанию ВЫКЛЮЧЕН для продакшена
+  static final ValueNotifier<bool> isEnabled = ValueNotifier<bool>(false);
 
   static Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.containsKey(_prefKey)) {
-        isEnabled.value = prefs.getBool(_prefKey) ?? true;
+        isEnabled.value = prefs.getBool(_prefKey) ?? false;
       } else {
-        isEnabled.value = true;
+        isEnabled.value = false;
       }
     } catch (_) {
-      isEnabled.value = true;
+      isEnabled.value = false;
     }
   }
 
