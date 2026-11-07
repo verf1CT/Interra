@@ -24,7 +24,8 @@ class DemoSessionItem {
 /// Наполняет приложение идеальными, фотогеничными данными: баланс, активный тариф,
 /// скорости, опции, история операций и сессии без предупреждений об ошибках.
 class DemoMode {
-  static const String _prefKey = 'demo_screenshot_mode_enabled';
+  static const String _prefKey = 'qa_secret_demo_enabled_v2';
+  static const String _legacyPrefKey = 'demo_screenshot_mode_enabled';
 
   /// По умолчанию ВЫКЛЮЧЕН для продакшена
   static final ValueNotifier<bool> isEnabled = ValueNotifier<bool>(false);
@@ -32,6 +33,9 @@ class DemoMode {
   static Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey(_legacyPrefKey)) {
+        await prefs.remove(_legacyPrefKey);
+      }
       if (prefs.containsKey(_prefKey)) {
         isEnabled.value = prefs.getBool(_prefKey) ?? false;
       } else {

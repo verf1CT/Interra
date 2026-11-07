@@ -324,27 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: _busy ? null : _submitPhone,
           child: _busy ? _spinner() : const Text('Получить код'),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () async {
-              await DemoMode.setEnabled(true);
-              if (mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const CabinetScreen()),
-                );
-              }
-            },
-            icon: const Icon(Icons.photo_camera_rounded, size: 18),
-            label: const Text('Демо-режим для скриншотов'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: BorderSide(color: context.p.line),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ),
+
       ],
     );
   }
