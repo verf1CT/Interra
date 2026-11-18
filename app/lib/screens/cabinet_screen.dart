@@ -7,6 +7,7 @@ import '../services/cabinet_parser.dart';
 import '../services/analytics.dart';
 import '../services/quick_actions_service.dart';
 import '../services/demo_mode.dart';
+import '../widgets/design_system.dart';
 import 'support_screen.dart';
 import 'diagnostics_screen.dart';
 import 'register_screen.dart';
@@ -14,6 +15,7 @@ import 'settings_screen.dart';
 import 'payments_history_screen.dart';
 import 'services_screen.dart';
 import 'premium_tv_screen.dart';
+import 'lan_devices_screen.dart';
 import '../widgets/payment_modal.dart';
 import '../widgets/passport_form_sheet.dart';
 
@@ -301,7 +303,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       appBar: AppBar(
         title: Text(_appBarTitle),
         actions: [
-          _balanceChip(),
+          if (_currentIndex != 0) _balanceChip(),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Настройки',
@@ -340,24 +342,26 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       onRefresh: () => _refresh(),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           if (_data != null) ...[
-            _buildInfoCard(),
-            const SizedBox(height: 16),
-            _buildActionButtons(),
-            const SizedBox(height: 16),
-            _buildPromoCard(),
+            _buildHeroBalanceCard(),
+            const SizedBox(height: 14),
+            _buildBentoSection(),
+            const SizedBox(height: 14),
+            _buildServiceQuickRow(),
+            if (!DemoMode.isEnabled.value && _data!.needsPassportData) ...[
+              const SizedBox(height: 14),
+              _buildPassportNotice(),
+            ],
+            const SizedBox(height: 20),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard() {
-    final displayName = (_data!.fullName.isNotEmpty && _data!.fullName != 'Абонент')
-        ? _data!.fullName
-        : (_data!.account.isNotEmpty ? 'Договор № ${_data!.account}' : 'Абонент');
+  Widget _buildHeroBalanceCard() {
     final displayAccount = (_data!.account.isNotEmpty && _data!.account != '—') ? _data!.account : '—';
     final hasTariff = _data!.tariff.isNotEmpty &&
         _data!.tariff != 'Нет тарифа' &&
@@ -370,161 +374,81 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
 
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: cardBox(context),
+      decoration: cardBox(context, radius: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Абонент',
-                      style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
+              if (_data!.accounts.length > 1)
+                InkWell(
+                  onTap: _showAccountPicker,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.brand.withValues(alpha: 0.2)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      displayName,
-                      style: TextStyle(fontSize: 18, color: context.p.ink, fontWeight: FontWeight.w700),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.swap_horiz_rounded, size: 15, color: AppColors.brand),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Сменить договор (${_data!.accounts.length})',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.brand),
+                      ],
                     ),
-                  ],
+                  ),
+                )
+              else
+                MorphingCopyBadge(
+                  textToCopy: _data!.account,
+                  displayLabel: 'Договор № $displayAccount',
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.circle, size: 7, color: statusColor),
-                    const SizedBox(width: 5),
-                    Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                      ),
-                    ),
-                  ],
-                ),
+              PulseDot(
+                color: statusColor,
+                label: statusText,
               ),
             ],
           ),
-          if (_data!.address.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 15, color: context.p.inkMute),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    _data!.address,
-                    style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (_data!.accounts.length > 1) ...[
-            const SizedBox(height: 10),
-            InkWell(
-              onTap: _showAccountPicker,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.brand),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Сменить договор (${_data!.accounts.length})',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.brand,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.brand),
-                  ],
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
-          const Divider(height: 1),
-          const SizedBox(height: 16),
+          Text(
+            'Текущий баланс',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: context.p.inkMute,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Лицевой счёт',
-                    style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        displayAccount,
-                        style: TextStyle(fontSize: 16, color: context.p.ink, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: () {
-                          if (_data!.account.isNotEmpty && _data!.account != '—') {
-                            Clipboard.setData(ClipboardData(text: _data!.account));
-                            HapticFeedback.lightImpact();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Лицевой счёт ${_data!.account} скопирован'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                        child: Icon(Icons.copy_rounded, size: 16, color: context.p.inkMute),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Тариф',
-                    style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    displayTariff,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: hasTariff ? context.p.ink : context.p.inkMute,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              NumberTicker(
+                value: _data!.balance,
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  color: isRestricted ? const Color(0xFFEF4444) : context.p.ink,
+                ),
               ),
             ],
           ),
           if (isRestricted) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -534,109 +458,332 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 18),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Услуги связи ограничены',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFEF4444),
-                          ),
-                        ),
-                        if (_data!.recommendedPayment != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'Рекомендуемая сумма для включения: ${_data!.recommendedPayment}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: context.p.ink,
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      _data!.recommendedPayment != null
+                          ? 'Услуги ограничены. Сумма для включения: ${_data!.recommendedPayment}'
+                          : 'Услуги ограничены. Пополните баланс для продолжения',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.p.ink,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-          if (!DemoMode.isEnabled.value && _data!.needsPassportData) ...[
-            const SizedBox(height: 16),
-            InkWell(
-              onTap: _openPassportForm,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.brand.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
+          ] else ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.wifi_rounded, size: 15, color: AppColors.brand),
+                const SizedBox(width: 5),
+                Text(
+                  displayTariff,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.p.ink),
                 ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.brand),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Требуются данные для тарифа. Заполнить',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brand),
-                      ),
+                if (_data!.address.isNotEmpty) ...[
+                  Text(' • ', style: TextStyle(color: context.p.inkMute)),
+                  Expanded(
+                    child: Text(
+                      _data!.address,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, color: context.p.inkMute),
                     ),
-                    Icon(Icons.chevron_right, size: 16, color: AppColors.brand),
-                  ],
-                ),
-              ),
+                  ),
+                ],
+              ],
             ),
           ],
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _openPayment,
+            icon: const Icon(Icons.payment_rounded, size: 18),
+            label: Text(
+              isRestricted && _data!.recommendedPayment != null
+                  ? 'Оплатить ${_data!.recommendedPayment} и включить'
+                  : 'Пополнить баланс',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _quickActionItem({
+  Widget _buildBentoSection() {
+    final hasTariff = _data!.tariff.isNotEmpty &&
+        _data!.tariff != 'Нет тарифа' &&
+        _data!.tariff != 'Неизвестный тариф';
+    final displayTariff = hasTariff ? _data!.tariff : 'До 200 Мбит/с';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 11,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: cardBox(context, radius: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.brand.withValues(alpha: 0.10),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.speed_rounded, size: 18, color: AppColors.brand),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '2 мс',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Сеть и скорость',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: context.p.ink),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Шлюз Interra в норме',
+                  style: TextStyle(fontSize: 11.5, color: context.p.inkMute),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: context.p.surfaceAlt,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, size: 14, color: context.p.inkMute),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          displayTariff,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.p.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Тест сети',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.brand),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, size: 13, color: AppColors.brand),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 10,
+          child: Column(
+            children: [
+              InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SupportScreen()),
+                ),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: cardBox(context, radius: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.forum_rounded, size: 16, color: AppColors.accent),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'онлайн',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Поддержка',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.p.ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Чат 24/7 с ботом',
+                        style: TextStyle(fontSize: 11, color: context.p.inkMute),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => setState(() => _currentIndex = 2),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: cardBox(context, radius: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.tv_rounded, size: 16, color: Color(0xFF8B5CF6)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'Full HD',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF8B5CF6)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Интерра ТВ',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.p.ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '150+ каналов',
+                        style: TextStyle(fontSize: 11, color: context.p.inkMute),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildServiceQuickRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: cardBox(context, radius: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _bentoQuickAction(
+            icon: Icons.devices_rounded,
+            label: 'Устройства сети',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LanDevicesScreen()),
+            ),
+          ),
+          Container(width: 1, height: 28, color: context.p.line),
+          _bentoQuickAction(
+            icon: Icons.receipt_long_rounded,
+            label: 'История платежей',
+            onTap: () => setState(() => _currentIndex = 3),
+          ),
+          Container(width: 1, height: 28, color: context.p.line),
+          _bentoQuickAction(
+            icon: Icons.tune_rounded,
+            label: 'Все тарифы',
+            onTap: () => setState(() => _currentIndex = 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bentoQuickAction({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: context.p.card,
-                shape: BoxShape.circle,
-                border: Border.all(color: context.p.line),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: AppColors.brand, size: 24),
-            ),
-            const SizedBox(height: 6),
+            Icon(icon, size: 20, color: AppColors.brand),
+            const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: context.p.ink,
-              ),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.p.ink),
             ),
           ],
         ),
@@ -644,122 +791,31 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildPromoCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F70B7), Color(0xFF1990E6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildPassportNotice() {
+    return InkWell(
+      onTap: _openPassportForm,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F70B7).withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Интерра ТВ онлайн',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '150+ телеканалов в Full HD на смартфоне, планшете и ТВ',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: Colors.white70,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => setState(() => _currentIndex = 2),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0F70B7),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    visualDensity: VisualDensity.compact,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const Text('Смотреть ТВ', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.tv_rounded, color: Colors.white, size: 36),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton.icon(
-          onPressed: _openPayment,
-          icon: const Icon(Icons.payment_rounded, size: 20),
-          label: const Text('Пополнить баланс', style: TextStyle(fontWeight: FontWeight.w700)),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.brand,
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        child: Row(
           children: [
-            _quickActionItem(
-              icon: Icons.headset_mic_rounded,
-              label: 'Поддержка',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SupportScreen()),
+            const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.brand),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Требуются данные паспорта для договора. Заполнить',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.p.ink),
               ),
             ),
-            _quickActionItem(
-              icon: Icons.speed_rounded,
-              label: 'Скорость',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DiagnosticsScreen()),
-              ),
-            ),
-            _quickActionItem(
-              icon: Icons.tv_rounded,
-              label: 'Интерра ТВ',
-              onTap: () => setState(() => _currentIndex = 2),
-            ),
-            _quickActionItem(
-              icon: Icons.receipt_long_rounded,
-              label: 'История',
-              onTap: () => setState(() => _currentIndex = 3),
-            ),
+            const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.brand),
           ],
         ),
-      ],
+      ),
     );
   }
 
