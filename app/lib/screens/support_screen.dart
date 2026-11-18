@@ -34,15 +34,6 @@ class SupportScreen extends StatelessWidget {
           _sectionTitle('Связаться'),
           _group([
             _tile(
-              icon: Icons.chat_bubble_outline_rounded,
-              color: AppColors.brand,
-              title: 'Чат с поддержкой',
-              subtitle: 'Онлайн-помощник',
-              onTap: () => _open(
-                  Uri.parse(AppConfig.supportChatUrl), 'chat'),
-            ),
-            _divider(),
-            _tile(
               icon: Icons.phone_in_talk_rounded,
               color: AppColors.ok,
               title: 'Позвонить в поддержку',
@@ -119,7 +110,7 @@ class SupportScreen extends StatelessWidget {
 
   /// шапка: чистая карточка со значком поддержки и подсказкой (без градиента)
   Widget _hero(BuildContext context) => InkWell(
-        onTap: () => _open(Uri.parse(AppConfig.supportChatUrl), 'hero_chat'),
+        onTap: () => _open(Uri(scheme: 'tel', path: AppConfig.supportPhone), 'hero_phone'),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: double.infinity,
