@@ -34,6 +34,15 @@ class SupportScreen extends StatelessWidget {
           _sectionTitle('Связаться'),
           _group([
             _tile(
+              icon: Icons.chat_bubble_outline_rounded,
+              color: AppColors.brand,
+              title: 'Чат с поддержкой',
+              subtitle: 'Онлайн-помощник',
+              onTap: () => _open(
+                  Uri.parse(AppConfig.supportChatUrl), 'chat'),
+            ),
+            _divider(),
+            _tile(
               icon: Icons.phone_in_talk_rounded,
               color: AppColors.ok,
               title: 'Позвонить в поддержку',
@@ -61,7 +70,7 @@ class SupportScreen extends StatelessWidget {
               builder: (context) => _tile(
                 icon: Icons.network_check_rounded,
                 color: AppColors.accent,
-                title: 'Диагностика сети',
+                title: 'Скорость и диагностика сети',
                 subtitle: 'Проверить, где проблема с интернетом',
                 onTap: () {
                   Analytics.supportOpened('diagnostics');
@@ -109,42 +118,47 @@ class SupportScreen extends StatelessWidget {
   }
 
   /// шапка: чистая карточка со значком поддержки и подсказкой (без градиента)
-  Widget _hero(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: cardBox(context),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.brand.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
+  Widget _hero(BuildContext context) => InkWell(
+        onTap: () => _open(Uri.parse(AppConfig.supportChatUrl), 'hero_chat'),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: cardBox(context),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.support_agent_rounded,
+                    color: AppColors.brand, size: 28),
               ),
-              child: const Icon(Icons.support_agent_rounded,
-                  color: AppColors.brand, size: 28),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Мы на связи',
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Мы на связи',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Поможем с подключением, оплатой и настройкой интернета',
                       style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Поможем с подключением, оплатой и настройкой интернета',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        color: context.p.inkMute,
-                        height: 1.35),
-                  ),
-                ],
+                          fontSize: 12.5,
+                          color: context.p.inkMute,
+                          height: 1.35),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Icon(Icons.chevron_right_rounded, color: context.p.inkMute),
+            ],
+          ),
         ),
       );
 

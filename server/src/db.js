@@ -179,6 +179,32 @@ export function stats() {
   return { total, withLogin, byPlatform };
 }
 
+export function listDevices({ limit = 100, offset = 0, search = '' } = {}) {
+  let where = '';
+  const params = [];
+  if (search) {
+    where = 'WHERE client_login LIKE ? OR platform LIKE ? OR app_version LIKE ?';
+    const s = '%' + search + '%';
+    params.push(s, s, s);
+  }
+  const total = db.prepare('SELECT COUNT(*) AS count FROM devices ' + where).get(...params).count;
+  const items = db
+    .prepare(
+      'SELECT id, client_login, platform, app_version, segments, prefs, created_at, updated_at FROM devices ' +
+        where +
+        ' ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?'
+    )
+    .all(...params, limit, offset)
+    .map((d) => {
+      let segments = [];
+      let prefs = {};
+      try { segments = JSON.parse(d.segments || '[]'); } catch (_) {}
+      try { prefs = JSON.parse(d.prefs || '{}'); } catch (_) {}
+      return { ...d, segments, prefs };
+    });
+  return { items, total };
+}
+
 export function recentBroadcasts(limit = 20) {
   return db.prepare('SELECT * FROM broadcasts ORDER BY id DESC LIMIT ?').all(limit);
 }

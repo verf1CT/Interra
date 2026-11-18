@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
-import { stats, recentBroadcasts, broadcastStats, createScheduled, listScheduled, cancelScheduled } from '../db.js';
+import { stats, listDevices, recentBroadcasts, broadcastStats, createScheduled, listScheduled, cancelScheduled } from '../db.js';
 import { fcmEnabled } from '../fcm.js';
 import { runBroadcast } from '../broadcast.js';
 
@@ -15,6 +15,20 @@ adminRouter.get('/stats', (req, res) => {
     totals: broadcastStats(),
     broadcasts: recentBroadcasts(),
   });
+});
+
+/** GET /api/admin/devices — список зарегистрированных устройств */
+adminRouter.get('/devices', (req, res) => {
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  const search = req.query.search ? String(req.query.search).trim() : '';
+  res.json(listDevices({ limit, offset, search }));
+});
+
+/** GET /api/admin/broadcasts — история рассылок */
+adminRouter.get('/broadcasts', (req, res) => {
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  res.json({ items: recentBroadcasts(limit) });
 });
 
 /** общая валидация тела рассылки. Возвращает строку-ошибку или null. */

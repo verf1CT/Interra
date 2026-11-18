@@ -36,6 +36,9 @@ class AppConfig {
   /// сообщество ВКонтакте
   static const String supportVkUrl = 'https://vk.com/public172258204';
 
+  /// чат поддержки (MAX / Telegram)
+  static const String supportChatUrl = 'https://t.me/interra_support_bot';
+
   /// раздел помощи на сайте провайдера
   static const String supportHelpUrl = 'https://interra.ru/help/';
 }

@@ -133,11 +133,156 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
 
   Future<void> _openPayment() async {
     final account = _data?.account ?? '';
-    await PaymentModal.show(context, account: account);
+    await PaymentModal.show(
+      context,
+      account: account,
+      recommendedAmount: _data?.recommendedPayment,
+    );
   }
 
   void _openPassportForm() {
     PassportFormSheet.show(context, onSaved: () => _refresh());
+  }
+
+  void _showAccountPicker() {
+    if (_data == null || _data!.accounts.isEmpty) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: context.p.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Выберите договор',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: context.p.ink,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final acc in _data!.accounts) ...[
+                Builder(
+                  builder: (_) {
+                    final isCurrent = (_data!.account.isNotEmpty && acc.accountId == _data!.account) ||
+                        (_data!.fullName == acc.name);
+                    return Card(
+                      elevation: 0,
+                      color: isCurrent
+                          ? AppColors.brand.withValues(alpha: 0.08)
+                          : context.p.card,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: isCurrent ? AppColors.brand : context.p.line,
+                          width: isCurrent ? 1.5 : 1,
+                        ),
+                      ),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.account_circle_outlined,
+                          color: isCurrent ? AppColors.brand : context.p.inkMute,
+                        ),
+                        title: Text(
+                          acc.name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+                            color: context.p.ink,
+                          ),
+                        ),
+                        subtitle: acc.address.isNotEmpty
+                            ? Text(
+                                acc.address,
+                                style: TextStyle(fontSize: 12.5, color: context.p.inkMute),
+                              )
+                            : (acc.accountId.isNotEmpty ? Text('Л/С: ${acc.accountId}') : null),
+                        trailing: isCurrent
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.brand)
+                            : null,
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          if (!isCurrent) {
+                            _selectAccount(acc);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectAccount(AccountOption acc) async {
+    if (DemoMode.isEnabled.value) {
+      setState(() {
+        _data = CabinetData(
+          balance: acc.accountId == '654321' ? -150.00 : 1250.00,
+          account: acc.accountId,
+          fullName: acc.name,
+          tariff: acc.accountId == '654321' ? 'Дачный 50' : 'Комфорт 200',
+          address: acc.address,
+          login: acc.accountId,
+          isRestricted: acc.accountId == '654321',
+          recommendedPayment: acc.accountId == '654321' ? '160 ₽' : null,
+          accounts: _data!.accounts,
+          rawHtml: '',
+        );
+      });
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final token = await AuthStore().appToken;
+      if (token == null) return;
+      final newData = await CabinetParser.fetchCabinetData(token, targetUrl: acc.loginUrl);
+      if (mounted && newData != null) {
+        setState(() {
+          _data = CabinetData(
+            balance: newData.balance,
+            account: newData.account.isNotEmpty ? newData.account : acc.accountId,
+            fullName: newData.fullName != 'Абонент' ? newData.fullName : acc.name,
+            tariff: newData.tariff,
+            address: newData.address.isNotEmpty ? newData.address : acc.address,
+            login: newData.login,
+            needsPassportData: newData.needsPassportData,
+            isRestricted: newData.isRestricted,
+            recommendedPayment: newData.recommendedPayment,
+            accounts: _data!.accounts,
+            rawHtml: newData.rawHtml,
+          );
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Switch account error: $e');
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   String get _appBarTitle {
@@ -213,19 +358,19 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     final displayName = (_data!.fullName.isNotEmpty && _data!.fullName != 'Абонент')
         ? _data!.fullName
         : (_data!.account.isNotEmpty ? 'Договор № ${_data!.account}' : 'Абонент');
-    final displayAccount = _data!.account.isNotEmpty ? _data!.account : '—';
+    final displayAccount = (_data!.account.isNotEmpty && _data!.account != '—') ? _data!.account : '—';
     final hasTariff = _data!.tariff.isNotEmpty &&
         _data!.tariff != 'Нет тарифа' &&
         _data!.tariff != 'Неизвестный тариф';
     final displayTariff = hasTariff ? _data!.tariff : 'Нет тарифа';
 
+    final bool isRestricted = _data!.isRestricted || _data!.balance < 0;
+    final Color statusColor = isRestricted ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    final String statusText = isRestricted ? 'Ограничен' : 'Активен';
+
     return Container(
-      decoration: BoxDecoration(
-        color: context.p.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.p.line),
-      ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
+      decoration: cardBox(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -250,20 +395,20 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.circle, size: 7, color: Color(0xFF10B981)),
-                    SizedBox(width: 5),
+                    Icon(Icons.circle, size: 7, color: statusColor),
+                    const SizedBox(width: 5),
                     Text(
-                      'Активен',
+                      statusText,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF10B981),
+                        color: statusColor,
                       ),
                     ),
                   ],
@@ -284,6 +429,38 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                   ),
                 ),
               ],
+            ),
+          ],
+          if (_data!.accounts.length > 1) ...[
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: _showAccountPicker,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.brand),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Сменить договор (${_data!.accounts.length})',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.brand),
+                  ],
+                ),
+              ),
             ),
           ],
           const SizedBox(height: 16),
@@ -309,7 +486,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                       const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () {
-                          if (_data!.account.isNotEmpty) {
+                          if (_data!.account.isNotEmpty && _data!.account != '—') {
                             Clipboard.setData(ClipboardData(text: _data!.account));
                             HapticFeedback.lightImpact();
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -338,7 +515,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                     displayTariff,
                     style: TextStyle(
                       fontSize: 16,
-                      color: hasTariff ? context.p.ink : AppColors.brand,
+                      color: hasTariff ? context.p.ink : context.p.inkMute,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -346,7 +523,50 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               ),
             ],
           ),
-          if (!DemoMode.isEnabled.value && (!hasTariff || _data!.needsPassportData)) ...[
+          if (isRestricted) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Услуги связи ограничены',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                        if (_data!.recommendedPayment != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Рекомендуемая сумма для включения: ${_data!.recommendedPayment}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: context.p.ink,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (!DemoMode.isEnabled.value && _data!.needsPassportData) ...[
             const SizedBox(height: 16),
             InkWell(
               onTap: _openPassportForm,
@@ -358,17 +578,17 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.brand),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.assignment_ind_outlined, size: 18, color: AppColors.brand),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
                         'Требуются данные для тарифа. Заполнить',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brand),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, size: 16, color: AppColors.brand),
+                    Icon(Icons.chevron_right, size: 16, color: AppColors.brand),
                   ],
                 ),
               ),

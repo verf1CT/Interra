@@ -62,6 +62,21 @@ class DemoMode {
         address: 'г. Первоуральск, пр. Ильича, д. 15, кв. 42',
         login: '123456',
         needsPassportData: false,
+        isRestricted: false,
+        accounts: const [
+          AccountOption(
+            name: 'Иванов Иван Иванович',
+            address: 'г. Первоуральск, пр. Ильича, д. 15, кв. 42',
+            accountId: '123456',
+            loginUrl: '',
+          ),
+          AccountOption(
+            name: 'Иванов И.И. (Дача)',
+            address: 'пос. Билимбай, ул. Ленина, д. 8',
+            accountId: '654321',
+            loginUrl: '',
+          ),
+        ],
         rawHtml: '',
       );
 
