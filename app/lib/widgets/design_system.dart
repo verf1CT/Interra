@@ -238,7 +238,119 @@ class _MorphingCopyBadgeState extends State<MorphingCopyBadge> {
   }
 }
 
-/// 4. ExpandingBottomNav: Плавающий анимированный бар навигации (21st.dev @arunachalam style).
+/// 4. ModernBottomNav: Чистый нативный подвал приложения в стиле Yota / современных телекомов.
+/// Все вкладки всегда подписаны (иконка сверху, подпись снизу). Активная вкладка акцентирована фирменным цветом.
+class ModernNavItem {
+  final IconData activeIcon;
+  final IconData inactiveIcon;
+  final String label;
+
+  const ModernNavItem({
+    required this.activeIcon,
+    required this.inactiveIcon,
+    required this.label,
+  });
+}
+
+class ModernBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<ModernNavItem> items;
+
+  const ModernBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.p.card,
+        border: Border(
+          top: BorderSide(
+            color: context.p.line,
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 58,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (index) {
+              final isSelected = index == currentIndex;
+              final item = items[index];
+              return Expanded(
+                child: _buildItem(context, item, isSelected, () => onTap(index)),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItem(
+    BuildContext context,
+    ModernNavItem item,
+    bool isSelected,
+    VoidCallback onSelect,
+  ) {
+    final activeColor = AppColors.brand;
+    final inactiveColor = context.p.inkMute;
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onSelect();
+      },
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              scale: isSelected ? 1.05 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                isSelected ? item.activeIcon : item.inactiveIcon,
+                size: 24,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                fontFamily: kFont,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
+                height: 1.1,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 5. ExpandingBottomNav: Плавающий анимированный бар навигации (21st.dev @arunachalam style).
 /// Пин-капсула над нижним краем, где активный таб плавно раскрывается с иконкой и подписью,
 /// а неактивные пункты сжаты до минималистичных контурных иконок.
 class ExpandingNavItem {

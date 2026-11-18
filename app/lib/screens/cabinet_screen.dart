@@ -819,26 +819,26 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   }
 
   Widget _buildBottomNav() {
-    return ExpandingBottomNav(
+    return ModernBottomNav(
       currentIndex: _currentIndex,
       onTap: (index) => setState(() => _currentIndex = index),
       items: const [
-        ExpandingNavItem(
+        ModernNavItem(
           activeIcon: Icons.home_rounded,
           inactiveIcon: Icons.home_outlined,
           label: 'Главная',
         ),
-        ExpandingNavItem(
-          activeIcon: Icons.miscellaneous_services_rounded,
-          inactiveIcon: Icons.miscellaneous_services_outlined,
+        ModernNavItem(
+          activeIcon: Icons.grid_view_rounded,
+          inactiveIcon: Icons.grid_view_outlined,
           label: 'Услуги',
         ),
-        ExpandingNavItem(
+        ModernNavItem(
           activeIcon: Icons.tv_rounded,
           inactiveIcon: Icons.tv_outlined,
           label: 'ТВ',
         ),
-        ExpandingNavItem(
+        ModernNavItem(
           activeIcon: Icons.receipt_long_rounded,
           inactiveIcon: Icons.receipt_long_outlined,
           label: 'История',
