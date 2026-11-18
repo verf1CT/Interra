@@ -1,14 +1,18 @@
 {
   "name": "interra-server",
   "version": "0.1.0",
-  "description": "Бэкенд ЛК Интерра: регистрация устройств и рассылка push-уведомлений",
+  "description": "Бэкенд ЛК Интерра: регистрация устройств, рассылка push и чат-бот поддержки/продаж на платформе MAX",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "bot": "node src/bot/standalone.js",
+    "bot:max": "node src/bot/maxStandalone.js",
+    "bot:sim": "node src/bot/simulator.js",
     "build-ui": "cd admin-ui && npm run build",
-    "test": "vitest run --coverage"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "engines": {
     "node": ">=18"

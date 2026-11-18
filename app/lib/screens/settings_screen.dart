@@ -16,6 +16,7 @@ import '../services/notify_prefs.dart';
 import '../services/pin_lock.dart';
 import '../services/push_service.dart';
 import '../services/update_check.dart';
+import '../widgets/privacy_shield.dart';
 import '../widgets/ui_kit.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
@@ -39,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _biometricEnabled = false;
   bool _pinSet = false;
   int _lockDelayMs = Biometric.defaultLockDelayMs;
+  bool _privacyShieldEnabled = true;
   final Map<String, bool> _categories = {}; // ключ категории → включена
 
   @override
@@ -67,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _biometricEnabled = bioOn;
       _pinSet = pinSet;
       _lockDelayMs = lockDelay;
+      _privacyShieldEnabled = PrivacyShield.isEnabled.value;
       _categories
         ..clear()
         ..addAll(cats);
@@ -272,6 +275,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Выйти из аккаунта?'),
+        content: const Text(
+          'Для повторного входа потребуется получить SMS-код на привязанный номер телефона.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _logout();
+    }
+  }
+
   Future<void> _logout() async {
     // удаление push-токена и регистрации в биллинге - best-effort: на iOS без
     // APNs getToken/сеть могут висеть или падать, но выход должен срабатывать
@@ -441,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   secondary: const Icon(Icons.sms_outlined),
                   title: const Text('SMS за сутки до блокировки'),
                   subtitle: const Text(
-                      'Оповещение об истекающем тарифе или кредите с 11 до 21 ч.'),
+                      'Оповещение об окончании средств на счете с 11 до 21 ч.'),
                   value: _smsNotifications,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -476,6 +505,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 18),
           _sectionTitle('Безопасность'),
           _card(
             padding: EdgeInsets.zero,
@@ -549,6 +579,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onTap: _pickLockDelay,
                   ),
                 ],
+                const Divider(
+                    height: 1,
+                    thickness: 1,
+                    indent: 68),
+                SwitchListTile(
+                  secondary: const Icon(Icons.shield_outlined),
+                  title: const Text('Скрывать экран при сворачивании'),
+                  subtitle: const Text('Защита от подглядывания в недавних приложениях'),
+                  value: _privacyShieldEnabled,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  onChanged: (v) async {
+                    await PrivacyShield.setEnabled(v);
+                    if (mounted) setState(() => _privacyShieldEnabled = v);
+                  },
+                ),
               ],
             ),
           ),
@@ -579,10 +624,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListTile(
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: const Icon(Icons.logout, color: AppColors.brand),
+              leading: const Icon(Icons.logout, color: AppColors.danger),
               title: const Text('Выйти из аккаунта',
-                  style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w500)),
-              onTap: _logout,
+                  style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+              onTap: _confirmLogout,
             ),
           ),
           const SizedBox(height: 24),

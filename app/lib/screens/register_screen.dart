@@ -324,6 +324,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: _busy ? null : _submitPhone,
           child: _busy ? _spinner() : const Text('Получить код'),
         ),
+        const SizedBox(height: 14),
+        Text(
+          'Продолжая вход, вы соглашаетесь с условиями пользовательского соглашения и политикой обработки персональных данных',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11.5,
+            color: context.p.inkMute,
+            height: 1.3,
+          ),
+        ),
 
       ],
     );

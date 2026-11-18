@@ -5,6 +5,7 @@ import './db.js';
 import { devicesRouter } from './routes/devices.js';
 import { adminRouter } from './routes/admin.js';
 import { eventsRouter } from './routes/events.js';
+import { botRouter } from './routes/bot.js';
 import { startScheduler } from './scheduler.js';
 
 const app = express();
@@ -21,6 +22,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 app.use('/api/devices', devicesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/events', eventsRouter);
+app.use('/api/bot', botRouter);
 
 app.use((err, req, res, next) => {
   console.error('[error]', err);
@@ -30,5 +32,6 @@ app.use((err, req, res, next) => {
 app.listen(config.port, () => {
   console.log(`[server] ЛК Интерра backend слушает http://localhost:${config.port}`);
   console.log(`[server] Админ-панель: http://localhost:${config.port}/`);
+  console.log(`[server] Чат-бот webhook: http://localhost:${config.port}/api/bot/webhook`);
   startScheduler();
 });

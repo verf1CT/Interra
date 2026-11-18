@@ -6,6 +6,20 @@ import 'secure_http.dart';
 import '../config.dart';
 import 'package:flutter/foundation.dart';
 
+class AccountOption {
+  final String name;
+  final String address;
+  final String accountId;
+  final String loginUrl;
+
+  const AccountOption({
+    required this.name,
+    this.address = '',
+    this.accountId = '',
+    required this.loginUrl,
+  });
+}
+
 class CabinetData {
   final double balance;
   final String account;
@@ -14,6 +28,9 @@ class CabinetData {
   final String address;
   final String login;
   final bool needsPassportData;
+  final bool isRestricted;
+  final String? recommendedPayment;
+  final List<AccountOption> accounts;
   final String rawHtml;
 
   CabinetData({
@@ -24,6 +41,9 @@ class CabinetData {
     this.address = '',
     this.login = '',
     this.needsPassportData = false,
+    this.isRestricted = false,
+    this.recommendedPayment,
+    this.accounts = const [],
     required this.rawHtml,
   });
 }
@@ -71,14 +91,23 @@ class CabinetParser {
     }
   }
 
-  static Future<String> _fetchHtml(String appToken, {String oper = 'info'}) async {
-    final r = await BillingApi.openCabinet(appToken);
-    if (!r.isOk || r.data == null) {
-      if (r.code == '0') throw Exception('auth_expired');
-      throw Exception(r.networkError ? 'network_error' : 'Не удалось получить ссылку');
+  static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
+    String liveUrl;
+    if (directUrl != null && directUrl.isNotEmpty) {
+      if (directUrl.startsWith('http')) {
+        liveUrl = directUrl;
+      } else {
+        final base = AppConfig.billingBase;
+        liveUrl = directUrl.startsWith('/') ? 'https://stat.interra.ru' : '/';
+      }
+    } else {
+      final r = await BillingApi.openCabinet(appToken);
+      if (!r.isOk || r.data == null) {
+        if (r.code == '0') throw Exception('auth_expired');
+        throw Exception(r.networkError ? 'network_error' : 'Не удалось получить ссылку');
+      }
+      liveUrl = AppConfig.cabinetUrl(r.data!, oper: oper);
     }
-
-    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: oper);
     
     try {
       final res = await SecureHttp.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
@@ -389,9 +418,54 @@ class CabinetParser {
         ? foundTariff
         : 'Нет тарифа';
 
+    final isRestricted = (foundBalance != null && foundBalance < 0) ||
+        text.contains('Услуги связи ограничены') ||
+        text.contains('отключен до пополнения') ||
+        text.toLowerCase().contains('услуги ограничены');
+
+    String? recommendedPayment;
+    final recMatch = RegExp(
+      r'Рекомендуемая\s+сумма\s+(?:платежа)?[:\-]?\s*([0-9\s]+(?:[.,][0-9]+)?\s*(?:руб\.?|₽|р\.?)?)',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (recMatch != null) {
+      recommendedPayment = recMatch.group(1)?.trim();
+    } else if (foundBalance != null && foundBalance < 0) {
+      final needed = (foundBalance.abs() + 10.0).ceil();
+      recommendedPayment = ' ₽';
+    }
+
+    final List<AccountOption> parsedAccounts = [];
+    final allLinks = doc.querySelectorAll('a');
+    for (final a in allLinks) {
+      final href = a.attributes['href'] ?? '';
+      final t = a.text.trim();
+      if ((href.contains('login=') || href.contains('aaainfo')) &&
+          t.isNotEmpty &&
+          !t.toLowerCase().contains('выход') &&
+          !t.toLowerCase().contains('назад') &&
+          !t.toLowerCase().contains('главная') &&
+          !t.toLowerCase().contains('тариф')) {
+        String name = t;
+        String addr = '';
+        if (t.contains('(') && t.endsWith(')')) {
+          final idx = t.indexOf('(');
+          name = t.substring(0, idx).trim();
+          addr = t.substring(idx + 1, t.length - 1).trim();
+        }
+        final accMatch = RegExp(r'([0-9]{4,})').firstMatch(href) ?? RegExp(r'([0-9]{4,})').firstMatch(t);
+        parsedAccounts.add(AccountOption(
+          name: name,
+          address: addr,
+          accountId: accMatch?.group(1) ?? '',
+          loginUrl: href,
+        ));
+      }
+    }
+
     final needsPassport = text.contains('Не хватает учётных данных') ||
         text.contains('ввести паспортные данные') ||
-        safeTariff == 'Нет тарифа';
+        (text.contains('паспортные данные') && text.contains('выбора тарифа'));
 
     return CabinetData(
       balance: foundBalance ?? 0.0,
@@ -401,6 +475,9 @@ class CabinetParser {
       address: foundAddress ?? '',
       login: foundLogin ?? '',
       needsPassportData: needsPassport,
+      isRestricted: isRestricted,
+      recommendedPayment: recommendedPayment,
+      accounts: parsedAccounts,
       rawHtml: htmlString,
     );
   }
@@ -564,9 +641,32 @@ class CabinetParser {
     return items;
   }
 
-  static Future<CabinetData?> fetchCabinetData(String appToken) async {
-    final htmlString = await _fetchHtml(appToken, oper: 'info');
+  static Future<CabinetData?> fetchCabinetData(String appToken, {String? targetUrl}) async {
+    final htmlString = await _fetchHtml(appToken, oper: 'info', directUrl: targetUrl);
     var data = parseCabinetHtml(htmlString);
+
+    if (data.account.isEmpty && data.accounts.isNotEmpty) {
+      try {
+        final first = data.accounts.first;
+        final subHtml = await _fetchHtml(appToken, directUrl: first.loginUrl);
+        final subData = parseCabinetHtml(subHtml);
+        data = CabinetData(
+          balance: subData.balance,
+          account: subData.account.isNotEmpty ? subData.account : first.accountId,
+          fullName: subData.fullName != 'Абонент' ? subData.fullName : first.name,
+          tariff: subData.tariff,
+          address: subData.address.isNotEmpty ? subData.address : first.address,
+          login: subData.login,
+          needsPassportData: subData.needsPassportData,
+          isRestricted: subData.isRestricted,
+          recommendedPayment: subData.recommendedPayment,
+          accounts: data.accounts,
+          rawHtml: subHtml,
+        );
+      } catch (e) {
+        debugPrint('Auto-load first account error: ');
+      }
+    }
 
     // Если тариф не указан на главной странице oper=info (в UTM5 тарифы часто лежат на oper=tariffs)
     if (data.tariff == 'Нет тарифа' ||

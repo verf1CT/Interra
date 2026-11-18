@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
 
 /// заслонка приватности для переключателя задач.
@@ -14,6 +15,23 @@ class PrivacyShield extends StatefulWidget {
   final Widget child;
   const PrivacyShield({super.key, required this.child});
 
+  static final ValueNotifier<bool> isEnabled = ValueNotifier<bool>(true);
+
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isEnabled.value = prefs.getBool('privacy_shield_enabled') ?? true;
+    } catch (_) {}
+  }
+
+  static Future<void> setEnabled(bool value) async {
+    isEnabled.value = value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('privacy_shield_enabled', value);
+    } catch (_) {}
+  }
+
   @override
   State<PrivacyShield> createState() => _PrivacyShieldState();
 }
@@ -26,6 +44,7 @@ class _PrivacyShieldState extends State<PrivacyShield>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    PrivacyShield.init();
   }
 
   @override
@@ -36,6 +55,13 @@ class _PrivacyShieldState extends State<PrivacyShield>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!PrivacyShield.isEnabled.value) {
+      if (_obscured && mounted) {
+        setState(() => _obscured = false);
+      }
+      return;
+    }
+
     // снимок для переключателя задач делается в момент перехода в inactive
     // (на iOS - раньше paused), поэтому заслонку поднимаем уже на inactive и
     // hidden, а снимаем только при полном возврате на передний план
@@ -49,11 +75,17 @@ class _PrivacyShieldState extends State<PrivacyShield>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        widget.child,
-        if (_obscured) const Positioned.fill(child: _PrivacyView()),
-      ],
+    return ValueListenableBuilder<bool>(
+      valueListenable: PrivacyShield.isEnabled,
+      builder: (context, enabled, _) {
+        return Stack(
+          children: [
+            widget.child,
+            if (_obscured && enabled)
+              const Positioned.fill(child: _PrivacyView()),
+          ],
+        );
+      },
     );
   }
 }
