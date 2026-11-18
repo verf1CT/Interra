@@ -650,7 +650,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                               color: AppColors.accent.withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.forum_rounded, size: 16, color: AppColors.accent),
+                            child: const Icon(Icons.headset_mic_rounded, size: 16, color: AppColors.accent),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -659,7 +659,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Text(
-                              'онлайн',
+                              '24/7',
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF10B981)),
                             ),
                           ),
@@ -672,7 +672,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Чат 24/7 с ботом',
+                        'Контакты и помощь',
                         style: TextStyle(fontSize: 11, color: context.p.inkMute),
                       ),
                     ],
