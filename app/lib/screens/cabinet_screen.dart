@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/balance_store.dart';
@@ -820,31 +819,28 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   }
 
   Widget _buildBottomNav() {
-    return BottomNavigationBar(
+    return ExpandingBottomNav(
       currentIndex: _currentIndex,
-      onTap: (index) {
-        HapticFeedback.selectionClick();
-        setState(() => _currentIndex = index);
-      },
-      selectedItemColor: AppColors.brand,
-      unselectedItemColor: context.p.inkMute,
-      backgroundColor: context.p.card,
-      type: BottomNavigationBarType.fixed,
+      onTap: (index) => setState(() => _currentIndex = index),
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_rounded),
+        ExpandingNavItem(
+          activeIcon: Icons.home_rounded,
+          inactiveIcon: Icons.home_outlined,
           label: 'Главная',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.miscellaneous_services_rounded),
+        ExpandingNavItem(
+          activeIcon: Icons.miscellaneous_services_rounded,
+          inactiveIcon: Icons.miscellaneous_services_outlined,
           label: 'Услуги',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.tv_rounded),
-          label: 'Премиум ТВ',
+        ExpandingNavItem(
+          activeIcon: Icons.tv_rounded,
+          inactiveIcon: Icons.tv_outlined,
+          label: 'ТВ',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history_rounded),
+        ExpandingNavItem(
+          activeIcon: Icons.receipt_long_rounded,
+          inactiveIcon: Icons.receipt_long_outlined,
           label: 'История',
         ),
       ],

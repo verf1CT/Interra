@@ -237,3 +237,127 @@ class _MorphingCopyBadgeState extends State<MorphingCopyBadge> {
     );
   }
 }
+
+/// 4. ExpandingBottomNav: Плавающий анимированный бар навигации (21st.dev @arunachalam style).
+/// Пин-капсула над нижним краем, где активный таб плавно раскрывается с иконкой и подписью,
+/// а неактивные пункты сжаты до минималистичных контурных иконок.
+class ExpandingNavItem {
+  final IconData activeIcon;
+  final IconData inactiveIcon;
+  final String label;
+
+  const ExpandingNavItem({
+    required this.activeIcon,
+    required this.inactiveIcon,
+    required this.label,
+  });
+}
+
+class ExpandingBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<ExpandingNavItem> items;
+
+  const ExpandingBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: Colors.transparent,
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12, top: 4),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: context.p.card.withValues(alpha: isDark ? 0.94 : 0.97),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: context.p.line, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(items.length, (index) {
+              final isSelected = index == currentIndex;
+              final item = items[index];
+              return _buildTabItem(context, item, isSelected, () => onTap(index));
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem(
+    BuildContext context,
+    ExpandingNavItem item,
+    bool isSelected,
+    VoidCallback onSelect,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onSelect();
+      },
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 14 : 10,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.brand.withValues(alpha: isDark ? 0.20 : 0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSelected ? item.activeIcon : item.inactiveIcon,
+              size: 20,
+              color: isSelected ? AppColors.brand : context.p.inkMute,
+            ),
+            AnimatedCrossFade(
+              firstChild: Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brand,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              secondChild: const SizedBox.shrink(),
+              crossFadeState:
+                  isSelected ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+              duration: const Duration(milliseconds: 220),
+              sizeCurve: Curves.easeOutCubic,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
