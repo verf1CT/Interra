@@ -98,7 +98,7 @@ class CabinetParser {
         liveUrl = directUrl;
       } else {
         final base = AppConfig.billingBase;
-        liveUrl = directUrl.startsWith('/') ? 'https://stat.interra.ru' : '/';
+        liveUrl = directUrl.startsWith('/') ? '$base$directUrl' : '$base/$directUrl';
       }
     } else {
       final r = await BillingApi.openCabinet(appToken);
@@ -432,7 +432,7 @@ class CabinetParser {
       recommendedPayment = recMatch.group(1)?.trim();
     } else if (foundBalance != null && foundBalance < 0) {
       final needed = (foundBalance.abs() + 10.0).ceil();
-      recommendedPayment = ' ₽';
+      recommendedPayment = '$needed ₽';
     }
 
     final List<AccountOption> parsedAccounts = [];
