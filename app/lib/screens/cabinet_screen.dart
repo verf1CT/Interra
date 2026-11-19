@@ -353,7 +353,11 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               const SizedBox(height: 14),
               _buildPassportNotice(),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+            _buildBillingCycleCard(),
+            const SizedBox(height: 14),
+            _buildSmartFeaturesSection(),
+            const SizedBox(height: 24),
           ],
         ],
       ),
@@ -813,6 +817,269 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
             ),
             const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.brand),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBillingCycleCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: cardBox(context, radius: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.brand),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Следующее списание',
+                        style: TextStyle(
+                          fontFamily: kFont,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: context.p.inkMute,
+                        ),
+                      ),
+                      Text(
+                        '1 декабря 2026',
+                        style: TextStyle(
+                          fontFamily: kFont,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: context.p.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              PulseDot(
+                color: _data!.balance >= 0 ? AppColors.ok : AppColors.danger,
+                label: _data!.balance >= 0 ? 'Активен' : 'К оплате',
+                size: 5.5,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: 0.65,
+              minHeight: 5,
+              backgroundColor: context.p.surfaceAlt,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brand),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Абонплата: 1 250 ₽/мес',
+                style: TextStyle(
+                  fontFamily: kFont,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.p.inkMute,
+                ),
+              ),
+              InkWell(
+                onTap: () => setState(() => _currentIndex = 1),
+                child: const Row(
+                  children: [
+                    Text(
+                      'Тариф и опции',
+                      style: TextStyle(
+                        fontFamily: kFont,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.brand),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmartFeaturesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'РЕКОМЕНДУЕМЫЕ ОПЦИИ',
+            style: TextStyle(
+              fontFamily: kFont,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.08,
+              color: context.p.inkFaint,
+            ),
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: _featurePillCard(
+                icon: Icons.rocket_launch_rounded,
+                iconColor: AppColors.accent,
+                badge: '500 Мбит',
+                title: 'Турбо-кнопка',
+                subtitle: 'Ускорение на 6 часов',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Опция «Турбо-кнопка» активна при положительном балансе'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _featurePillCard(
+                icon: Icons.autorenew_rounded,
+                iconColor: const Color(0xFF10B981),
+                badge: '0% ком.',
+                title: 'Автоплатеж',
+                subtitle: 'Регулярно через СБП',
+                onTap: _openPayment,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _featurePillCard(
+                icon: Icons.security_rounded,
+                iconColor: AppColors.brand,
+                badge: 'DNS Safe',
+                title: 'Безопасный дом',
+                subtitle: 'Защита всей семьи',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LanDevicesScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _featurePillCard(
+                icon: Icons.tv_rounded,
+                iconColor: const Color(0xFF8B5CF6),
+                badge: 'Smart TV',
+                title: 'Интерра ТВ+',
+                subtitle: '5 экранов в подписке',
+                onTap: () => setState(() => _currentIndex = 2),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _featurePillCard({
+    required IconData icon,
+    required Color iconColor,
+    required String badge,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: cardBox(context, radius: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, size: 17, color: iconColor),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: iconColor.withValues(alpha: 0.25), width: 0.8),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        fontFamily: kFont,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: iconColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: kFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: context.p.ink,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: kFont,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: context.p.inkMute,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

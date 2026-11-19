@@ -17,7 +17,7 @@ import '../services/pin_lock.dart';
 import '../services/push_service.dart';
 import '../services/update_check.dart';
 import '../widgets/privacy_shield.dart';
-import '../widgets/ui_kit.dart';
+import '../widgets/design_system.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
@@ -336,34 +336,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
+      backgroundColor: context.p.bg,
+      appBar: AppBar(
+        title: const Text(
+          'Настройки',
+          style: TextStyle(fontFamily: kFont, fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         children: [
-          // плашка о доступном обновлении (обновляемся пока не через сторы)
+          // 1. Плашка доступного обновления
           ValueListenableBuilder<String?>(
             valueListenable: UpdateCheck.available,
             builder: (context, latest, _) {
               if (latest == null) return const SizedBox.shrink();
               return Container(
-                margin: const EdgeInsets.only(bottom: 18),
+                margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppColors.accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.35)),
+                    color: AppColors.accent.withValues(alpha: 0.30),
+                    width: 0.8,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.system_update_alt_rounded,
-                        color: AppColors.accent, size: 22),
-                    const SizedBox(width: 10),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.system_update_alt_rounded,
+                        color: AppColors.accent,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Доступна новая версия $latest — '
-                        'обновите приложение при следующей установке.',
-                        style: const TextStyle(fontSize: 13, height: 1.35),
+                        'Доступна новая версия $latest — обновите приложение при следующей установке.',
+                        style: TextStyle(
+                          fontFamily: kFont,
+                          fontSize: 13,
+                          height: 1.35,
+                          color: context.p.ink,
+                        ),
                       ),
                     ),
                   ],
@@ -371,306 +397,343 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          // карточка аккаунта
-          _card(
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: AppColors.brand.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.person_rounded,
-                      color: AppColors.brand, size: 26),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        formatRuPhoneFull(_phone),
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w600),
+
+          // 2. Bento Hero Card профиля (21st.dev style)
+          PillGroupCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.brand, AppColors.brandInk],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.brand.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      _statusChip(),
-                    ],
-                  ),
+                      child: const Center(
+                        child: Icon(Icons.person_rounded, color: Colors.white, size: 26),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            formatRuPhoneFull(_phone),
+                            style: TextStyle(
+                              fontFamily: kFont,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: context.p.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const PulseDot(
+                                color: AppColors.ok,
+                                label: 'Подключено',
+                                size: 5.5,
+                              ),
+                              const SizedBox(width: 8),
+                              PillChip(
+                                label: '$_linkedAppsCount устр.',
+                                color: context.p.inkMute,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 18),
-          _sectionTitle('Оформление'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: ValueListenableBuilder<ThemeMode>(
-              valueListenable: ThemeController.mode,
-              builder: (context, mode, _) => ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                leading: const Icon(Icons.brightness_6_outlined),
-                title: const Text('Тема'),
-                subtitle: Text(ThemeController.label(mode)),
-                trailing:
-                    const Icon(Icons.chevron_right, color: AppColors.neutral),
-                onTap: _pickTheme,
+          const PillSectionHeader('Оформление'),
+          PillGroupCard(
+            children: [
+              ValueListenableBuilder<ThemeMode>(
+                valueListenable: ThemeController.mode,
+                builder: (context, mode, _) => PillTile(
+                  icon: Icons.palette_outlined,
+                  iconColor: AppColors.brand,
+                  title: 'Тема оформления',
+                  subtitle: 'Внешний вид интерфейса',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PillChip(
+                        label: ThemeController.label(mode),
+                        color: AppColors.brand,
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(Icons.chevron_right_rounded, size: 20, color: context.p.inkFaint),
+                    ],
+                  ),
+                  onTap: _pickTheme,
+                ),
               ),
-            ),
+            ],
           ),
+
           const SizedBox(height: 18),
-          _sectionTitle('Уведомления'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: const Icon(Icons.notifications_outlined),
-                  title: const Text('Push-уведомления'),
-                  subtitle: const Text('Баланс, тариф, статусы заявок'),
+          const PillSectionHeader('Уведомления'),
+          PillGroupCard(
+            children: [
+              PillTile(
+                icon: Icons.notifications_active_outlined,
+                iconColor: AppColors.brand,
+                title: 'Push-уведомления',
+                subtitle: 'Баланс, тариф, важные события',
+                trailing: Switch.adaptive(
                   value: _notifications,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  activeTrackColor: AppColors.brand,
                   onChanged: _toggleNotifications,
                 ),
-                if (_notifications)
-                  for (final c in NotifyPrefs.categories) ...[
-                    const Divider(
-                        height: 1,
-                        thickness: 1,
-                        indent: 68),
-                    SwitchListTile(
-                      secondary: const SizedBox.shrink(),
-                      title: Text(c.title,
-                          style: const TextStyle(fontSize: 15)),
-                      subtitle: Text(c.subtitle,
-                          style: const TextStyle(fontSize: 12.5)),
-                      value: _categories[c.key] ?? true,
-                      dense: true,
-                      contentPadding: const EdgeInsets.only(
-                          left: 16, right: 16, top: 2, bottom: 2),
-                      onChanged: (v) => _toggleCategory(c.key, v),
-                    ),
-                  ],
+              ),
+              if (_notifications) ...[
+                const PillDivider(),
+                for (int i = 0; i < NotifyPrefs.categories.length; i++) ...[
+                  if (i > 0) const PillDivider(),
+                  () {
+                    final c = NotifyPrefs.categories[i];
+                    return PillTile(
+                      icon: Icons.circle_outlined,
+                      iconColor: AppColors.neutral.withValues(alpha: 0.6),
+                      title: c.title,
+                      subtitle: c.subtitle,
+                      trailing: Switch.adaptive(
+                        value: _categories[c.key] ?? true,
+                        activeTrackColor: AppColors.brand,
+                        onChanged: (v) => _toggleCategory(c.key, v),
+                      ),
+                    );
+                  }(),
+                ],
               ],
-            ),
+            ],
           ),
+
           const SizedBox(height: 18),
-          const SizedBox(height: 18),
-          _sectionTitle('SMS-уведомления и сессии'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: const Icon(Icons.sms_outlined),
-                  title: const Text('SMS за сутки до блокировки'),
-                  subtitle: const Text(
-                      'Оповещение об окончании средств на счете с 11 до 21 ч.'),
+          const PillSectionHeader('Связь и устройства'),
+          PillGroupCard(
+            children: [
+              PillTile(
+                icon: Icons.sms_outlined,
+                iconColor: AppColors.accent,
+                title: 'SMS за сутки до блокировки',
+                subtitle: 'Оповещение при низком остатке с 11 до 21 ч.',
+                trailing: Switch.adaptive(
                   value: _smsNotifications,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  activeTrackColor: AppColors.brand,
                   onChanged: _toggleSmsNotifications,
                 ),
-                const Divider(height: 1, thickness: 1, indent: 68),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  leading: const Icon(Icons.devices_other_rounded),
-                  title: Text('Привязано приложений: $_linkedAppsCount'),
-                  subtitle: const Text('Активные мобильные сессии в биллинге'),
-                  trailing: OutlinedButton(
-                    onPressed: _unlinkingApps ? null : _confirmUnlinkApps,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: const BorderSide(color: AppColors.danger),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      minimumSize: Size.zero,
-                    ),
-                    child: _unlinkingApps
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Отвязать все',
-                            style: TextStyle(fontSize: 12)),
+              ),
+              const PillDivider(),
+              PillTile(
+                icon: Icons.devices_rounded,
+                iconColor: AppColors.neutral,
+                title: 'Активные сессии',
+                subtitle: 'Привязано приложений: $_linkedAppsCount',
+                trailing: OutlinedButton(
+                  onPressed: _unlinkingApps ? null : _confirmUnlinkApps,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger, width: 0.8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
                   ),
+                  child: _unlinkingApps
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.danger),
+                        )
+                      : const Text(
+                          'Отвязать все',
+                          style: TextStyle(
+                            fontFamily: kFont,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+
           const SizedBox(height: 18),
-          _sectionTitle('Безопасность'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                if (_biometricAvailable)
-                  SwitchListTile(
-                    secondary: const Icon(Icons.fingerprint),
-                    title: const Text('Вход по Face ID / отпечатку'),
-                    subtitle:
-                        const Text('Не чаще, чем раз в 30 минут'),
+          const PillSectionHeader('Безопасность и блокировка'),
+          PillGroupCard(
+            children: [
+              if (_biometricAvailable) ...[
+                PillTile(
+                  icon: Icons.fingerprint_rounded,
+                  iconColor: AppColors.ok,
+                  title: 'Вход по Face ID / отпечатку',
+                  subtitle: 'Биометрическая защита приложения',
+                  trailing: Switch.adaptive(
                     value: _biometricEnabled,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    activeTrackColor: AppColors.brand,
                     onChanged: _toggleBiometric,
                   ),
-                if (_biometricAvailable)
-                  const Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 68),
-                SwitchListTile(
-                  secondary: const Icon(Icons.pin_outlined),
-                  title: const Text('Код-пароль'),
-                  subtitle: Text(_pinSet
-                      ? 'Запасной вход, если Face ID недоступен'
-                      : 'Четырёхзначный код для входа'),
+                ),
+                const PillDivider(),
+              ],
+              PillTile(
+                icon: Icons.lock_outline_rounded,
+                iconColor: AppColors.brand,
+                title: 'Код-пароль',
+                subtitle: _pinSet
+                    ? 'Запасной 4-значный код включен'
+                    : 'Задать четырёхзначный код для входа',
+                trailing: Switch.adaptive(
                   value: _pinSet,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  activeTrackColor: AppColors.brand,
                   onChanged: _togglePin,
                 ),
-                if (_pinSet) ...[
-                  const Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 68),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 0),
-                    leading: const SizedBox.shrink(),
-                    title: const Text('Изменить код-пароль',
-                        style: TextStyle(fontSize: 15)),
-                    trailing:
-                        Icon(Icons.chevron_right, color: context.p.inkFaint),
-                    onTap: _changePin,
+              ),
+              if (_pinSet) ...[
+                const PillDivider(),
+                PillTile(
+                  icon: Icons.password_rounded,
+                  iconColor: AppColors.neutral,
+                  title: 'Изменить код-пароль',
+                  subtitle: 'Установить новую комбинацию',
+                  trailing: Icon(Icons.chevron_right_rounded, size: 20, color: context.p.inkFaint),
+                  onTap: _changePin,
+                ),
+              ],
+              if (_biometricEnabled || _pinSet) ...[
+                const PillDivider(),
+                PillTile(
+                  icon: Icons.timer_outlined,
+                  iconColor: AppColors.neutral,
+                  title: 'Запрашивать вход',
+                  subtitle: 'Автоматическая блокировка экрана',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PillChip(
+                        label: Biometric.lockDelayLabel(_lockDelayMs),
+                        color: AppColors.brand,
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(Icons.chevron_right_rounded, size: 20, color: context.p.inkFaint),
+                    ],
                   ),
-                ],
-                // задержка автоблокировки - только если защита включена
-                if (_biometricEnabled || _pinSet) ...[
-                  const Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 68),
-                  ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    leading: const Icon(Icons.timer_outlined),
-                    title: const Text('Запрашивать вход'),
-                    subtitle: const Text('Как часто спрашивать при возврате'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(Biometric.lockDelayLabel(_lockDelayMs),
-                            style: const TextStyle(
-                                color: AppColors.brand,
-                                fontWeight: FontWeight.w600)),
-                        Icon(Icons.chevron_right, color: context.p.inkFaint),
-                      ],
-                    ),
-                    onTap: _pickLockDelay,
-                  ),
-                ],
-                const Divider(
-                    height: 1,
-                    thickness: 1,
-                    indent: 68),
-                SwitchListTile(
-                  secondary: const Icon(Icons.shield_outlined),
-                  title: const Text('Скрывать экран при сворачивании'),
-                  subtitle: const Text('Защита от подглядывания в недавних приложениях'),
+                  onTap: _pickLockDelay,
+                ),
+              ],
+              const PillDivider(),
+              PillTile(
+                icon: Icons.security_rounded,
+                iconColor: AppColors.neutral,
+                title: 'Privacy Shield',
+                subtitle: 'Скрывать экран в диспетчере задач',
+                trailing: Switch.adaptive(
                   value: _privacyShieldEnabled,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  activeTrackColor: AppColors.brand,
                   onChanged: (v) async {
                     await PrivacyShield.setEnabled(v);
                     if (mounted) setState(() => _privacyShieldEnabled = v);
                   },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+
           const SizedBox(height: 18),
-          _sectionTitle('Помощь'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: const Icon(Icons.support_agent_rounded,
-                  color: AppColors.brand),
-              title: const Text('Поддержка'),
-              subtitle: const Text('Звонок, ВКонтакте, помощь на сайте'),
-              trailing: Icon(Icons.chevron_right, color: context.p.inkFaint),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SupportScreen(),
-                  settings: const RouteSettings(name: 'support'),
+          const PillSectionHeader('Поддержка и связь'),
+          PillGroupCard(
+            children: [
+              PillTile(
+                icon: Icons.headset_mic_rounded,
+                iconColor: AppColors.brand,
+                title: 'Служба заботы',
+                subtitle: 'Звонок оператору, ВКонтакте, сайт',
+                trailing: Icon(Icons.chevron_right_rounded, size: 20, color: context.p.inkFaint),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SupportScreen(),
+                    settings: const RouteSettings(name: 'support'),
+                  ),
                 ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+          const PillSectionHeader('Сессия'),
+          PillGroupCard(
+            children: [
+              PillTile(
+                icon: Icons.logout_rounded,
+                iconColor: AppColors.danger,
+                title: 'Выйти из аккаунта',
+                subtitle: 'Завершить авторизацию на этом устройстве',
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.danger),
+                onTap: _confirmLogout,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: context.p.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.p.line, width: 0.8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.brand.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ЛК Интерра · v${AppInfo.version}',
+                    style: TextStyle(
+                      fontFamily: kFont,
+                      color: context.p.inkFaint,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          _sectionTitle('Аккаунт'),
-          _card(
-            padding: EdgeInsets.zero,
-            child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: const Icon(Icons.logout, color: AppColors.danger),
-              title: const Text('Выйти из аккаунта',
-                  style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
-              onTap: _confirmLogout,
-            ),
-          ),
           const SizedBox(height: 24),
-          Center(
-            child: Text('ЛК Интерра · v${AppInfo.version}',
-                style: TextStyle(color: context.p.inkFaint, fontSize: 12)),
-          ),
         ],
       ),
     );
   }
-
-  /// бейдж статуса приложения: регистрация в биллинге активна
-  Widget _statusChip() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.ok.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: const BoxDecoration(
-                  color: AppColors.ok, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-            const Text('Подключено',
-                style: TextStyle(
-                    color: AppColors.ok,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-
-  Widget _sectionTitle(String text) => AppSectionTitle(text);
-
-  Widget _card({required Widget child, EdgeInsets? padding}) => AppCard(
-        clip: true,
-        padding: padding ?? const EdgeInsets.all(16),
-        child: child,
-      );
 }
+
