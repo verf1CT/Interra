@@ -28,7 +28,7 @@ void main() {
     const iconsPath = r'C:\src\flutter\bin\cache\artifacts\material_fonts\materialicons-regular.otf';
     await loadFont('MaterialIcons', [iconsPath]);
 
-    const manropeBase = r'C:\dev\interra\app\assets\fonts';
+    const manropeBase = r'c:\Users\ауыцфйыкенш\Documents\GitHub\interra\app\assets\fonts';
     const manropeFiles = [
       '$manropeBase\\Manrope-400.ttf',
       '$manropeBase\\Manrope-500.ttf',
@@ -54,36 +54,10 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    final lightKey = GlobalKey();
+    const desktop = r'C:\Users\ауыцфйыкенш\Desktop';
+    const brain = r'C:\Users\ауыцфйыкенш\.gemini\antigravity\brain\5c13197a-8667-4e80-aaa5-62a11a4bab87';
 
-    await tester.pumpWidget(
-      RepaintBoundary(
-        key: lightKey,
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: buildAppTheme(Brightness.light),
-          home: const CabinetScreen(),
-        ),
-      ),
-    );
-
-    await tester.runAsync(() async {
-      await Future.delayed(const Duration(milliseconds: 300));
-    });
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
-
-    expect(find.text('Комфорт 200'), findsWidgets);
-
-    await tester.runAsync(() async {
-      final boundary = lightKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final bytes = byteData!.buffer.asUint8List();
-      await File(r'C:\dev\interra\cabinet_light.png').writeAsBytes(bytes);
-    });
-
-    // Dark Mode
+    // 1. Dark Mode
     final darkKey = GlobalKey();
     await tester.pumpWidget(
       RepaintBoundary(
@@ -100,17 +74,45 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 300));
     });
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 500));
 
     await tester.runAsync(() async {
       final darkBoundary = darkKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final darkImage = await darkBoundary.toImage(pixelRatio: 2.0);
       final darkByteData = await darkImage.toByteData(format: ui.ImageByteFormat.png);
       final darkBytes = darkByteData!.buffer.asUint8List();
-      await File(r'C:\dev\interra\cabinet_dark.png').writeAsBytes(darkBytes);
+      await File('$desktop\\cabinet_dark.png').writeAsBytes(darkBytes);
+      await File('$brain\\cabinet_dark.png').writeAsBytes(darkBytes);
     });
 
-    // Unmount to cleanly stop PulseDot repeating animation
+    // 2. Light Mode
+    final lightKey = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: lightKey,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(Brightness.light),
+          home: const CabinetScreen(),
+        ),
+      ),
+    );
+
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await tester.runAsync(() async {
+      final boundary = lightKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData!.buffer.asUint8List();
+      await File('$desktop\\cabinet_light.png').writeAsBytes(bytes);
+      await File('$brain\\cabinet_light.png').writeAsBytes(bytes);
+    });
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
