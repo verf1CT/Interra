@@ -473,3 +473,195 @@ class ExpandingBottomNav extends StatelessWidget {
     );
   }
 }
+
+/// 6. 21st.dev Style Pill Components for Settings & Screens
+
+class PillSectionHeader extends StatelessWidget {
+  final String title;
+  const PillSectionHeader(this.title, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, bottom: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontFamily: kFont,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.08,
+          color: context.p.inkFaint,
+        ),
+      ),
+    );
+  }
+}
+
+class PillGroupCard extends StatelessWidget {
+  final List<Widget> children;
+  final EdgeInsetsGeometry? padding;
+
+  const PillGroupCard({
+    super.key,
+    required this.children,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.p.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: context.p.line,
+          width: 0.8,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+class PillTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  const PillTile({
+    super.key,
+    required this.icon,
+    this.iconColor = AppColors.brand,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: iconColor.withValues(alpha: 0.08),
+        highlightColor: iconColor.withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: kFont,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: context.p.ink,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          fontFamily: kFont,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w400,
+                          color: context.p.inkMute,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 10),
+                trailing!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PillDivider extends StatelessWidget {
+  const PillDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      thickness: 0.8,
+      indent: 64,
+      endIndent: 14,
+      color: context.p.line,
+    );
+  }
+}
+
+class PillChip extends StatelessWidget {
+  final String label;
+  final Color? color;
+  final VoidCallback? onTap;
+
+  const PillChip({
+    super.key,
+    required this.label,
+    this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = color ?? context.p.inkMute;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: effectiveColor.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: effectiveColor.withValues(alpha: 0.20),
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: kFont,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: effectiveColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
