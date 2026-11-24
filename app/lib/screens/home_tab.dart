@@ -44,6 +44,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   bool _extrasLoading = true;
   double? _fee;
+  String? _mainService;
   PaymentItem? _lastTopUp;
 
   @override
@@ -86,6 +87,12 @@ class _HomeTabState extends State<HomeTab> {
     if (!mounted) return;
     setState(() {
       _fee = monthlyFee(services);
+      // тариф с главной страницы биллинг отдаёт не всегда - берём
+      // первую услугу с месячной ценой
+      _mainService = services
+          .where((e) => e.cost.toLowerCase().contains('мес'))
+          .map((e) => e.name)
+          .firstOrNull;
       _lastTopUp = lastTopUp(payments);
       _extrasLoading = false;
     });
@@ -110,6 +117,7 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           StaggerIn(index: i++, child: _BalanceHero(
             data: d,
+            tariffFallback: _mainService,
             refreshing: widget.refreshing,
             onPay: widget.onPay,
             onPickAccount: widget.onPickAccount,
@@ -287,6 +295,7 @@ class _HomeTabState extends State<HomeTab> {
 /// главная карточка: баланс крупно, статус, тариф и оплата
 class _BalanceHero extends StatelessWidget {
   final CabinetData data;
+  final String? tariffFallback;
   final bool refreshing;
   final VoidCallback onPay;
   final VoidCallback onPickAccount;
@@ -294,6 +303,7 @@ class _BalanceHero extends StatelessWidget {
 
   const _BalanceHero({
     required this.data,
+    this.tariffFallback,
     required this.refreshing,
     required this.onPay,
     required this.onPickAccount,
@@ -311,10 +321,8 @@ class _BalanceHero extends StatelessWidget {
         (data.account.isNotEmpty && data.account != '—') ? data.account : null;
     final multi = data.accounts.length > 1;
 
-    final details = [
-      if (hasTariff) data.tariff,
-      if (data.address.isNotEmpty) data.address,
-    ].join('  ·  ');
+    final tariff = hasTariff ? data.tariff : tariffFallback;
+    final address = data.address.isNotEmpty ? data.address : null;
 
     const radius = 26.0;
     return BorderBeam(
@@ -386,16 +394,38 @@ class _BalanceHero extends StatelessWidget {
                 ),
               ),
             ),
-            if (details.isNotEmpty) ...[
-              const SizedBox(height: 6),
+            if (tariff != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.bolt_rounded,
+                      size: 18, color: Colors.white.withValues(alpha: 0.9)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      tariff,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (address != null) ...[
+              const SizedBox(height: 4),
               Text(
-                details,
+                address,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white.withValues(alpha: 0.72),
                 ),
               ),
             ],

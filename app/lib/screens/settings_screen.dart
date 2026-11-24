@@ -398,68 +398,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          // 2. Bento Hero Card профиля (21st.dev style)
+          // 2. аккаунт: номер, с которого вошли, и число привязанных устройств
           PillGroupCard(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.brand, AppColors.brandInk],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.brand.withValues(alpha: 0.25),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.person_rounded, color: Colors.white, size: 26),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            formatRuPhoneFull(_phone),
-                            style: TextStyle(
-                              fontFamily: kFont,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: context.p.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              const PulseDot(
-                                color: AppColors.ok,
-                                label: 'Подключено',
-                                size: 5.5,
-                              ),
-                              const SizedBox(width: 8),
-                              PillChip(
-                                label: '$_linkedAppsCount устр.',
-                                color: context.p.inkMute,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              PillTile(
+                icon: Icons.phone_iphone_rounded,
+                iconColor: context.p.ink,
+                title: formatRuPhoneFull(_phone),
+                subtitle: 'Номер для входа',
+                trailing: PillChip(
+                  label: '$_linkedAppsCount устр.',
+                  color: context.p.inkMute,
                 ),
               ),
             ],
@@ -515,8 +464,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   () {
                     final c = NotifyPrefs.categories[i];
                     return PillTile(
-                      icon: Icons.circle_outlined,
-                      iconColor: AppColors.neutral.withValues(alpha: 0.6),
+                      icon: switch (c.key) {
+                        'outage' => Icons.construction_rounded,
+                        'balance' => Icons.account_balance_wallet_outlined,
+                        'news' => Icons.campaign_outlined,
+                        _ => Icons.notifications_none_rounded,
+                      },
+                      iconColor: AppColors.brand,
                       title: c.title,
                       subtitle: c.subtitle,
                       trailing: Switch.adaptive(
