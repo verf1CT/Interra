@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lk_interra/theme.dart';
 import 'package:lk_interra/services/balance_store.dart';
+import 'motion_kit.dart';
 
 /// 1. PulseDot: Живой пульсирующий светодиод статуса соединения (21st.dev style).
 /// Непрерывная плавная волна светового кольца позади точки статуса.
@@ -10,11 +11,16 @@ class PulseDot extends StatefulWidget {
   final double size;
   final String label;
 
+  /// вариант для цветной подложки (синяя карточка баланса): полупрозрачный
+  /// белый фон и белая подпись, сама точка остаётся цветной
+  final bool onBrand;
+
   const PulseDot({
     super.key,
     required this.color,
     this.size = 8.0,
     required this.label,
+    this.onBrand = false,
   });
 
   @override
@@ -44,10 +50,14 @@ class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: widget.color.withValues(alpha: 0.08),
+        color: widget.onBrand
+            ? Colors.white.withValues(alpha: 0.16)
+            : widget.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: widget.color.withValues(alpha: 0.20),
+          color: widget.onBrand
+              ? Colors.white.withValues(alpha: 0.22)
+              : widget.color.withValues(alpha: 0.20),
           width: 1,
         ),
       ),
@@ -97,7 +107,7 @@ class _PulseDotState extends State<PulseDot> with SingleTickerProviderStateMixin
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: widget.color,
+              color: widget.onBrand ? Colors.white : widget.color,
               letterSpacing: 0.2,
             ),
           ),
@@ -266,29 +276,60 @@ class ModernBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.p;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final n = items.length;
+    // подложка активного пункта переезжает на пружине (AnimatedBackground
+    // из motion-primitives), а не появляется скачком
+    final x = n == 1 ? 0.0 : -1 + 2 * currentIndex / (n - 1);
+
     return Container(
       decoration: BoxDecoration(
-        color: context.p.card,
-        border: Border(
-          top: BorderSide(
-            color: context.p.line,
-            width: 0.8,
-          ),
-        ),
+        color: p.card,
+        border: Border(top: BorderSide(color: p.line, width: 0.8)),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 58,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == currentIndex;
-              final item = items[index];
-              return Expanded(
-                child: _buildItem(context, item, isSelected, () => onTap(index)),
-              );
-            }),
+          height: 66,
+          child: Stack(
+            children: [
+              AnimatedAlign(
+                alignment: Alignment(x, -1),
+                duration: const Duration(milliseconds: 520),
+                curve: SpringCurve.bouncy,
+                child: FractionallySizedBox(
+                  widthFactor: 1 / n,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Container(
+                        width: 58,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.brand
+                              .withValues(alpha: dark ? 0.22 : 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: List.generate(n, (index) {
+                  return Expanded(
+                    child: _buildItem(
+                      context,
+                      items[index],
+                      index == currentIndex,
+                      () => onTap(index),
+                    ),
+                  );
+                }),
+              ),
+            ],
           ),
         ),
       ),
@@ -301,47 +342,52 @@ class ModernBottomNav extends StatelessWidget {
     bool isSelected,
     VoidCallback onSelect,
   ) {
-    final activeColor = AppColors.brand;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = dark ? AppColors.brand : AppColors.brandInk;
     final inactiveColor = context.p.inkMute;
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onSelect();
-      },
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Center(
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      label: item.label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (!isSelected) HapticFeedback.selectionClick();
+          onSelect();
+        },
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedScale(
-              scale: isSelected ? 1.05 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              child: Icon(
-                isSelected ? item.activeIcon : item.inactiveIcon,
-                size: 24,
-                color: isSelected ? activeColor : inactiveColor,
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 32,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (c, a) =>
+                      ScaleTransition(scale: a, child: c),
+                  child: Icon(
+                    isSelected ? item.activeIcon : item.inactiveIcon,
+                    key: ValueKey(isSelected),
+                    size: 23,
+                    color: isSelected ? activeColor : inactiveColor,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               style: TextStyle(
                 fontFamily: kFont,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected ? activeColor : inactiveColor,
                 height: 1.1,
               ),
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),

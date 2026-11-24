@@ -5,6 +5,10 @@ import '../services/demo_mode.dart';
 import '../services/auth_store.dart';
 import '../widgets/passport_form_sheet.dart';
 import '../theme.dart';
+import '../services/balance_store.dart';
+import '../utils/billing_math.dart';
+import '../widgets/design_system.dart';
+import '../widgets/motion_kit.dart';
 
 class ServicesScreen extends StatefulWidget {
   final VoidCallback? onOpenPassportForm;
@@ -111,191 +115,365 @@ class _ServicesScreenState extends State<ServicesScreen> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.brand));
     }
-    
+
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
-            const SizedBox(height: 16),
-            Text(_error!, style: TextStyle(color: context.p.ink)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
-            ),
-          ],
-        ),
-      );
+      return _ErrorState(message: _error!, onRetry: _loadData);
     }
+
+    // основной тариф - первая услуга с месячной ценой, остальное - список
+    final mainIdx = _services.indexWhere((s) => s.cost.toLowerCase().contains('мес'));
+    final main = mainIdx >= 0 ? _services[mainIdx] : null;
+    final rest = [
+      for (var i = 0; i < _services.length; i++)
+        if (i != mainIdx) _services[i],
+    ];
+    final fee = monthlyFee(_services);
 
     return RefreshIndicator(
       color: AppColors.brand,
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
-          // Блок паспорта (скрыт в демо-режиме для скриншотов)
-          if (!DemoMode.isEnabled.value)
-            Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.brand.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.brand.withValues(alpha: 0.25)),
+          if (main != null) ...[
+            StaggerIn(index: 0, child: _TariffHero(item: main)),
+            const SizedBox(height: 22),
+          ],
+          if (_services.isEmpty) const StaggerIn(index: 0, child: _EmptyServices()),
+          if (rest.isNotEmpty) ...[
+            const PillSectionHeader('Подключено'),
+            StaggerIn(
+              index: 1,
+              child: PillGroupCard(
+                children: [
+                  for (var i = 0; i < rest.length; i++) ...[
+                    if (i > 0) const PillDivider(),
+                    _ServiceRow(item: rest[i]),
+                  ],
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.assignment_ind_rounded, color: AppColors.brand, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Заказ и смена тарифа',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: context.p.ink,
-                        ),
-                      ),
+          ],
+          if (fee != null && _services.length > 1) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  Text('Итого в месяц',
+                      style: TextStyle(fontSize: 13, color: context.p.inkMute)),
+                  const Spacer(),
+                  Text(
+                    BalanceStore.format(fee),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: context.p.ink,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Для выбора и подключения тарифного плана необходимо подтвердить паспортные данные в соответствии с требованиями законодательства РФ (ФЗ «О связи»).',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.p.inkMute,
-                    height: 1.35,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    FilledButton.tonalIcon(
-                      onPressed: _openPassport,
-                      icon: const Icon(Icons.edit_document, size: 18),
-                      label: const Text('Ввести паспортные данные'),
+                ],
+              ),
+            ),
+          ],
+          // смена тарифа требует паспорт по закону о связи - в демо не показываем
+          if (!DemoMode.isEnabled.value) ...[
+            const SizedBox(height: 22),
+            const PillSectionHeader('Смена тарифа'),
+            StaggerIn(
+              index: 2,
+              child: _ChangeTariffCard(
+                onPassport: _openPassport,
+                onWeb: _openWebCabinet,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// «Комфорт 200 (Безлимитный интернет 200 Мбит/с)» -> заголовок и пояснение
+(String, String?) _splitName(String name) {
+  final t = name.trim();
+  final i = t.indexOf('(');
+  if (i <= 0 || !t.endsWith(')')) return (t, null);
+  final title = t.substring(0, i).trim();
+  final sub = t.substring(i + 1, t.length - 1).trim();
+  return (title, sub.isEmpty ? null : sub);
+}
+
+bool _isActive(ServiceItem s) {
+  final st = s.status.toLowerCase();
+  return st.contains('актив') || st.contains('включ');
+}
+
+IconData _iconFor(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('тв') || n.contains('телекан')) return Icons.live_tv_rounded;
+  if (n.contains('домофон') || n.contains('камер')) return Icons.videocam_rounded;
+  if (n.contains('ip') || n.contains('адрес')) return Icons.dns_rounded;
+  if (n.contains('интернет') || n.contains('мбит')) return Icons.wifi_rounded;
+  return Icons.widgets_rounded;
+}
+
+class _TariffHero extends StatelessWidget {
+  final ServiceItem item;
+  const _TariffHero({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (title, sub) = _splitName(item.name);
+    final m = RegExp(r'^(.*?)\s*/\s*(мес.*)$').firstMatch(item.cost.trim());
+    final price = m?.group(1) ?? item.cost;
+    final per = m?.group(2);
+    final active = _isActive(item);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: cardBox(context, radius: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Ваш тариф',
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: p.inkMute)),
+              PulseDot(
+                color: active ? AppColors.ok : p.inkFaint,
+                label: item.status.isNotEmpty ? item.status : 'Неизвестно',
+                size: 6.5,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(title,
+              style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.6,
+                  color: p.ink,
+                  height: 1.15)),
+          if (sub != null) ...[
+            const SizedBox(height: 4),
+            Text(sub, style: TextStyle(fontSize: 14, color: p.inkMute, height: 1.3)),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: p.surfaceAlt,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Icon(_iconFor(item.name),
+                    size: 20, color: dark ? AppColors.brand : AppColors.brandInk),
+                const SizedBox(width: 10),
+                Text('Абонплата', style: TextStyle(fontSize: 13.5, color: p.inkMute)),
+                const Spacer(),
+                Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                      text: price,
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w800, color: p.ink),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: _openWebCabinet,
-                      icon: const Icon(Icons.open_in_browser, size: 18),
-                      label: const Text('Открыть кабинет на сайте'),
-                    ),
-                  ],
+                    if (per != null)
+                      TextSpan(
+                        text: ' / $per',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600, color: p.inkMute),
+                      ),
+                  ]),
+                  style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+}
 
-          Text(
-            'Подключённые тарифы и услуги',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: context.p.ink,
+class _ServiceRow extends StatelessWidget {
+  final ServiceItem item;
+  const _ServiceRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (title, sub) = _splitName(item.name);
+    final active = _isActive(item);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: p.surfaceAlt,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(_iconFor(item.name),
+                size: 20, color: dark ? AppColors.brand : AppColors.brandInk),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700, color: p.ink)),
+                if (sub != null) ...[
+                  const SizedBox(height: 2),
+                  Text(sub, style: TextStyle(fontSize: 12.5, color: p.inkMute)),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (item.cost.isNotEmpty)
+                Text(item.cost,
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: p.ink)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: active ? AppColors.ok : p.inkFaint,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    item.status.isNotEmpty ? item.status : 'Неизвестно',
+                    style: TextStyle(fontSize: 12, color: p.inkMute),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-          if (_services.isEmpty)
+class _ChangeTariffCard extends StatelessWidget {
+  final VoidCallback onPassport;
+  final VoidCallback onWeb;
+  const _ChangeTariffCard({required this.onPassport, required this.onWeb});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: cardBox(context, radius: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Чтобы выбрать или сменить тариф, нужны паспортные данные - этого требует закон «О связи»',
+            style: TextStyle(fontSize: 13.5, color: p.inkMute, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: onPassport,
+            child: const Text('Ввести паспортные данные'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: onWeb,
+            child: const Text('Открыть кабинет на сайте'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyServices extends StatelessWidget {
+  const _EmptyServices();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      decoration: cardBox(context, radius: 22),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(color: p.surfaceAlt, shape: BoxShape.circle),
+            child: Icon(Icons.wifi_off_rounded, size: 26, color: p.inkMute),
+          ),
+          const SizedBox(height: 14),
+          Text('Тариф не подключён',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.ink)),
+          const SizedBox(height: 4),
+          Text(
+            'Заполните паспортные данные ниже, чтобы выбрать тариф',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: p.inkMute, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: context.p.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.p.line),
-              ),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.wifi_off_rounded, size: 36, color: context.p.inkMute),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Активный тариф не подключён',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: context.p.ink),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Заполните паспортные данные выше для активации тарифа',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: context.p.inkMute),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ..._services.map((item) {
-              final isActive = item.status.toLowerCase().contains('актив') ||
-                  item.status.toLowerCase().contains('включ');
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: context.p.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.p.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                              color: context.p.ink,
-                            ),
-                          ),
-                        ),
-                        if (item.cost.isNotEmpty)
-                          Text(
-                            item.cost,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: context.p.inkMute,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? AppColors.brand.withValues(alpha: 0.1)
-                            : context.p.line,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        item.status.isNotEmpty ? item.status : 'Неизвестно',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: isActive ? AppColors.brand : context.p.inkMute,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-
-                  ],
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(color: p.surfaceAlt, shape: BoxShape.circle),
+              child: Icon(Icons.cloud_off_rounded, size: 28, color: p.inkMute),
+            ),
+            const SizedBox(height: 16),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: p.ink)),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 200,
+              child: FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+            ),
+          ],
+        ),
       ),
     );
   }

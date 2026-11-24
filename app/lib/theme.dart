@@ -116,6 +116,15 @@ BoxDecoration cardBox(BuildContext context, {double radius = 16, Color? color}) 
   );
 }
 
+/// фирменный градиент для «героев» (карточка баланса, шапка вкладки ТВ)
+LinearGradient brandGradient(bool dark) => LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: dark
+          ? const [Color(0xFF2A7DB8), Color(0xFF174F78)]
+          : const [AppColors.brand, AppColors.brandInk],
+    );
+
 /// плавный переход между экранами: лёгкое появление + микро-сдвиг снизу
 class _FadeSlidePageTransitionsBuilder extends PageTransitionsBuilder {
   const _FadeSlidePageTransitionsBuilder();

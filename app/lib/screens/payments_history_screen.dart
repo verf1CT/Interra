@@ -3,6 +3,9 @@ import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
 import '../services/auth_store.dart';
 import '../theme.dart';
+import '../utils/billing_math.dart';
+import '../widgets/design_system.dart';
+import '../widgets/motion_kit.dart';
 
 class PaymentsHistoryScreen extends StatefulWidget {
   const PaymentsHistoryScreen({super.key});
@@ -79,31 +82,20 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
     }
   }
 
-  double get _totalPaymentsThisMonth {
-    double sum = 0.0;
-    for (final p in _payments) {
-      if (p.amount > 0) sum += p.amount;
-    }
-    return sum;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Табы: операции / сессии (как на сайте)
-        Container(
-          color: context.p.bg,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: AppColors.brand,
-            unselectedLabelColor: context.p.inkMute,
-            indicatorColor: AppColors.brand,
-            indicatorWeight: 3,
-            tabs: const [
-              Tab(text: 'Операции'),
-              Tab(text: 'Сессии'),
-            ],
+        // операции / сессии: подложка едет за пальцем при свайпе
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: AnimatedBuilder(
+            animation: _tabController.animation!,
+            builder: (context, _) => SlidingSegmented(
+              labels: const ['Операции', 'Сессии'],
+              position: _tabController.animation!.value,
+              onChanged: (i) => _tabController.animateTo(i),
+            ),
           ),
         ),
         Expanded(
@@ -119,292 +111,301 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
     );
   }
 
+  Widget _centerState({
+    required IconData icon,
+    required String title,
+    String? text,
+    Widget? action,
+  }) {
+    final p = context.p;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(color: p.surfaceAlt, shape: BoxShape.circle),
+              child: Icon(icon, size: 28, color: p.inkMute),
+            ),
+            const SizedBox(height: 16),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.ink)),
+            if (text != null) ...[
+              const SizedBox(height: 6),
+              Text(text,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: p.inkMute, height: 1.4)),
+            ],
+            if (action != null) ...[
+              const SizedBox(height: 20),
+              SizedBox(width: 200, child: action),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOperationsTab() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.brand));
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
-            const SizedBox(height: 16),
-            Text(_error!, style: TextStyle(color: context.p.ink)),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Повторить'),
-            ),
-          ],
-        ),
+      return _centerState(
+        icon: Icons.cloud_off_rounded,
+        title: _error!,
+        action: FilledButton(onPressed: _loadData, child: const Text('Повторить')),
       );
     }
 
     if (_payments.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_rounded, size: 48, color: context.p.inkMute),
-            const SizedBox(height: 12),
-            Text('История операций пуста', style: TextStyle(color: context.p.inkMute)),
-          ],
-        ),
+      return _centerState(
+        icon: Icons.receipt_long_rounded,
+        title: 'Операций пока нет',
+        text: 'Здесь появятся пополнения и списания по договору',
       );
     }
+
+    // группировка по месяцам, порядок как отдал биллинг (новые сверху)
+    final groups = <String, List<PaymentItem>>{};
+    final groupDates = <String, DateTime?>{};
+    for (final p in _payments) {
+      final d = parseBillingDate(p.date);
+      final key = d == null ? 'Другое' : monthTitle(d);
+      groups.putIfAbsent(key, () => []).add(p);
+      groupDates.putIfAbsent(key, () => d);
+    }
+    final latest = groupDates.values.whereType<DateTime>().fold<DateTime?>(
+        null, (a, b) => a == null || b.isAfter(a) ? b : a);
 
     return RefreshIndicator(
       color: AppColors.brand,
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          // Сводка платежей (как на Скриншоте 1)
-          Container(
-            padding: const EdgeInsets.all(14),
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              color: context.p.card,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.p.line),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Платежей за текущий месяц:',
-                  style: TextStyle(fontSize: 13, color: context.p.inkMute, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  '${_totalPaymentsThisMonth.toStringAsFixed(0)} руб.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _totalPaymentsThisMonth > 0 ? AppColors.brand : context.p.ink,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          ..._payments.map((item) {
-            final isZero = item.amount == 0;
-            final isPositive = item.amount > 0;
-            final opName = item.operation.isNotEmpty
-                ? item.operation
-                : (item.comment.isNotEmpty ? item.comment : 'Операция');
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: context.p.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.p.line),
-              ),
-              child: Row(
+          if (latest != null) ...[
+            StaggerIn(index: 0, child: _MonthSummary(
+              month: latest,
+              totals: totalsForMonth(_payments, latest.year, latest.month),
+            )),
+            const SizedBox(height: 22),
+          ],
+          for (final (gi, e) in groups.entries.indexed) ...[
+            PillSectionHeader(e.key),
+            StaggerIn(
+              index: gi + 1,
+              child: PillGroupCard(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isZero
-                          ? context.p.line
-                          : (isPositive
-                              ? AppColors.brand.withValues(alpha: 0.1)
-                              : AppColors.danger.withValues(alpha: 0.1)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isZero
-                          ? Icons.info_outline_rounded
-                          : (isPositive ? Icons.arrow_downward : Icons.arrow_upward),
-                      color: isZero
-                          ? context.p.inkMute
-                          : (isPositive ? AppColors.brand : AppColors.danger),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          opName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: context.p.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          item.date,
-                          style: TextStyle(fontSize: 12, color: context.p.inkMute),
-                        ),
-                        if (item.operator.isNotEmpty && item.operator != 'SYSTEM') ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'Оператор: ${item.operator}',
-                            style: TextStyle(fontSize: 11, color: context.p.inkMute),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (!isZero)
-                    Text(
-                      '${isPositive ? '+' : ''}${item.amount.toStringAsFixed(2)} ₽',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: isPositive ? AppColors.brand : AppColors.danger,
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: context.p.line,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '0.00 ₽',
-                        style: TextStyle(fontSize: 12, color: context.p.inkMute, fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                  for (var i = 0; i < e.value.length; i++) ...[
+                    if (i > 0) const PillDivider(),
+                    _OperationRow(item: e.value[i]),
+                  ],
                 ],
               ),
-            );
-          }),
+            ),
+            const SizedBox(height: 18),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildSessionsTab() {
-    if (DemoMode.isEnabled.value) {
-      return ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: DemoMode.demoSessions.length,
-        itemBuilder: (context, index) {
-          final s = DemoMode.demoSessions[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.p.card,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: s.isActive ? AppColors.brand : context.p.line,
-                width: s.isActive ? 1.5 : 1.0,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    if (!DemoMode.isEnabled.value) {
+      return _centerState(
+        icon: Icons.router_rounded,
+        title: 'Сессии появятся позже',
+        text: 'Историю подключений к интернету пока можно посмотреть только в кабинете на сайте',
+      );
+    }
+    final p = context.p;
+    final sessions = DemoMode.demoSessions;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+      children: [
+        PillGroupCard(
+          children: [
+            for (var i = 0; i < sessions.length; i++) ...[
+              if (i > 0) const PillDivider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.router_rounded,
-                          size: 20,
-                          color: s.isActive ? AppColors.brand : context.p.inkMute,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          s.ip,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.p.ink,
-                          ),
-                        ),
-                      ],
-                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: s.isActive
-                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                            : context.p.line,
-                        borderRadius: BorderRadius.circular(6),
+                        color: p.surfaceAlt,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        s.isActive ? 'Активна сейчас' : 'Завершена',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: s.isActive ? const Color(0xFF10B981) : context.p.inkMute,
-                        ),
+                      child: Icon(Icons.router_rounded,
+                          size: 20,
+                          color: sessions[i].isActive ? AppColors.ok : p.inkMute),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(sessions[i].ip,
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: p.ink,
+                                  fontFeatures: const [FontFeature.tabularFigures()])),
+                          const SizedBox(height: 2),
+                          Text('${sessions[i].startedAt}  ·  ${sessions[i].duration}',
+                              style: TextStyle(fontSize: 12.5, color: p.inkMute)),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Подключение', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
-                        const SizedBox(height: 2),
-                        Text(s.startedAt, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.p.ink)),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text('Длительность', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
-                        const SizedBox(height: 2),
-                        Text(s.duration, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.p.ink)),
-                      ],
-                    ),
+                    const SizedBox(width: 10),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Трафик (Вх/Исх)', style: TextStyle(fontSize: 11, color: context.p.inkMute)),
-                        const SizedBox(height: 2),
-                        Text('${s.rxBytes} / ${s.txBytes}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.brand)),
+                        if (sessions[i].isActive)
+                          const PulseDot(color: AppColors.ok, label: 'Сейчас', size: 6)
+                        else
+                          Text('↓ ${sessions[i].rxBytes}',
+                              style: TextStyle(fontSize: 12.5, color: p.inkMute)),
                       ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          );
-        },
-      );
-    }
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.wifi_rounded, size: 48, color: context.p.inkMute),
-            const SizedBox(height: 12),
-            Text(
-              'Интернет-сессии',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.p.ink),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Активные интернет-сессии отсутствуют. Сессии фиксируются автоматически при подключении оборудования.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: context.p.inkMute),
-            ),
+              ),
+            ],
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _MonthSummary extends StatelessWidget {
+  final DateTime month;
+  final MonthTotals totals;
+  const _MonthSummary({required this.month, required this.totals});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    Widget col(String label, double v, Color color) => Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 12.5, color: p.inkMute)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  v == 0 ? '0 ₽' : signedMoney(v),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                    color: v == 0 ? p.inkFaint : color,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: cardBox(context, radius: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(monthTitle(month),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: p.ink)),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              col('Пополнения', totals.income, AppColors.ok),
+              Container(width: 1, height: 40, color: p.line),
+              const SizedBox(width: 18),
+              col('Списания', totals.expense, p.ink),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OperationRow extends StatelessWidget {
+  final PaymentItem item;
+  const _OperationRow({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    final income = item.amount > 0;
+    final zero = item.amount == 0;
+    final title = item.operation.isNotEmpty
+        ? item.operation
+        : (item.comment.isNotEmpty ? item.comment : 'Операция');
+    final d = parseBillingDate(item.date);
+    final when = d == null
+        ? item.date
+        : [shortDate(d), shortTime(d)].where((s) => s.isNotEmpty).join(', ');
+    final who = item.operator.isNotEmpty && item.operator != 'SYSTEM' ? item.operator : null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: income ? AppColors.ok.withValues(alpha: 0.12) : p.surfaceAlt,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              zero
+                  ? Icons.info_outline_rounded
+                  : (income ? Icons.south_west_rounded : Icons.north_east_rounded),
+              size: 18,
+              color: income ? AppColors.ok : p.inkMute,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 14.5, fontWeight: FontWeight.w700, color: p.ink, height: 1.25)),
+                const SizedBox(height: 3),
+                Text(who == null ? when : '$when  ·  $who',
+                    style: TextStyle(fontSize: 12.5, color: p.inkMute)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            zero ? '0 ₽' : signedMoney(item.amount),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: zero ? p.inkFaint : (income ? AppColors.ok : p.ink),
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }
