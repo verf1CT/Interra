@@ -1,184 +1,84 @@
-```text
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠋⠀⢀⣠⣴⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠋⠁⠀⣀⣤⣾⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠋⠀⠀⢀⣤⣾⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠋⠀⠀⠀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣏⠁⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡄⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⣿⣿⠏⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⣿⡿⠁⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⣿⠟⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⣿⣿⠋⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⣿⡿⠁⠀⠀⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⣿⡿⠁⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-⡟⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-```
-
 # ЛК Интерра
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)
-![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
-![Tests](https://img.shields.io/badge/Vitest-15%2F15%20PASSED-brightgreen?logo=vitest)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
-![Architecture](https://img.shields.io/badge/Architecture-Clean%20Layered-orange)
-![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/verf1CT/Interra)
-[![Test Status](https://github.com/verf1CT/Interra/actions/workflows/ci.yml/badge.svg)](https://github.com/verf1CT/Interra/actions)
-[![codecov](https://codecov.io/gh/verf1CT/Interra/graph/badge.svg)](https://codecov.io/gh/verf1CT/Interra)
+[![CI](https://github.com/verf1CT/Interra/actions/workflows/ci.yml/badge.svg)](https://github.com/verf1CT/Interra/actions)
 
+Личный кабинет абонентов интернет-провайдера [Интерра](https://interra.ru) (Первоуральск). Приложение для iOS и Android, плюс небольшой сервер для push-уведомлений и чат-бота поддержки.
 
-Мобильное приложение «Личный кабинет» для абонентов интернет-провайдера
-**Интерра** (`interra.ru`, г. Первоуральск). Один код на iOS и Android (Flutter).
-Показывает веб-кабинет, нативно подтягивает баланс, шлёт push-уведомления и даёт
-полезные инструменты (диагностика сети, «кто в моём Wi-Fi», история уведомлений, deep links).
+В приложении можно посмотреть баланс и тариф, пополнить счёт, сходить в историю платежей и список услуг, глянуть тарифную сетку ТВ, проверить скорость и посмотреть, кто сидит в домашнем Wi-Fi. Есть светлая и тёмная темы, вход по Face ID, отпечатку или коду.
 
----
+## Из чего состоит
 
-## Статус проекта (август 2026)
+| Папка | Что внутри |
+|-------|-----------|
+| `app/` | мобильное приложение на Flutter, основной продукт |
+| `server/` | бэкенд на Node.js: push-рассылки, админка, чат-бот для Telegram и MAX |
+| `deploy/` | конфиги nginx и systemd для боевого сервера |
+| `docs/` | чеклисты публикации в магазины, настройка push, политика конфиденциальности |
 
-| Что | Состояние |
-|-----|-----------|
-| Само приложение | готово ✅ |
-| Уведомления & Deep Links (в приложении) | работают, проверено на телефоне ✅ |
-| История push в приложении | локальное хранение (SharedPreferences) ✅ |
-| Android-подпись (для магазинов) | настроена ✅ |
-| Бэкенд сервера уведомлений | TypeScript + Clean Architecture + Zod + Vitest (15 тестов) ✅ |
-| Telegram Bot управления | командное меню + `/wizard` мастер рассылок + бэкапы БД ✅ |
-| Watchdog мониторинг | авто-алерты сбоев (БД, RAM >450MB, uncaught Exception) в Telegram ✅ |
-| Production Docker | Dockerfile (multi-stage) + docker-compose + NGINX ✅ |
-| Сервер рассылки уведомлений | готово к запуску (`make docker-up`) 🚀 |
+## Как это работает
 
-**Полная картина «кто что делает» — в [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md).**
+У данных три независимых пути.
 
----
+1. **Приложение и биллинг.** Вход по телефону и SMS, баланс, платежи и услуги идут напрямую в кабинет UTM5 на `stat.interra.ru`. У UTM5 нет API, поэтому приложение скачивает страницы кабинета и разбирает HTML (`app/lib/services/cabinet_parser.dart`). Наш сервер в этом не участвует.
+2. **Приложение и наш сервер.** Приложение один раз регистрирует push-токен устройства на `push.interra.ru`.
+3. **Сервер и устройства.** Оператор запускает рассылку из веб-админки, из бота или по расписанию, сервер отправляет её через Firebase Cloud Messaging.
 
-## Куда смотреть (навигация)
+Если провайдер поменяет вёрстку кабинета, у абонентов пропадут баланс и тариф. Поэтому парсеры написаны как чистые функции и покрыты тестами на сохранённых страницах.
 
-| Вы… | Смотрите |
-|------|----------|
-| **админ сервера** — поднять сервер в Docker | [`docker-compose.yml`](docker-compose.yml) и `make docker-up`. Пошагово: [`server/ADMIN.md`](server/ADMIN.md), [`server/README.md`](server/README.md) |
-| **отвечаете за публикацию** в магазины | [`docs/STORE_CHECKLIST.md`](docs/STORE_CHECKLIST.md) — полный чеклист, [`docs/store/`](docs/store/) — тексты и анкеты витрин |
-| **разработчик** | [`app/README.md`](app/README.md) — про приложение, [`docs/INSTALL_FLUTTER.md`](docs/INSTALL_FLUTTER.md) — окружение |
-| **история изменений** | [`CHANGELOG.md`](CHANGELOG.md) — полная история всех изменений по версиям |
+## Запуск приложения
 
----
-
-## Что это и как устроено (простыми словами)
-
-Приложение — это личный кабинет провайдера в телефоне. Внутри три независимых части:
-
-1. **Приложение ↔ биллинг** — вход по номеру телефона и SMS, показ кабинета и
-   баланса. Идёт напрямую к биллингу провайдера, **наш сервер тут не участвует**.
-2. **Приложение → наш сервер** — приложение сообщает серверу «вот моё устройство,
-   шлите мне уведомления».
-3. **Наш сервер → приложение / Telegram** — оператор из веб-панели или Telegram-бота
-   рассылает уведомления (с поддержкой Deep Links на конкретные экраны).
-
-```mermaid
-flowchart TD
-    %% Define styles
-    classDef app fill:#e1f5fe,stroke:#02569b,stroke-width:2px,color:#000
-    classDef server fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef billing fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef tg fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-
-    subgraph User["📱 Мобильное приложение (Flutter)"]
-        A["<b>app/</b><br>• кабинет в WebView<br>• нативный баланс<br>• диагностика / Wi-Fi<br>• история пушей (локально)"]:::app
-    end
-
-    subgraph Backend["☁️ Наш бэкенд (Node.js)"]
-        B["<b>server/</b><br>• TypeScript + Zod + SQLite<br>• рассылка уведомлений<br>• Telegram Bot + /wizard<br>• Watchdog мониторинг"]:::server
-    end
-
-    subgraph Provider["🏢 Инфраструктура провайдера"]
-        C["<b>Биллинг</b><br>вход по SMS, страница<br>кабинета, баланс"]:::billing
-    end
-    
-    subgraph Admins["👨‍💻 Управление"]
-        D["<b>Telegram Чат Админов</b><br>алерты сбоев, бэкапы БД"]:::tg
-    end
-
-    %% Connections
-    A -- "регистрация push-токена" --> B
-    B -- "push (через Firebase)\n+ Deep Link" --> A
-    A -- "прямые запросы (HTTPS)" --> C
-    B -. "алерты и бэкапы" .-> D
-```
-
-## Состав репозитория
-
-| Папка / Файл        | Что это                                                                       |
-|---------------------|-------------------------------------------------------------------------------|
-| `app/`              | Мобильное приложение (Flutter, iOS + Android) — **основной продукт**           |
-| `server/`           | Бэкенд рассылки уведомлений (TypeScript/Node.js) + Telegram Bot + Watchdog    |
-| `docker-compose.yml`| Оркестрация сервера и NGINX reverse-proxy для развёртывания в Docker          |
-| `nginx.conf`        | NGINX конфигурация с поддержкой Gzip и пробросом заголовков SSL              |
-| `CHANGELOG.md`      | История изменений по стандарту Keep a Changelog                               |
-| `docs/`             | Статус релиза, деплой, настройка платформ, материалы для магазинов             |
-| `.github/`          | CI (GitHub Actions): анализ, тесты, сборка APK + AAB и генерация релизов       |
-
----
-
-## 🤖 Команды Telegram-Бота
-
-Сервер содержит встроенного авторизованного Telegram-бота для управления системой:
-
-- `🧙‍♂️ Пошаговая рассылка` / `/wizard` — интерактивный мастер (Заголовок → Текст → Deep Link → Предпросмотр → Отправка).
-- `📊 Статистика` / `/stats` — сводка по устройствам (iOS/Android), uptime, RAM и размеру SQLite.
-- `💾 Бэкап БД` / `/backup` — скачивание архива SQLite базы прямо в чат.
-- `🏓 Пинг` / `/ping` — мгновенная проверка отклика SQLite и состояния сервера.
-- `/push [--screen=diagnostics] <текст>` — быстрая массовая рассылка.
-- `/send <логин> <текст>` — точечный push конкретному абоненту.
-- `/find <логин/телефон>` — поиск устройства в базе данных.
-
----
-
-## 🛡 Watchdog Авто-Мониторинг Сбоев
-
-Бэкенд в фоновом режиме отслеживает здоровье системы (`watchdogService`):
-- **SQLite**: при потере связи отправляется экстренный alert `🚨 CRITICAL ALERT: Потеряно соединение с SQLite БД!`.
-- **RAM**: при превышении порога Heap >450MB высылается предупреждение `⚠️ WARNING ALERT`.
-- **Исключения**: автоматическая отправка стек-трейса при `uncaughtException` и `unhandledRejection`.
-- **Восстановление**: бот присылает `✅ RECOVERED`, когда компонент снова в норме.
-
----
-
-## Технический статус
-
-- Версия: **`1.0.0+2`** (единый источник — `app/pubspec.yaml`).
-- Приложение: `flutter analyze` — 0 замечаний; `flutter test` — 36/36.
-- Бэкенд: `npm run typecheck` — 0 ошибок TS; `npm run test` (Vitest) — 15/15 тестов пройдено; **Scalar UI + OpenAPI 3.1** по адресу `/docs`.
-- Docker: готов мультистадийный `Dockerfile` + `docker-compose.yml`.
-
----
-
-## Быстрый старт (для разработчика)
-
-Самый простой путь — использовать интерактивное меню из корня:
+Нужен Flutter 3.44 (версия зафиксирована в CI).
 
 ```bash
-make                                               # вызов графического цветного меню
-make dev-server                                    # запуск бэкенда в dev-режиме
-make dev-app                                       # запуск Flutter приложения
-make test                                          # прогон всех тестов (Vitest + Flutter)
-make docker-up                                     # запуск полного стека (Server + NGINX) в Docker
-make docker-down                                   # остановка Docker-контейнеров
+cd app
+flutter pub get
+flutter run
+flutter analyze lib test
+flutter test
 ```
 
-Или по папкам напрямую:
+Релизные сборки делает CI. Для `flutter build apk --release` локально нужен свой keystore.
+
+Если путь к проекту содержит кириллицу, `flutter analyze` на Windows может упасть с `FormatException`. Помогает `subst I: "<путь к репозиторию>"` и запуск анализа из `I:\app`.
+
+### Демо-режим
+
+Для скриншотов магазинов и проверки модераторами в приложении есть демо-режим с вымышленным абонентом. В релизных сборках он по умолчанию выключен.
+
+## Запуск сервера
+
+Нужен Node.js 18 или новее.
 
 ```bash
-# приложение (Flutter)
-cd app && flutter pub get && flutter run          # запуск на устройстве/эмуляторе
-flutter analyze lib test && flutter test          # проверки
-flutter build apk --release                        # Android-сборка (нужен Android SDK)
-
-# бэкенд (TypeScript)
 cd server
+cp .env.example .env     # заполнить ADMIN_TOKEN, ключи Firebase и ботов
 npm install
-npm run dev                                        # режим разработки (tsx watch)
-npm run test                                       # запуск Vitest тестов (15/15 PASSED)
-npm run build && npm start                         # продакшн сборка и запуск
+npm run dev              # с автоперезапуском
+npm test                 # тесты на Vitest, база в памяти
 ```
+
+Остальные команды:
+
+| Команда | Что делает |
+|---------|-----------|
+| `npm start` | обычный запуск |
+| `npm run bot` | Telegram-бот отдельным процессом |
+| `npm run bot:max` | бот для мессенджера MAX |
+| `npm run bot:sim` | диалог с ботом в консоли |
+| `npm run build-ui` | собрать админку из `admin-ui/` в `server/public` |
+
+Без `ADMIN_TOKEN` админские запросы отклоняются. Файлы `.env` и `serviceAccountKey.json` в репозиторий не попадают.
+
+Развёртывание описано в [`docs/DEPLOY.md`](docs/DEPLOY.md) и [`server/ADMIN.md`](server/ADMIN.md).
+
+## CI и релизы
+
+GitHub Actions прогоняет анализ и тесты Flutter, тесты сервера, собирает подписанные APK и AAB и IPA без подписи. После пуша в `main` публикуется релиз с тегом `build-<номер>`. IPA без подписи ставится через Sideloadly или AltStore. Из этих же артефактов приложение выкладывается в Google Play, RuStore и App Store.
+
+## Документация
+
+- [`docs/STORE_CHECKLIST.md`](docs/STORE_CHECKLIST.md) - что нужно для публикации в магазины
+- [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md) - что уже сделано и что осталось
+- [`docs/IOS_PUSH_SETUP.md`](docs/IOS_PUSH_SETUP.md), [`docs/RUSTORE_PUSH.md`](docs/RUSTORE_PUSH.md) - настройка push
+- [`docs/CHATBOT_GUIDE.md`](docs/CHATBOT_GUIDE.md) - сценарий чат-бота
+- [`docs/PRIVACY_POLICY.md`](docs/PRIVACY_POLICY.md) - политика конфиденциальности
