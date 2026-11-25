@@ -18,6 +18,7 @@ import '../services/push_service.dart';
 import '../services/update_check.dart';
 import '../widgets/privacy_shield.dart';
 import '../widgets/design_system.dart';
+import '../widgets/app_sheets.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
@@ -108,21 +109,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// выбор оформления (Авто/Светлая/Тёмная)
   Future<void> _pickTheme() async {
-    final picked = await showDialog<ThemeMode>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Тема'),
-        children: [
-          for (final m in ThemeMode.values)
-            ListTile(
-              title: Text(ThemeController.label(m)),
-              trailing: m == ThemeController.mode.value
-                  ? const Icon(Icons.check_rounded, color: AppColors.brand)
-                  : null,
-              onTap: () => Navigator.of(ctx).pop(m),
-            ),
-        ],
-      ),
+    final picked = await showChoiceSheet<ThemeMode>(
+      context,
+      title: 'Тема',
+      options: [for (final m in ThemeMode.values) (m, ThemeController.label(m))],
+      selected: ThemeController.mode.value,
     );
     if (picked == null) return;
     await ThemeController.set(picked);
@@ -130,21 +121,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// выбор задержки автоблокировки - простой диалог с вариантами
   Future<void> _pickLockDelay() async {
-    final picked = await showDialog<int>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Запрашивать вход'),
-        children: [
-          for (final o in Biometric.lockDelayOptions)
-            ListTile(
-              title: Text(o.$2),
-              trailing: o.$1 == _lockDelayMs
-                  ? const Icon(Icons.check_rounded, color: AppColors.brand)
-                  : null,
-              onTap: () => Navigator.of(ctx).pop(o.$1),
-            ),
-        ],
-      ),
+    final picked = await showChoiceSheet<int>(
+      context,
+      title: 'Запрашивать вход',
+      options: [for (final o in Biometric.lockDelayOptions) (o.$1, o.$2)],
+      selected: _lockDelayMs,
     );
     if (picked == null) return;
     await Biometric.setLockDelayMs(picked);
@@ -217,28 +198,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmUnlinkApps() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Отвязать все приложения?'),
-        content: const Text(
+    final confirmed = await showConfirmSheet(
+      context,
+      icon: Icons.link_off_rounded,
+      title: 'Отвязать все приложения?',
+      message:
           'Это завершит авторизованные сессии на всех остальных устройствах. Текущее приложение останется активным.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Отвязать все'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Отвязать все',
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _unlinkingApps = true);
 
@@ -276,27 +245,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Выйти из аккаунта?'),
-        content: const Text(
+    final confirmed = await showConfirmSheet(
+      context,
+      icon: Icons.logout_rounded,
+      title: 'Выйти из аккаунта?',
+      message:
           'Для повторного входа потребуется получить SMS-код на привязанный номер телефона.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Выйти'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Выйти',
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await _logout();
     }
   }
