@@ -57,7 +57,10 @@ class _HomeTabState extends State<HomeTab> {
   void didUpdateWidget(HomeTab old) {
     super.didUpdateWidget(old);
     // сменился договор - абонплата и платежи у него свои
-    if (old.data.account != widget.data.account) _loadExtras();
+    if (old.data.account != widget.data.account ||
+        old.data.fullName != widget.data.fullName) {
+      _loadExtras();
+    }
   }
 
   /// абонплата и последний платёж - второстепенные данные: грузим после

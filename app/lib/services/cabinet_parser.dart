@@ -91,9 +91,31 @@ class CabinetParser {
     }
   }
 
+  /// ссылка `?login=…` выбранного договора, если у номера их несколько.
+  /// null - работаем с договором по умолчанию (ссылка из `cmd=open`).
+  /// от неё зависят все страницы кабинета: тариф, услуги, история
+  static String? activeLogin;
+
+  /// страница кабинета конкретного договора: берём из ссылки только значение
+  /// `login=…` и грузим `aaainfo` (контент рендерит именно он), а не оболочку.
+  /// если в строке нет `login=`, возвращает null
+  @visibleForTesting
+  static String? accountPageUrl(String href, {String oper = 'info'}) {
+    final m = RegExp(r'login=([^&#\s]+)').firstMatch(href);
+    if (m == null) return null;
+    return AppConfig.cabinetUrl('?login=${m.group(1)}', oper: oper);
+  }
+
+  /// заглушки вместо имени, которые парсер подставляет сам
+  static bool isPlaceholderName(String name) =>
+      name.isEmpty || name == 'Абонент' || name.startsWith('Договор №');
+
   static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
     String liveUrl;
-    if (directUrl != null && directUrl.isNotEmpty) {
+    final explicit = directUrl != null && directUrl.isNotEmpty ? directUrl : activeLogin;
+    if (explicit != null && accountPageUrl(explicit, oper: oper) != null) {
+      liveUrl = accountPageUrl(explicit, oper: oper)!;
+    } else if (directUrl != null && directUrl.isNotEmpty) {
       if (directUrl.startsWith('http')) {
         liveUrl = directUrl;
       } else {
@@ -654,19 +676,29 @@ class CabinetParser {
     }
   }
 
+  /// [targetUrl] - ссылка выбранного договора. без неё грузим договор по
+  /// умолчанию, а если номер ведёт на страницу выбора - первый из списка
   static Future<CabinetData?> fetchCabinetData(String appToken, {String? targetUrl}) async {
+    if (targetUrl != null) {
+      activeLogin = targetUrl;
+    } else {
+      activeLogin = null;
+    }
     final htmlString = await _fetchHtml(appToken, oper: 'info', directUrl: targetUrl);
     var data = parseCabinetHtml(htmlString);
 
-    if (data.account.isEmpty && data.accounts.isNotEmpty) {
+    // на странице выбранного договора ссылки навигации тоже содержат login=,
+    // поэтому «первый договор» подставляем только для страницы выбора
+    if (targetUrl == null && data.account.isEmpty && data.accounts.isNotEmpty) {
       try {
         final first = data.accounts.first;
+        activeLogin = first.loginUrl;
         final subHtml = await _fetchHtml(appToken, directUrl: first.loginUrl);
         final subData = parseCabinetHtml(subHtml);
         data = CabinetData(
           balance: subData.balance,
           account: subData.account.isNotEmpty ? subData.account : first.accountId,
-          fullName: subData.fullName != 'Абонент' ? subData.fullName : first.name,
+          fullName: !isPlaceholderName(subData.fullName) ? subData.fullName : first.name,
           tariff: subData.tariff,
           address: subData.address.isNotEmpty ? subData.address : first.address,
           login: subData.login,
@@ -677,7 +709,8 @@ class CabinetParser {
           rawHtml: subHtml,
         );
       } catch (e) {
-        debugPrint('Auto-load first account error: ');
+        activeLogin = null;
+        debugPrint('Auto-load first account error: $e');
       }
     }
 
@@ -704,6 +737,9 @@ class CabinetParser {
               address: data.address,
               login: data.login,
               needsPassportData: data.needsPassportData,
+              isRestricted: data.isRestricted,
+              recommendedPayment: data.recommendedPayment,
+              accounts: data.accounts,
               rawHtml: data.rawHtml,
             );
           }

@@ -55,6 +55,24 @@ void main() {
       expect(data.accounts[2].address, 'Береговая 56-51');
     });
 
+    test('accountPageUrl берёт login из ссылки и грузит aaainfo нужной страницы', () {
+      expect(
+        CabinetParser.accountPageUrl('?login=30407call.123', oper: 'tariffs'),
+        'https://stat.interra.ru/cgi-bin/utm5/aaainfo?login=30407call.123&oper=tariffs',
+      );
+      expect(
+        CabinetParser.accountPageUrl('aaainfo?login=X.1&oper=info'),
+        'https://stat.interra.ru/cgi-bin/utm5/aaainfo?login=X.1&oper=info',
+      );
+      expect(CabinetParser.accountPageUrl('/cgi-bin/utm5/other'), isNull);
+    });
+
+    test('isPlaceholderName узнаёт заглушки парсера', () {
+      expect(CabinetParser.isPlaceholderName('Абонент'), true);
+      expect(CabinetParser.isPlaceholderName('Договор № 192351'), true);
+      expect(CabinetParser.isPlaceholderName('Мосолов Александр'), false);
+    });
+
     test('safeTariff == "Нет тарифа" does not trigger needsPassportData without explicit notice', () {
       const html = '''
         <html>

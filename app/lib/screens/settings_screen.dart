@@ -277,6 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       debugPrint('logout: удаление регистрации в биллинге пропущено: $e');
     }
     await AuthStore().clear();
+    CabinetParser.activeLogin = null;
     await Biometric.setEnabled(false); // снимаем биометрический замок при выходе
     await PinLock.clear(); // и код-пароль
     // персональные данные не должны переживать выход: снимок кабинета

@@ -110,7 +110,36 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     }
 
     try {
-      final data = await CabinetParser.fetchCabinetData(token);
+      // обновление не должно сбрасывать выбранный договор на первый
+      final selected = _data != null ? CabinetParser.activeLogin : null;
+      CabinetData? data;
+      if (selected != null) {
+        try {
+          data = await CabinetParser.fetchCabinetData(token, targetUrl: selected);
+        } catch (e) {
+          if (e.toString().contains('auth_expired')) rethrow;
+          data = null; // ссылка договора протухла - грузим по умолчанию
+        }
+        if (data != null) {
+          final prev = _data!;
+          data = CabinetData(
+            balance: data.balance,
+            account: data.account,
+            fullName: !CabinetParser.isPlaceholderName(data.fullName)
+                ? data.fullName
+                : prev.fullName,
+            tariff: data.tariff,
+            address: data.address.isNotEmpty ? data.address : prev.address,
+            login: data.login,
+            needsPassportData: data.needsPassportData,
+            isRestricted: data.isRestricted,
+            recommendedPayment: data.recommendedPayment,
+            accounts: prev.accounts, // на странице договора списка выбора нет
+            rawHtml: data.rawHtml,
+          );
+        }
+      }
+      data ??= await CabinetParser.fetchCabinetData(token);
       if (data == null) throw Exception('data is null');
 
       await BalanceStore.update(data.balance, account: data.account);
@@ -307,7 +336,9 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
             account: newData.account.isNotEmpty
                 ? newData.account
                 : (_payAccounts.value[acc.loginUrl] ?? ''),
-            fullName: newData.fullName != 'Абонент' ? newData.fullName : acc.name,
+            fullName: !CabinetParser.isPlaceholderName(newData.fullName)
+                ? newData.fullName
+                : acc.name,
             tariff: newData.tariff,
             address: newData.address.isNotEmpty ? newData.address : acc.address,
             login: newData.login,
