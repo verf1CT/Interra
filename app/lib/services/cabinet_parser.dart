@@ -676,6 +676,24 @@ class CabinetParser {
     }
   }
 
+  /// страница без шума: скрипты, стили, картинки и подвал выкидываем, пробелы
+  /// схлопываем, длинные страницы режем. остаётся то, по чему работает парсер
+  static String _slimHtml(String html) {
+    final doc = parser.parse(html);
+    doc
+        .querySelectorAll(
+            'script, style, noscript, svg, img, link, meta, head, iframe, [class*="nav-footer"], footer')
+        .forEach((e) => e.remove());
+    var body = (doc.body?.outerHtml ?? html)
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'>\s+<'), '>\n<');
+    const limit = 15000;
+    if (body.length > limit) {
+      body = '${body.substring(0, limit)}\n...[обрезано, всего ${body.length}]';
+    }
+    return body;
+  }
+
   /// сырые страницы кабинета для разбора вёрстки: список договоров и страницы
   /// выбранного (главная и тарифы). нужны, чтобы чинить разбор по настоящему
   /// HTML, а не по догадкам. заголовок каждой страницы - адрес запроса
@@ -684,7 +702,7 @@ class CabinetParser {
     Future<void> add(String title, Future<String> Function() load) async {
       out.writeln('\n===== $title =====');
       try {
-        out.writeln(await load());
+        out.writeln(_slimHtml(await load()));
       } catch (e) {
         out.writeln('ОШИБКА: $e');
       }
