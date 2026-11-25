@@ -59,6 +59,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     QuickActionsService.homeRequested.removeListener(_refreshFromEvent);
     QuickActionsService.paymentRequested.removeListener(_openPayment);
     DemoMode.isEnabled.removeListener(_onDemoChanged);
+    _payAccounts.dispose();
     super.dispose();
   }
 
@@ -158,8 +159,25 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     PassportFormSheet.show(context, onSaved: () => _refresh());
   }
 
+  /// loginUrl договора -> номер для оплаты, подгружается при открытии окна выбора
+  final ValueNotifier<Map<String, String>> _payAccounts = ValueNotifier({});
+
+  Future<void> _loadPayAccounts() async {
+    if (DemoMode.isEnabled.value) return;
+    final token = await AuthStore().appToken;
+    if (token == null) return;
+    for (final acc in _data?.accounts ?? const <AccountOption>[]) {
+      if (_payAccounts.value.containsKey(acc.loginUrl)) continue;
+      CabinetParser.fetchPayAccount(token, acc.loginUrl).then((number) {
+        if (!mounted || number.isEmpty) return;
+        _payAccounts.value = {..._payAccounts.value, acc.loginUrl: number};
+      });
+    }
+  }
+
   void _showAccountPicker() {
     if (_data == null || _data!.accounts.isEmpty) return;
+    _loadPayAccounts();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -194,10 +212,14 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
               ),
               const SizedBox(height: 12),
               for (final acc in _data!.accounts) ...[
-                Builder(
-                  builder: (_) {
-                    final isCurrent = (_data!.account.isNotEmpty && acc.accountId == _data!.account) ||
-                        (_data!.fullName == acc.name);
+                ValueListenableBuilder<Map<String, String>>(
+                  valueListenable: _payAccounts,
+                  builder: (_, payAccounts, __) {
+                    // номер для оплаты; в демо и пока не загрузился - из списка
+                    final number = payAccounts[acc.loginUrl] ??
+                        (DemoMode.isEnabled.value ? acc.accountId : '');
+                    final isCurrent = (number.isNotEmpty && number == _data!.account) ||
+                        (number.isEmpty && _data!.fullName == acc.name);
                     return Card(
                       elevation: 0,
                       color: isCurrent
@@ -224,12 +246,15 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
                             color: context.p.ink,
                           ),
                         ),
-                        subtitle: acc.address.isNotEmpty
+                        subtitle: (acc.address.isNotEmpty || number.isNotEmpty)
                             ? Text(
-                                acc.address,
+                                [
+                                  if (number.isNotEmpty) 'Л/С: $number',
+                                  if (acc.address.isNotEmpty) acc.address,
+                                ].join('\n'),
                                 style: TextStyle(fontSize: 12.5, color: context.p.inkMute),
                               )
-                            : (acc.accountId.isNotEmpty ? Text('Л/С: ${acc.accountId}') : null),
+                            : null,
                         trailing: isCurrent
                             ? const Icon(Icons.check_circle_rounded, color: AppColors.brand)
                             : null,
@@ -279,7 +304,9 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         setState(() {
           _data = CabinetData(
             balance: newData.balance,
-            account: newData.account.isNotEmpty ? newData.account : acc.accountId,
+            account: newData.account.isNotEmpty
+                ? newData.account
+                : (_payAccounts.value[acc.loginUrl] ?? ''),
             fullName: newData.fullName != 'Абонент' ? newData.fullName : acc.name,
             tariff: newData.tariff,
             address: newData.address.isNotEmpty ? newData.address : acc.address,

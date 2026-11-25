@@ -641,6 +641,19 @@ class CabinetParser {
     return items;
   }
 
+  /// номер лицевого счёта, по которому оплачивают, для договора из списка выбора.
+  /// в ссылке `?login=…` лежит внутренний логин биллинга, а не этот номер,
+  /// поэтому приходится открыть страницу самого договора. пустая строка - не нашли
+  static Future<String> fetchPayAccount(String appToken, String loginUrl) async {
+    try {
+      final html = await _fetchHtml(appToken, directUrl: loginUrl);
+      return parseCabinetHtml(html).account;
+    } catch (e) {
+      debugPrint('fetchPayAccount error: $e');
+      return '';
+    }
+  }
+
   static Future<CabinetData?> fetchCabinetData(String appToken, {String? targetUrl}) async {
     final htmlString = await _fetchHtml(appToken, oper: 'info', directUrl: targetUrl);
     var data = parseCabinetHtml(htmlString);
