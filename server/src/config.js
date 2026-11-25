@@ -22,7 +22,7 @@ export const config = {
 
 if (!config.adminToken) {
   console.warn(
-    '[config] ADMIN_TOKEN не задан — админ-эндпоинты будут отклонять все запросы. ' +
+    '[config] ADMIN_TOKEN не задан - админ-эндпоинты будут отклонять все запросы. ' +
       'Скопируйте .env.example в .env и задайте ADMIN_TOKEN.'
   );
 }

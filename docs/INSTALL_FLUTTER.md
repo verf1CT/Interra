@@ -1,9 +1,9 @@
 # Установка окружения для сборки приложения (Windows)
 
 Нужно один раз поставить Flutter SDK + Android-инструменты. iOS-версию можно
-собрать только на macOS, поэтому ниже — про Android (он же даёт основную аудиторию).
+собрать только на macOS, поэтому ниже - про Android (он же даёт основную аудиторию).
 
-## Вариант А — быстро, через winget (рекомендуется)
+## Вариант А - быстро, через winget (рекомендуется)
 
 Откройте PowerShell и выполните:
 
@@ -12,7 +12,7 @@ winget install --id Google.Flutter -e        # Flutter SDK (включает Dar
 winget install --id Google.AndroidStudio -e   # Android Studio + Android SDK
 ```
 
-> Если `winget install Google.Flutter` не находит пакет — используйте Вариант Б.
+> Если `winget install Google.Flutter` не находит пакет - используйте Вариант Б.
 
 После установки **перезапустите терминал** и проверьте:
 
@@ -20,7 +20,7 @@ winget install --id Google.AndroidStudio -e   # Android Studio + Android SDK
 flutter --version
 ```
 
-## Вариант Б — вручную
+## Вариант Б - вручную
 
 1. Скачайте Flutter SDK: https://docs.flutter.dev/get-started/install/windows
    Распакуйте, например, в `C:\src\flutter`.
@@ -39,9 +39,9 @@ flutter doctor
 ```
 
 Добивайтесь, чтобы в `flutter doctor` были зелёные галочки у:
-- ✓ Flutter
-- ✓ Android toolchain
-- ✓ Android Studio
+- Flutter
+- Android toolchain
+- Android Studio
 
 (Пункты про Visual Studio / Chrome / VS Code не обязательны для сборки APK.)
 
@@ -53,6 +53,6 @@ flutter doctor
 
 ## Что дальше
 
-После `flutter doctor` без критичных ошибок — переходите к
+После `flutter doctor` без критичных ошибок - переходите к
 [`app/README.md`](../app/README.md): там команды для генерации платформенных
 папок и запуска приложения.

@@ -16,7 +16,7 @@ export async function runBroadcast({ title, body, target, data, imageUrl, link }
   // link уходит в data, чтобы приложение открыло его по тапу
   const outData = { ...(data || {}), ...(link ? { link } : {}) };
 
-  // журналируем ДО отправки — нужен id, чтобы приложение вернуло его при
+  // журналируем ДО отправки - нужен id, чтобы приложение вернуло его при
   // открытии (open-rate). Счётчики доставки проставим после отправки
   const logged = logBroadcast({
     title,

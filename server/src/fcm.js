@@ -11,12 +11,12 @@ if (config.firebaseServiceAccount && fs.existsSync(config.firebaseServiceAccount
   admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
   messaging = admin.messaging();
   enabled = true;
-  console.log('[fcm] Firebase инициализирован — push включён.');
+  console.log('[fcm] Firebase инициализирован - push включён.');
 } else {
   console.warn(
     '[fcm] Ключ Firebase не найден (' +
       (config.firebaseServiceAccount || 'FIREBASE_SERVICE_ACCOUNT не задан') +
-      '). Push отключён — сообщения будут только логироваться (dry-run).'
+      '). Push отключён - сообщения будут только логироваться (dry-run).'
   );
 }
 
@@ -53,7 +53,7 @@ export async function sendToTokens(tokens, { title, body, data, imageUrl }) {
     const res = await messaging.sendEachForMulticast({
       tokens: batch,
       // imageUrl в notification рисуется системным треем на Android и (при
-      // наличии Notification Service Extension) на iOS — без кода в приложении
+      // наличии Notification Service Extension) на iOS - без кода в приложении
       notification: imageUrl ? { title, body, imageUrl } : { title, body },
       data: stringData,
       android: {

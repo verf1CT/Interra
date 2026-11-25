@@ -39,7 +39,7 @@ class _PaymentModalState extends State<PaymentModal> {
   @override
   void initState() {
     super.initState();
-    if (widget.account.isNotEmpty && widget.account != '—') {
+    if (widget.account.isNotEmpty && widget.account != '-') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Clipboard.setData(ClipboardData(text: widget.account));
         if (mounted) {
@@ -59,7 +59,7 @@ class _PaymentModalState extends State<PaymentModal> {
   }
 
   void _copyAccount() {
-    if (widget.account.isEmpty || widget.account == '—') return;
+    if (widget.account.isEmpty || widget.account == '-') return;
     Clipboard.setData(ClipboardData(text: widget.account));
     HapticFeedback.lightImpact();
     setState(() => _copied = true);
@@ -74,8 +74,8 @@ class _PaymentModalState extends State<PaymentModal> {
   @override
   Widget build(BuildContext context) {
     final displayAccount =
-        (widget.account.isNotEmpty && widget.account != '—') ? widget.account : '—';
-    final cardPayUrl = (widget.account.isNotEmpty && widget.account != '—')
+        (widget.account.isNotEmpty && widget.account != '-') ? widget.account : '-';
+    final cardPayUrl = (widget.account.isNotEmpty && widget.account != '-')
         ? 'https://interra.ru/sberbank/?epay=${widget.account}'
         : 'https://interra.ru/sberbank/';
 

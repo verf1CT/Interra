@@ -127,7 +127,7 @@ export class BotEngine {
       if (cleanPhone.length < 10) {
         return {
           stepId: 'NET_01',
-          text: '⚠️ Пожалуйста, введите корректный номер телефона (10 или 11 цифр, например: +79991234567):',
+          text: 'Пожалуйста, введите корректный номер телефона (10 или 11 цифр, например: +79991234567):',
           buttons: [
             { text: '↩️ Назад в меню', next: 'CURRENT_01' }
           ]
@@ -191,7 +191,7 @@ export class BotEngine {
       buttons: (currentStepConfig.buttons && currentStepConfig.buttons.length > 0)
         ? currentStepConfig.buttons
         : [
-            { text: '💬 Позвать оператора', next: 'OP_01' },
+            { text: 'Позвать оператора', next: 'OP_01' },
             { text: '↩️ В главное меню', next: 'START_01' }
           ]
     };
@@ -254,7 +254,7 @@ export class BotEngine {
 
       case 'TAR_CITY_SELECTED': {
         const tariffs = await this.billing.getTariffs(vars.user_city);
-        vars.tariffs_list = tariffs.map((t, i) => `${i + 1}. «${t.name}» — ${t.price}`).join('\n');
+        vars.tariffs_list = tariffs.map((t, i) => `${i + 1}. «${t.name}» - ${t.price}`).join('\n');
         break;
       }
 

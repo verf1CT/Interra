@@ -29,7 +29,7 @@ function displayStep(step) {
 }
 
 async function run() {
-  console.log('🚀 Запуск симулятора чат-бота «Интерра»...');
+  console.log('Запуск симулятора чат-бота «Интерра»...');
   let currentStep = await engine.handleStart(userId);
   displayStep(currentStep);
 
@@ -49,10 +49,10 @@ function promptUser(currentStep) {
     const num = parseInt(input, 10);
     if (!isNaN(num) && currentStep.buttons && num >= 1 && num <= currentStep.buttons.length) {
       const chosenButton = currentStep.buttons[num - 1];
-      console.log(`\n👉 Вы нажали кнопку: "${chosenButton.text}"`);
+      console.log(`\nВы нажали кнопку: "${chosenButton.text}"`);
 
       if (chosenButton.url) {
-        console.log(`🌐 Переход по внешней ссылке: ${chosenButton.url}`);
+        console.log(`Переход по внешней ссылке: ${chosenButton.url}`);
       }
 
       if (chosenButton.next) {
@@ -61,19 +61,19 @@ function promptUser(currentStep) {
 
         // Если автопереход (например, сброс порта)
         if (currentStep.isAutoTransition && currentStep.next) {
-          console.log('⏳ Ожидание завершения операции сброса (симуляция 1.5 сек)...');
+          console.log('Ожидание завершения операции сброса (симуляция 1.5 сек)...');
           await new Promise(r => setTimeout(r, 1500));
           currentStep = await engine.transitionTo(engine.getSession(userId), currentStep.next);
           displayStep(currentStep);
         }
       }
     } else {
-      console.log(`\n💬 Вы отправили текст: "${input}"`);
+      console.log(`\nВы отправили текст: "${input}"`);
       currentStep = await engine.handleTextInput(userId, input);
       displayStep(currentStep);
 
       if (currentStep.isAutoTransition && currentStep.next) {
-        console.log('⏳ Ожидание операции...');
+        console.log('Ожидание операции...');
         await new Promise(r => setTimeout(r, 1500));
         currentStep = await engine.transitionTo(engine.getSession(userId), currentStep.next);
         displayStep(currentStep);

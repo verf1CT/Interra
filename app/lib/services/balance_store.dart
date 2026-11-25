@@ -94,7 +94,7 @@ class BalanceStore {
     if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return;
     try {
       if (Platform.isIOS) await HomeWidget.setAppGroupId(_appGroup);
-      await HomeWidget.saveWidgetData('balance_text', '—');
+      await HomeWidget.saveWidgetData('balance_text', '-');
       await HomeWidget.saveWidgetData('balance_updated', '');
       await HomeWidget.saveWidgetData('account_text', '');
       await HomeWidget.saveWidgetData('bbb_token', null);

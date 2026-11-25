@@ -341,7 +341,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Доступна новая версия $latest — обновите приложение при следующей установке.',
+                        'Доступна новая версия $latest - обновите приложение при следующей установке.',
                         style: TextStyle(
                           fontFamily: kFont,
                           fontSize: 13,

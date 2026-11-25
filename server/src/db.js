@@ -254,7 +254,7 @@ export function markScheduledSent(id) {
   return db.prepare("UPDATE scheduled_broadcasts SET status = 'sent' WHERE id = ?").run(id);
 }
 
-/** сводные счётчики по всем рассылкам — для дашборда аналитики в панели. */
+/** сводные счётчики по всем рассылкам - для дашборда аналитики в панели. */
 export function broadcastStats() {
   return db
     .prepare(

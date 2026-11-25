@@ -1,12 +1,12 @@
-# iOS push (APNs) — активация после оплаты Apple Developer
+# iOS push (APNs) - активация после оплаты Apple Developer
 
 Пока аккаунт ($99/год) не активен, push на iOS работать не может (нужен платный
 App ID с Push-капабилити и APNs-ключ в Firebase). Всё, что можно подготовить
-заранее, уже лежит в репозитории — ниже шаги, чтобы включить push за ~15 минут,
+заранее, уже лежит в репозитории - ниже шаги, чтобы включить push за ~15 минут,
 когда подписка активируется.
 
 > Файл `app/ios/Runner/Runner.entitlements` уже создан, но **намеренно не подключён**
-> к подписи — иначе текущая сборка на free-provisioning перестанет ставиться.
+> к подписи - иначе текущая сборка на free-provisioning перестанет ставиться.
 
 ## 1. В Apple Developer (developer.apple.com)
 1. **Certificates, Identifiers & Profiles → Identifiers** → App ID `ru.interra.lkInterra`.
@@ -28,7 +28,7 @@ App ID с Push-капабилити и APNs-ключ в Firebase). Всё, чт�
 > `CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements` для Debug и Release.
 
 ## 4. Проверка
-1. `cd app && flutter run --release -d <device>` — приложение запросит разрешение на
+1. `cd app && flutter run --release -d <device>` - приложение запросит разрешение на
    уведомления (`PushService.init()` уже это делает).
 2. В логах должен появиться FCM-токен (`registerCurrentToken`), устройство
    зарегистрируется на нашем бэкенде (`server`, `POST /api/devices/register`).
@@ -37,27 +37,27 @@ App ID с Push-капабилити и APNs-ключ в Firebase). Всё, чт�
 ## Перед релизом
 - Для App Store сменить `aps-environment` на `production` (Xcode делает это
   автоматически для Release-сборки при правильном профиле).
-- Проверить, что APNs-ключ в Firebase — один на Debug и Production (так и есть для .p8).
+- Проверить, что APNs-ключ в Firebase - один на Debug и Production (так и есть для .p8).
 
 ## Картинки в пушах на iOS (Notification Service Extension)
 
 Rich-пуши с картинкой на iOS показываются **только** через Notification Service
 Extension (на Android картинку рисует система сама). Бэкенд уже шлёт
-`mutable-content: 1` и URL картинки в `fcm_options.image` — осталось добавить
+`mutable-content: 1` и URL картинки в `fcm_options.image` - осталось добавить
 расширение в Xcode.
 
 Готовые исходники лежат в `app/ios/NotificationService/`
 (`NotificationService.swift` качает картинку и прикрепляет её; `Info.plist`).
 
 Подключение (один раз, нужен Xcode):
-1. **File → New → Target… → Notification Service Extension**, имя — `NotificationService`,
+1. **File → New → Target… → Notification Service Extension**, имя - `NotificationService`,
    Bundle Identifier `ru.interra.lkInterra.NotificationService`, язык Swift.
-   На вопрос «Activate scheme?» — Cancel.
-2. Xcode создаст target и свои `NotificationService.swift` + `Info.plist` —
+   На вопрос «Activate scheme?» - Cancel.
+2. Xcode создаст target и свои `NotificationService.swift` + `Info.plist` -
    **замените их содержимым готовых файлов** из `app/ios/NotificationService/`
    (или удалите сгенерированные и добавьте наши в target Membership расширения).
 3. Deployment Target расширения ≥ iOS 12.
-4. Собрать релиз и отправить тестовый rich-пуш из панели с полем «Картинка» —
+4. Собрать релиз и отправить тестовый rich-пуш из панели с полем «Картинка» -
    на iPhone уведомление раскроется с изображением.
 
 > Без этого шага iOS-уведомления доставляются нормально, но **без картинки**

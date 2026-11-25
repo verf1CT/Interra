@@ -17,7 +17,7 @@ adminRouter.get('/stats', (req, res) => {
   });
 });
 
-/** GET /api/admin/devices — список зарегистрированных устройств */
+/** GET /api/admin/devices - список зарегистрированных устройств */
 adminRouter.get('/devices', (req, res) => {
   const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
@@ -25,7 +25,7 @@ adminRouter.get('/devices', (req, res) => {
   res.json(listDevices({ limit, offset, search }));
 });
 
-/** GET /api/admin/broadcasts — история рассылок */
+/** GET /api/admin/broadcasts - история рассылок */
 adminRouter.get('/broadcasts', (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
   res.json({ items: recentBroadcasts(limit) });
@@ -56,7 +56,7 @@ function validateBroadcast({ title, body, target, imageUrl, link }) {
  *   data?: object,
  *   imageUrl?: string,  // https-картинка в уведомлении (rich push)
  *   link?: string,      // https-ссылка, открывается по тапу (кладётся в data.link)
- *   sendAt?: string     // если задано — не слать сейчас, а запланировать на это время
+ *   sendAt?: string     // если задано - не слать сейчас, а запланировать на это время
  * }
  */
 adminRouter.post('/broadcast', async (req, res) => {
@@ -69,7 +69,7 @@ adminRouter.post('/broadcast', async (req, res) => {
   if (sendAt != null && sendAt !== '') {
     const when = new Date(sendAt);
     if (Number.isNaN(when.getTime())) {
-      return res.status(400).json({ error: 'sendAt — некорректная дата/время' });
+      return res.status(400).json({ error: 'sendAt - некорректная дата/время' });
     }
     if (when.getTime() <= Date.now()) {
       return res.status(400).json({ error: 'sendAt должен быть в будущем' });
@@ -83,12 +83,12 @@ adminRouter.post('/broadcast', async (req, res) => {
   res.json({ ok: true, ...result });
 });
 
-/** GET /api/admin/scheduled — ожидающие отправки рассылки. */
+/** GET /api/admin/scheduled - ожидающие отправки рассылки. */
 adminRouter.get('/scheduled', (req, res) => {
   res.json({ scheduled: listScheduled() });
 });
 
-/** POST /api/admin/scheduled/:id/cancel — отменить запланированную рассылку. */
+/** POST /api/admin/scheduled/:id/cancel - отменить запланированную рассылку. */
 adminRouter.post('/scheduled/:id/cancel', (req, res) => {
   const r = cancelScheduled(Number(req.params.id));
   res.json({ ok: true, canceled: r.changes });

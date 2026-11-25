@@ -468,7 +468,7 @@ function App() {
                             +{d.client_login}
                           </span>
                         ) : (
-                          <span style={{ color: 'var(--text-dim)' }}>—</span>
+                          <span style={{ color: 'var(--text-dim)' }}>-</span>
                         )}
                       </td>
                       <td>
@@ -484,7 +484,7 @@ function App() {
                             Написать
                           </button>
                         ) : (
-                          <span style={{ color: 'var(--text-dim)' }}>—</span>
+                          <span style={{ color: 'var(--text-dim)' }}>-</span>
                         )}
                       </td>
                     </tr>

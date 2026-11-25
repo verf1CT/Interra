@@ -1,16 +1,16 @@
-# React + Vite
+# Панель оператора
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Веб-панель для рассылки push-уведомлений. React 19 и Vite, весь интерфейс в `src/App.jsx`. Три вкладки: рассылка, аудитория и журнал.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run build    # сборка в ../public
+npm run lint     # oxlint
+npm run dev      # dev-сервер Vite
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Запросы идут на относительные пути `/api/...`, а прокси в `vite.config.js` нет, поэтому под `npm run dev` панель до API не достучится. Удобнее собрать панель и открыть её через сам сервер (`npm run dev` в `server/`, адрес `http://localhost:8080`).
 
-## React Compiler
+Сборка пишет в `server/public` (`outDir: '../public'`), оттуда её раздаёт сервер. Папка `public/` закоммичена как результат сборки, так что после правок панели её нужно пересобрать и закоммитить.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Для входа нужен `ADMIN_TOKEN` сервера, панель запоминает его в localStorage. API описан в [`../README.md`](../README.md).

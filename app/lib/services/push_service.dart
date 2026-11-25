@@ -109,12 +109,12 @@ class PushService {
   }
 
   /// тап по локальному уведомлению (показанному на переднем плане):
-  /// payload — это ссылка, положенная в _showForeground
+  /// payload - это ссылка, положенная в _showForeground
   static void _onLocalTap(NotificationResponse response) {
     _openLink(response.payload);
   }
 
-  /// открывает ссылку во внешнем браузере. только https — чтобы пуш не мог
+  /// открывает ссылку во внешнем браузере. только https - чтобы пуш не мог
   /// открыть произвольную схему
   static Future<void> _openLink(String? link) async {
     try {

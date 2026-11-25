@@ -142,7 +142,7 @@ class LanScanner {
     return null; // _http и прочее - неоднозначно
   }
 
-  /// сканирует подсеть. [onProgress] — доля 0..1. параллелизм сокетов ограничен
+  /// сканирует подсеть. [onProgress] - доля 0..1. параллелизм сокетов ограничен
   /// семафором, поэтому запускаем сразу все хосты
   static Future<ScanResult> scan({void Function(double)? onProgress}) async {
     final sub = await _subnet();

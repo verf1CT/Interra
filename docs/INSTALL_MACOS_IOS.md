@@ -1,17 +1,17 @@
 # Сборка iOS-версии на Mac
 
-iOS-папка (`app/ios/`) уже сгенерирована, Dart-код общий с Android — отдельное
-приложение писать не нужно. Ниже — что сделать на Mac, чтобы собрать и запустить
+iOS-папка (`app/ios/`) уже сгенерирована, Dart-код общий с Android - отдельное
+приложение писать не нужно. Ниже - что сделать на Mac, чтобы собрать и запустить
 на iPhone. **Всё это выполняется только на macOS (требование Apple).**
 
 ## 1. Поставить инструменты
 
 ```bash
-# Xcode — из App Store, затем:
+# Xcode - из App Store, затем:
 sudo xcodebuild -license accept
 sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-# CocoaPods — ставить через Homebrew (системный Ruby в macOS слишком старый
+# CocoaPods - ставить через Homebrew (системный Ruby в macOS слишком старый
 # для gem: ffi требует Ruby >= 3.0, а в системе 2.6).
 brew install cocoapods
 
@@ -31,7 +31,7 @@ flutter pub get
 > Кириллица в пути на macOS не мешает сборке (проблема была только на Windows),
 > так что класть проект можно куда угодно.
 
-## 3. Firebase для iOS — уже почти готово
+## 3. Firebase для iOS - уже почти готово
 
 iOS-приложение **уже зарегистрировано** в Firebase-проекте `interra-5a99e`
 (bundle id `ru.interra.lkInterra`), а файл `ios/Runner/GoogleService-Info.plist`
@@ -42,7 +42,7 @@ iOS-приложение **уже зарегистрировано** в Firebase
 - в диалоге снять «Copy items if needed» (файл уже на месте), отметить target **Runner**.
 
 > Альтернатива: `dart pub global activate flutterfire_cli && flutterfire configure`
-> — подхватит существующее iOS-приложение и пропишет всё само (нужен вход в Firebase CLI).
+> - подхватит существующее iOS-приложение и пропишет всё само (нужен вход в Firebase CLI).
 
 ## 4. Подпись и Bundle ID (Xcode)
 
@@ -51,10 +51,10 @@ open ios/Runner.xcworkspace
 ```
 
 В Xcode → **Runner → Signing & Capabilities**:
-- **Team** — выбрать ваш Apple ID / Apple Developer Team.
+- **Team** - выбрать ваш Apple ID / Apple Developer Team.
   - Для запуска на своём iPhone хватает бесплатного Apple ID.
   - Для App Store и стабильного push нужен платный **Apple Developer ($99/год)**.
-- **Bundle Identifier** — `ru.interra.lkInterra` (или свой; тогда тот же id указать в Firebase).
+- **Bundle Identifier** - `ru.interra.lkInterra` (или свой; тогда тот же id указать в Firebase).
 
 ## 5. Включить push-возможности
 
@@ -83,5 +83,5 @@ flutter build ipa                     # релизная сборка (.ipa в b
 
 ## Что уже сделано в репозитории
 - `ios/` сгенерирован, `Info.plist`: имя «ЛК Интерра», фоновый режим push.
-- Dart-код (WebView, авто-логин, push, экраны) общий — менять под iOS не нужно.
+- Dart-код (WebView, авто-логин, push, экраны) общий - менять под iOS не нужно.
 - Осталось только то, что требует Mac/Apple-аккаунт: шаги 3–6 выше.

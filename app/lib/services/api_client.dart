@@ -37,7 +37,7 @@ class ApiClient {
   }
 
   /// сообщает бэкенду, что пользователь открыл уведомление рассылки (open-rate).
-  /// best-effort: ошибки/оффлайн молча игнорируем — это метрика, не критично
+  /// best-effort: ошибки/оффлайн молча игнорируем - это метрика, не критично
   static Future<void> reportOpened(String bid) async {
     final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/events/opened');
     try {

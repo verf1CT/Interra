@@ -31,7 +31,7 @@ String formatRuPhoneTyping(String input) {
 /// Если длина не 11 - возвращает исходную строку (или прочерк)
 String formatRuPhoneFull(String? phone) {
   final d = digitsOf(phone ?? '');
-  if (d.length != 11) return phone ?? '—';
+  if (d.length != 11) return phone ?? '-';
   return '+${d[0]} ${d.substring(1, 4)} ${d.substring(4, 7)}-'
       '${d.substring(7, 9)}-${d.substring(9)}';
 }

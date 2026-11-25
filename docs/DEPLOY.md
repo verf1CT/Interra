@@ -3,20 +3,20 @@
 Рунбук для админов Интерры. Цель: поднять backend рассылки на
 `https://push.interra.ru`, после чего приложение начнёт получать push.
 
-> 📖 Это краткий инфраструктурный рунбук. Максимально подробный вариант
+> Это краткий инфраструктурный рунбук. Максимально подробный вариант
 > «шаг за шагом с нуля» (подготовка сервера, firewall, первая рассылка,
-> диагностика) — в [`../server/ADMIN.md`](../server/ADMIN.md).
+> диагностика) - в [`../server/ADMIN.md`](../server/ADMIN.md).
 
 Готовые файлы лежат в `deploy/`:
-- `interra-backend.service` — systemd-юнит
-- `nginx-push.interra.ru.conf` — обратный прокси с HTTPS
+- `interra-backend.service` - systemd-юнит
+- `nginx-push.interra.ru.conf` - обратный прокси с HTTPS
 
 Адрес `push.interra.ru` уже прописан в приложении (`app/lib/config.dart`).
-Если выберете другой поддомен — поправьте его там и пересоберите приложение.
+Если выберете другой поддомен - поправьте его там и пересоберите приложение.
 
 ---
 
-## Самый простой путь — Docker одной командой
+## Самый простой путь - Docker одной командой
 
 Если на сервере есть Docker:
 
@@ -34,7 +34,7 @@ bash deploy.sh
 Останется только настроить DNS (шаг 1) и HTTPS-прокси (шаг 5).
 Обновление: `cd /opt/interra && git pull && cd server && docker compose up -d --build`.
 
-Ниже — полный путь без Docker (systemd + nginx), если Docker не используется.
+Ниже - полный путь без Docker (systemd + nginx), если Docker не используется.
 
 ---
 
@@ -53,7 +53,7 @@ sudo npm ci --omit=dev                            # нужен Node.js 18+
 ## 3. Секреты и конфигурация
 Положить ключ Firebase Admin SDK (его НЕТ в git) и создать `.env`:
 ```bash
-# /opt/interra/server/serviceAccountKey.json  — скопировать с защищённого места
+# /opt/interra/server/serviceAccountKey.json  - скопировать с защищённого места
 sudo tee /opt/interra/server/.env >/dev/null <<'EOF'
 PORT=8080
 ADMIN_TOKEN=ПОСТАВЬТЕ_ДЛИННУЮ_СЛУЧАЙНУЮ_СТРОКУ
@@ -70,7 +70,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now interra-backend
 sudo systemctl status interra-backend         # должно быть active (running)
 ```
-В логе ожидаем: `[fcm] Firebase инициализирован — push включён.`
+В логе ожидаем: `[fcm] Firebase инициализирован - push включён.`
 
 ## 5. HTTPS-прокси (nginx + certbot)
 ```bash
@@ -96,5 +96,5 @@ sudo systemctl restart interra-backend
 ---
 
 ## Альтернатива: Docker
-Если на сервере есть Docker — см. раздел «Деплой (Docker)» в `server/README.md`
+Если на сервере есть Docker - см. раздел «Деплой (Docker)» в `server/README.md`
 (тот же `serviceAccountKey.json` подключается томом, БД в `/data`).

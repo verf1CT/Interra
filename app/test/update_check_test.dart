@@ -8,7 +8,7 @@ void main() {
       expect(UpdateCheck.isNewer('1.1.0', '1.0.9'), isTrue);
       expect(UpdateCheck.isNewer('1.0.1', '1.0.0'), isTrue);
     });
-    test('равные и старее — false', () {
+    test('равные и старее - false', () {
       expect(UpdateCheck.isNewer('1.0.0', '1.0.0'), isFalse);
       expect(UpdateCheck.isNewer('0.9.0', '1.0.0'), isFalse);
     });

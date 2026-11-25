@@ -321,7 +321,7 @@ class _BalanceHero extends StatelessWidget {
         data.tariff != 'Нет тарифа' &&
         data.tariff != 'Неизвестный тариф';
     final account =
-        (data.account.isNotEmpty && data.account != '—') ? data.account : null;
+        (data.account.isNotEmpty && data.account != '-') ? data.account : null;
     final multi = data.accounts.length > 1;
 
     final tariff = hasTariff ? data.tariff : tariffFallback;

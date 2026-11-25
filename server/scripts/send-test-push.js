@@ -43,5 +43,5 @@ const message = {
 };
 
 admin.messaging().send(message)
-  .then((id) => { console.log('✅ Отправлено, messageId:', id); process.exit(0); })
-  .catch((e) => { console.error('❌ Ошибка отправки:', e.message); process.exit(1); });
+  .then((id) => { console.log('Отправлено, messageId:', id); process.exit(0); })
+  .catch((e) => { console.error('Ошибка отправки:', e.message); process.exit(1); });

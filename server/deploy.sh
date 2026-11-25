@@ -13,7 +13,7 @@ if [ ! -f .env ]; then
   TOKEN="$(openssl rand -hex 24)"
   echo "ADMIN_TOKEN=$TOKEN" > .env
   echo "Создан .env. ADMIN_TOKEN=$TOKEN"
-  echo "  ^ это пароль для входа в админку — сохраните его."
+  echo "  ^ это пароль для входа в админку - сохраните его."
 fi
 
 echo "Сборка и запуск контейнера..."
@@ -24,7 +24,7 @@ for i in $(seq 1 15); do
   if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
     echo "Бэкенд запущен: http://localhost:8080/health -> OK"
     echo "Админка: http://<адрес-сервера>:8080/admin.html"
-    echo "(за nginx с HTTPS — https://push.interra.ru/admin.html)"
+    echo "(за nginx с HTTPS - https://push.interra.ru/admin.html)"
     exit 0
   fi
   sleep 1

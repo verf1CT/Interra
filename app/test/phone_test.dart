@@ -50,7 +50,7 @@ void main() {
     });
 
     test('null → прочерк', () {
-      expect(formatRuPhoneFull(null), '—');
+      expect(formatRuPhoneFull(null), '-');
     });
 
     test('некорректная длина возвращается как есть', () {

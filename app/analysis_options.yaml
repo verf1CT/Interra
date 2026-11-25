@@ -11,7 +11,7 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   # Артефакты сборки (в т.ч. распакованные исходники Firebase SDK под iOS)
-  # не наш код — исключаем, чтобы анализ показывал только lib/ и test/.
+  # не наш код - исключаем, чтобы анализ показывал только lib/ и test/.
   exclude:
     - build/**
 
