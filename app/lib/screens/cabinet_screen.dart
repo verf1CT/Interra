@@ -8,6 +8,8 @@ import '../services/analytics.dart';
 import '../services/quick_actions_service.dart';
 import '../services/demo_mode.dart';
 import '../widgets/design_system.dart';
+import '../widgets/app_sheets.dart';
+import '../widgets/motion_kit.dart';
 import '../widgets/cabinet_skeleton.dart';
 import '../utils/billing_math.dart';
 import 'home_tab.dart';
@@ -61,6 +63,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     QuickActionsService.paymentRequested.removeListener(_openPayment);
     DemoMode.isEnabled.removeListener(_onDemoChanged);
     _payAccounts.dispose();
+    _payLoading.dispose();
     super.dispose();
   }
 
@@ -192,17 +195,24 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   /// loginUrl договора -> номер для оплаты, подгружается при открытии окна выбора
   final ValueNotifier<Map<String, String>> _payAccounts = ValueNotifier({});
 
+  final ValueNotifier<bool> _payLoading = ValueNotifier(false);
+
   Future<void> _loadPayAccounts() async {
     if (DemoMode.isEnabled.value) return;
     final token = await AuthStore().appToken;
     if (token == null) return;
+    final jobs = <Future<void>>[];
     for (final acc in _data?.accounts ?? const <AccountOption>[]) {
       if (_payAccounts.value.containsKey(acc.loginUrl)) continue;
-      CabinetParser.fetchPayAccount(token, acc.loginUrl).then((number) {
+      jobs.add(CabinetParser.fetchPayAccount(token, acc.loginUrl).then((number) {
         if (!mounted || number.isEmpty) return;
         _payAccounts.value = {..._payAccounts.value, acc.loginUrl: number};
-      });
+      }));
     }
+    if (jobs.isEmpty) return;
+    _payLoading.value = true;
+    await Future.wait(jobs);
+    if (mounted) _payLoading.value = false;
   }
 
   /// долгое нажатие на чип договора: копирует сырые страницы кабинета в буфер,
@@ -227,100 +237,16 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
   void _showAccountPicker() {
     if (_data == null || _data!.accounts.isEmpty) return;
     _loadPayAccounts();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        decoration: BoxDecoration(
-          color: context.p.bg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Выберите договор',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: context.p.ink,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              for (final acc in _data!.accounts) ...[
-                ValueListenableBuilder<Map<String, String>>(
-                  valueListenable: _payAccounts,
-                  builder: (_, payAccounts, __) {
-                    // номер для оплаты; в демо и пока не загрузился - из списка
-                    final number = payAccounts[acc.loginUrl] ??
-                        (DemoMode.isEnabled.value ? acc.accountId : '');
-                    final isCurrent = (number.isNotEmpty && number == _data!.account) ||
-                        (number.isEmpty && _data!.fullName == acc.name);
-                    return Card(
-                      elevation: 0,
-                      color: isCurrent
-                          ? AppColors.brand.withValues(alpha: 0.08)
-                          : context.p.card,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isCurrent ? AppColors.brand : context.p.line,
-                          width: isCurrent ? 1.5 : 1,
-                        ),
-                      ),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.account_circle_outlined,
-                          color: isCurrent ? AppColors.brand : context.p.inkMute,
-                        ),
-                        title: Text(
-                          acc.name,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                            color: context.p.ink,
-                          ),
-                        ),
-                        subtitle: (acc.address.isNotEmpty || number.isNotEmpty)
-                            ? Text(
-                                [
-                                  if (number.isNotEmpty) 'Л/С: $number',
-                                  if (acc.address.isNotEmpty) acc.address,
-                                ].join('\n'),
-                                style: TextStyle(fontSize: 12.5, color: context.p.inkMute),
-                              )
-                            : null,
-                        trailing: isCurrent
-                            ? const Icon(Icons.check_circle_rounded, color: AppColors.brand)
-                            : null,
-                        onTap: () {
-                          Navigator.of(ctx).pop();
-                          if (!isCurrent) {
-                            _selectAccount(acc);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
+    showAppSheet(
+      context,
+      _AccountPickerBody(
+        accounts: _data!.accounts,
+        payAccounts: _payAccounts,
+        payLoading: _payLoading,
+        isCurrent: (acc, number) =>
+            (number.isNotEmpty && number == _data!.account) ||
+            (number.isEmpty && _data!.fullName == acc.name),
+        onSelect: _selectAccount,
       ),
     );
   }
@@ -539,4 +465,181 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           ],
         ),
       );
+}
+
+
+/// содержимое шторки выбора договора: фио, под ним номер счёта, ниже адрес
+class _AccountPickerBody extends StatefulWidget {
+  final List<AccountOption> accounts;
+  final ValueNotifier<Map<String, String>> payAccounts;
+  final ValueNotifier<bool> payLoading;
+  final bool Function(AccountOption acc, String number) isCurrent;
+  final Future<void> Function(AccountOption acc) onSelect;
+
+  const _AccountPickerBody({
+    required this.accounts,
+    required this.payAccounts,
+    required this.payLoading,
+    required this.isCurrent,
+    required this.onSelect,
+  });
+
+  @override
+  State<_AccountPickerBody> createState() => _AccountPickerBodyState();
+}
+
+class _AccountPickerBodyState extends State<_AccountPickerBody> {
+  String? _busy;
+
+  Future<void> _tap(AccountOption acc) async {
+    if (_busy != null) return;
+    HapticFeedback.selectionClick();
+    setState(() => _busy = acc.loginUrl);
+    await widget.onSelect(acc);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Выберите договор',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: context.p.ink,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Flexible(
+          child: SingleChildScrollView(
+            child: ValueListenableBuilder<Map<String, String>>(
+              valueListenable: widget.payAccounts,
+              builder: (_, payAccounts, __) => ValueListenableBuilder<bool>(
+                valueListenable: widget.payLoading,
+                builder: (_, loading, __) => Column(
+                  children: [
+                    for (final acc in widget.accounts) ...[
+                      Builder(builder: (_) {
+                        final number = payAccounts[acc.loginUrl] ??
+                            (DemoMode.isEnabled.value ? acc.accountId : '');
+                        return _AccountRow(
+                          account: acc,
+                          number: number,
+                          numberLoading: loading && number.isEmpty,
+                          current: widget.isCurrent(acc, number),
+                          busy: _busy == acc.loginUrl,
+                          onTap: () => _tap(acc),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountRow extends StatelessWidget {
+  final AccountOption account;
+  final String number;
+  final bool numberLoading;
+  final bool current;
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _AccountRow({
+    required this.account,
+    required this.number,
+    required this.numberLoading,
+    required this.current,
+    required this.busy,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Pressable(
+      onTap: current ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: current ? AppColors.brand.withValues(alpha: 0.08) : p.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: current ? AppColors.brand : p.line,
+            width: current ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    account.name,
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: current ? FontWeight.w800 : FontWeight.w700,
+                      color: p.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  if (number.isNotEmpty)
+                    Text(
+                      'Л/С $number',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: p.ink.withValues(alpha: 0.75),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    )
+                  else if (numberLoading)
+                    Container(
+                      width: 96,
+                      height: 12,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color: p.line,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  if (account.address.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      account.address,
+                      style: TextStyle(fontSize: 12.5, color: p.inkMute),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (busy)
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.brand),
+              )
+            else if (current)
+              const Icon(Icons.check_circle_rounded, color: AppColors.brand, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
 }

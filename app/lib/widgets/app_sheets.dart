@@ -34,7 +34,13 @@ class _SheetShell extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              child,
+              // высота плавно подстраивается, когда содержимое меняется
+              AnimatedSize(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: child,
+              ),
             ],
           ),
         ),
@@ -42,6 +48,10 @@ class _SheetShell extends StatelessWidget {
     );
   }
 }
+
+/// шторка с общей оболочкой для экранов, которым нужна своя вёрстка внутри
+Future<T?> showAppSheet<T>(BuildContext context, Widget child) =>
+    _showSheet<T>(context, child);
 
 Future<T?> _showSheet<T>(BuildContext context, Widget child) {
   return showModalBottomSheet<T>(
