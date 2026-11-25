@@ -676,6 +676,42 @@ class CabinetParser {
     }
   }
 
+  /// сырые страницы кабинета для разбора вёрстки: список договоров и страницы
+  /// выбранного (главная и тарифы). нужны, чтобы чинить разбор по настоящему
+  /// HTML, а не по догадкам. заголовок каждой страницы - адрес запроса
+  static Future<String> collectDebugDump(String appToken) async {
+    final out = StringBuffer();
+    Future<void> add(String title, Future<String> Function() load) async {
+      out.writeln('\n===== $title =====');
+      try {
+        out.writeln(await load());
+      } catch (e) {
+        out.writeln('ОШИБКА: $e');
+      }
+    }
+
+    final saved = activeLogin;
+    out.writeln('activeLogin: $saved');
+    activeLogin = null;
+    try {
+      await add('1. страница по умолчанию (oper=info)', () => _fetchHtml(appToken));
+    } finally {
+      activeLogin = saved;
+    }
+    if (saved != null) {
+      await add('2. выбранный договор (oper=info)', () => _fetchHtml(appToken, directUrl: saved));
+      await add('3. выбранный договор (oper=tariffs)',
+          () => _fetchHtml(appToken, oper: 'tariffs', directUrl: saved));
+    }
+    // ссылки login=... - это сессия абонента: оставляем только форму
+    // (цифры -> 0, буквы -> a), чтобы по ней можно было чинить разбор
+    return out.toString().replaceAllMapped(
+          RegExp(r'login=([^&"\x27\s<>]+)'),
+          (m) =>
+              'login=${m.group(1)!.replaceAll(RegExp(r'\d'), '0').replaceAll(RegExp(r'[A-Za-z]'), 'a')}',
+        );
+  }
+
   /// [targetUrl] - ссылка выбранного договора. без неё грузим договор по
   /// умолчанию, а если номер ведёт на страницу выбора - первый из списка
   static Future<CabinetData?> fetchCabinetData(String appToken, {String? targetUrl}) async {

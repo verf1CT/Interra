@@ -23,6 +23,7 @@ class HomeTab extends StatefulWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback onPay;
   final VoidCallback onPickAccount;
+  final VoidCallback? onDumpPages;
   final VoidCallback onOpenPassport;
   final ValueChanged<int> onOpenTab;
 
@@ -33,6 +34,7 @@ class HomeTab extends StatefulWidget {
     required this.onRefresh,
     required this.onPay,
     required this.onPickAccount,
+    this.onDumpPages,
     required this.onOpenPassport,
     required this.onOpenTab,
   });
@@ -124,6 +126,7 @@ class _HomeTabState extends State<HomeTab> {
             refreshing: widget.refreshing,
             onPay: widget.onPay,
             onPickAccount: widget.onPickAccount,
+            onDumpPages: widget.onDumpPages,
             onHistory: () => widget.onOpenTab(3),
           )),
           if (!DemoMode.isEnabled.value && d.needsPassportData) ...[
@@ -302,6 +305,7 @@ class _BalanceHero extends StatelessWidget {
   final bool refreshing;
   final VoidCallback onPay;
   final VoidCallback onPickAccount;
+  final VoidCallback? onDumpPages;
   final VoidCallback onHistory;
 
   const _BalanceHero({
@@ -310,6 +314,7 @@ class _BalanceHero extends StatelessWidget {
     required this.refreshing,
     required this.onPay,
     required this.onPickAccount,
+    this.onDumpPages,
     required this.onHistory,
   });
 
@@ -359,6 +364,7 @@ class _BalanceHero extends StatelessWidget {
                           label: account != null ? 'Договор $account' : 'Договор',
                           icon: Icons.unfold_more_rounded,
                           onTap: onPickAccount,
+                          onLongPress: onDumpPages,
                         )
                       : _CopyChip(account: account),
                 ),
@@ -530,12 +536,20 @@ class _HeroChip extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _HeroChip({required this.label, required this.icon, required this.onTap});
+  const _HeroChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Pressable(
       onTap: onTap,
       semanticLabel: label,
       child: Container(
@@ -564,6 +578,7 @@ class _HeroChip extends StatelessWidget {
             Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.85)),
           ],
         ),
+      ),
       ),
     );
   }

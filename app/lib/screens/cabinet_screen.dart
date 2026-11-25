@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/balance_store.dart';
@@ -202,6 +203,25 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         _payAccounts.value = {..._payAccounts.value, acc.loginUrl: number};
       });
     }
+  }
+
+  /// долгое нажатие на чип договора: копирует сырые страницы кабинета в буфер,
+  /// чтобы вставить в заметки и отправить разработчику для разбора вёрстки
+  Future<void> _copyDebugPages() async {
+    final token = await AuthStore().appToken;
+    if (token == null || !mounted) return;
+    HapticFeedback.mediumImpact();
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(
+      content: Text('Собираю страницы кабинета...'),
+      duration: Duration(seconds: 2),
+    ));
+    final dump = await CabinetParser.collectDebugDump(token);
+    await Clipboard.setData(ClipboardData(text: dump));
+    messenger.showSnackBar(SnackBar(
+      content: Text('Скопировано ${(dump.length / 1024).round()} КБ. Вставьте в заметки и отправьте'),
+      duration: const Duration(seconds: 5),
+    ));
   }
 
   void _showAccountPicker() {
@@ -416,6 +436,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       onRefresh: () => _refresh(silent: true),
       onPay: _openPayment,
       onPickAccount: _showAccountPicker,
+      onDumpPages: DemoMode.isEnabled.value ? null : _copyDebugPages,
       onOpenPassport: _openPassportForm,
       onOpenTab: (i) => setState(() => _currentIndex = i),
     );
