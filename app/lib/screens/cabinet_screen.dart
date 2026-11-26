@@ -251,9 +251,16 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     );
   }
 
+  /// растёт при смене договора: по нему вкладки услуг, ТВ и истории
+  /// пересоздаются и грузят данные нового договора, а не первого
+  int _selectionEpoch = 0;
+
   Future<void> _selectAccount(AccountOption acc) async {
     if (DemoMode.isEnabled.value) {
+      final demoBalance = acc.accountId == '654321' ? -150.00 : 1250.00;
+      BalanceStore.update(demoBalance, account: acc.accountId);
       setState(() {
+        _selectionEpoch++;
         _data = CabinetData(
           balance: acc.accountId == '654321' ? -150.00 : 1250.00,
           account: acc.accountId,
@@ -276,7 +283,13 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       if (token == null) return;
       final newData = await CabinetParser.fetchCabinetData(token, targetUrl: acc.loginUrl);
       if (mounted && newData != null) {
+        final account = newData.account.isNotEmpty
+            ? newData.account
+            : (_payAccounts.value[acc.loginUrl] ?? '');
+        await BalanceStore.update(newData.balance, account: account);
+        if (!mounted) return;
         setState(() {
+          _selectionEpoch++;
           _data = CabinetData(
             balance: newData.balance,
             account: newData.account.isNotEmpty
@@ -339,9 +352,12 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         index: _currentIndex,
         children: [
           _buildHomeTab(),
-          ServicesScreen(onOpenPassportForm: _openPassportForm),
-          const PremiumTvScreen(),
-          const PaymentsHistoryScreen(),
+          ServicesScreen(
+            key: ValueKey('services$_selectionEpoch'),
+            onOpenPassportForm: _openPassportForm,
+          ),
+          PremiumTvScreen(key: ValueKey('tv$_selectionEpoch')),
+          PaymentsHistoryScreen(key: ValueKey('history$_selectionEpoch')),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
