@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
 import 'billing_api.dart';
@@ -110,34 +111,79 @@ class CabinetParser {
   static bool isPlaceholderName(String name) =>
       name.isEmpty || name == 'Абонент' || name.startsWith('Договор №');
 
-  static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
-    String liveUrl;
-    final explicit = directUrl != null && directUrl.isNotEmpty ? directUrl : activeLogin;
-    if (explicit != null && accountPageUrl(explicit, oper: oper) != null) {
-      liveUrl = accountPageUrl(explicit, oper: oper)!;
-    } else if (directUrl != null && directUrl.isNotEmpty) {
-      if (directUrl.startsWith('http')) {
-        liveUrl = directUrl;
-      } else {
-        final base = AppConfig.billingBase;
-        liveUrl = directUrl.startsWith('/') ? '$base$directUrl' : '$base/$directUrl';
-      }
-    } else {
-      final r = await BillingApi.openCabinet(appToken);
-      if (!r.isOk || r.data == null) {
-        if (r.code == '0') throw Exception('auth_expired');
-        throw Exception(r.networkError ? 'network_error' : 'Не удалось получить ссылку');
-      }
-      liveUrl = AppConfig.cabinetUrl(r.data!, oper: oper);
-    }
-    
-    try {
-      final res = await SecureHttp.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
-      if (res.statusCode != 200) throw Exception('network_error');
+  /// куки сессии кабинета. ссылка из `cmd=open` при первом заходе выдаёт куку,
+  /// и без неё страницы конкретных договоров отвечают формой входа
+  static String? _sessionCookie;
 
-      return decodeResponseBody(res.bodyBytes);
+  static void resetSession() {
+    activeLogin = null;
+    _sessionCookie = null;
+  }
+
+  static void _rememberCookie(http.Response res) {
+    final fresh = _extractCookieHeader(res.headers['set-cookie']);
+    if (fresh == null || fresh.isEmpty) return;
+    final jar = <String, String>{};
+    for (final pair in '${_sessionCookie ?? ''}; $fresh'.split(';')) {
+      final i = pair.indexOf('=');
+      if (i > 0) jar[pair.substring(0, i).trim()] = pair.substring(i + 1).trim();
+    }
+    _sessionCookie = jar.entries.map((e) => '${e.key}=${e.value}').join('; ');
+  }
+
+  static bool _looksLoggedOut(String html) =>
+      html.contains('login-control') && !html.contains('b-account');
+
+  /// открывает кабинет по свежей ссылке и запоминает куку сессии
+  static Future<String> _openDefaultPage(String appToken, String oper) async {
+    final r = await BillingApi.openCabinet(appToken);
+    if (!r.isOk || r.data == null) {
+      if (r.code == '0') throw Exception('auth_expired');
+      throw Exception(r.networkError ? 'network_error' : 'Не удалось получить ссылку');
+    }
+    final res = await SecureHttp.get(Uri.parse(AppConfig.cabinetUrl(r.data!, oper: oper)))
+        .timeout(const Duration(seconds: 15));
+    if (res.statusCode != 200) throw Exception('network_error');
+    _rememberCookie(res);
+    return decodeResponseBody(res.bodyBytes);
+  }
+
+  static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
+    final explicit = directUrl != null && directUrl.isNotEmpty ? directUrl : activeLogin;
+    final contractUrl = explicit != null ? accountPageUrl(explicit, oper: oper) : null;
+
+    try {
+      if (contractUrl == null) {
+        if (directUrl != null && directUrl.isNotEmpty) {
+          final base = AppConfig.billingBase;
+          final liveUrl = directUrl.startsWith('http')
+              ? directUrl
+              : (directUrl.startsWith('/') ? '$base$directUrl' : '$base/$directUrl');
+          final res = await SecureHttp.get(Uri.parse(liveUrl)).timeout(const Duration(seconds: 15));
+          if (res.statusCode != 200) throw Exception('network_error');
+          return decodeResponseBody(res.bodyBytes);
+        }
+        return await _openDefaultPage(appToken, oper);
+      }
+
+      // страница договора: нужна кука, которую выдаёт первый заход
+      for (var attempt = 0; attempt < 2; attempt++) {
+        if (_sessionCookie == null || attempt > 0) {
+          await _openDefaultPage(appToken, 'info');
+        }
+        final res = await SecureHttp.get(
+          Uri.parse(contractUrl),
+          headers: {if (_sessionCookie != null) 'Cookie': _sessionCookie!},
+        ).timeout(const Duration(seconds: 15));
+        if (res.statusCode != 200) throw Exception('network_error');
+        _rememberCookie(res);
+        final html = decodeResponseBody(res.bodyBytes);
+        if (!_looksLoggedOut(html) || attempt == 1) return html;
+      }
+      throw Exception('network_error');
     } catch (e) {
       debugPrint('CabinetParser fetch error: $e');
+      if (e.toString().contains('auth_expired')) throw Exception('auth_expired');
       throw Exception('network_error');
     }
   }
@@ -713,6 +759,8 @@ class CabinetParser {
     activeLogin = null;
     try {
       await add('1. страница по умолчанию (oper=info)', () => _fetchHtml(appToken));
+      final names = _sessionCookie?.split(';').map((e) => e.split('=').first.trim()).join(', ');
+      out.writeln('\nкуки сессии: ${names ?? 'нет'}');
     } finally {
       activeLogin = saved;
     }

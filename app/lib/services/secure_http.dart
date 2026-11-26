@@ -50,8 +50,9 @@ class SecureHttp {
     return _client!;
   }
 
-  static Future<http.Response> get(Uri url) async =>
-      (await _pinned()).get(url);
+  static Future<http.Response> get(Uri url,
+          {Map<String, String>? headers}) async =>
+      (await _pinned()).get(url, headers: headers);
 
   static Future<http.Response> post(Uri url,
           {Map<String, String>? headers, Object? body}) async =>
