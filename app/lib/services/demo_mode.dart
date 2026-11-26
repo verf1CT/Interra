@@ -2,27 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cabinet_parser.dart';
 
-class DemoSessionItem {
-  final String ip;
-  final String startedAt;
-  final String duration;
-  final String rxBytes;
-  final String txBytes;
-  final bool isActive;
-
-  const DemoSessionItem({
-    required this.ip,
-    required this.startedAt,
-    required this.duration,
-    required this.rxBytes,
-    required this.txBytes,
-    this.isActive = false,
-  });
-}
-
 /// Сервис демонстрационного режима для красивых скриншотов в App Store и Google Play.
 /// Наполняет приложение идеальными, фотогеничными данными: баланс, активный тариф,
-/// скорости, опции, история операций и сессии без предупреждений об ошибках.
+/// скорости, опции, история операций без предупреждений об ошибках.
 class DemoMode {
   static const String _prefKey = 'qa_secret_demo_enabled_v2';
   static const String _legacyPrefKey = 'demo_screenshot_mode_enabled';
@@ -140,33 +122,6 @@ class DemoMode {
           operation: 'Абонентская плата (Комфорт 200)',
           comment: 'Списание за сентябрь',
           operator: 'SYSTEM',
-        ),
-      ];
-
-  static List<DemoSessionItem> get demoSessions => const [
-        DemoSessionItem(
-          ip: '178.46.128.45',
-          startedAt: '05.11.2026 08:15',
-          duration: '5 ч 30 мин',
-          rxBytes: '24.6 ГБ',
-          txBytes: '4.2 ГБ',
-          isActive: true,
-        ),
-        DemoSessionItem(
-          ip: '178.46.128.45',
-          startedAt: '04.11.2026 00:00',
-          duration: '23 ч 59 мин',
-          rxBytes: '58.1 ГБ',
-          txBytes: '8.7 ГБ',
-          isActive: false,
-        ),
-        DemoSessionItem(
-          ip: '178.46.128.45',
-          startedAt: '03.11.2026 00:00',
-          duration: '23 ч 59 мин',
-          rxBytes: '42.3 ГБ',
-          txBytes: '6.1 ГБ',
-          isActive: false,
         ),
       ];
 }

@@ -14,9 +14,7 @@ class PaymentsHistoryScreen extends StatefulWidget {
   State<PaymentsHistoryScreen> createState() => _PaymentsHistoryScreenState();
 }
 
-class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
   bool _loading = true;
   String? _error;
   List<PaymentItem> _payments = [];
@@ -24,7 +22,6 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     DemoMode.isEnabled.addListener(_onDemoChanged);
     _loadData();
   }
@@ -36,7 +33,6 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
   @override
   void dispose() {
     DemoMode.isEnabled.removeListener(_onDemoChanged);
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -83,33 +79,7 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // операции / сессии: подложка едет за пальцем при свайпе
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: AnimatedBuilder(
-            animation: _tabController.animation!,
-            builder: (context, _) => SlidingSegmented(
-              labels: const ['Операции', 'Сессии'],
-              position: _tabController.animation!.value,
-              onChanged: (i) => _tabController.animateTo(i),
-            ),
-          ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildOperationsTab(),
-              _buildSessionsTab(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _buildOperationsTab();
 
   Widget _centerState({
     required IconData icon,
@@ -214,76 +184,6 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen>
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildSessionsTab() {
-    if (!DemoMode.isEnabled.value) {
-      return _centerState(
-        icon: Icons.router_rounded,
-        title: 'Сессии появятся позже',
-        text: 'Историю подключений к интернету пока можно посмотреть только в кабинете на сайте',
-      );
-    }
-    final p = context.p;
-    final sessions = DemoMode.demoSessions;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-      children: [
-        PillGroupCard(
-          children: [
-            for (var i = 0; i < sessions.length; i++) ...[
-              if (i > 0) const PillDivider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: p.surfaceAlt,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.router_rounded,
-                          size: 20,
-                          color: sessions[i].isActive ? AppColors.ok : p.inkMute),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(sessions[i].ip,
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: p.ink,
-                                  fontFeatures: const [FontFeature.tabularFigures()])),
-                          const SizedBox(height: 2),
-                          Text('${sessions[i].startedAt}  ·  ${sessions[i].duration}',
-                              style: TextStyle(fontSize: 12.5, color: p.inkMute)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (sessions[i].isActive)
-                          const PulseDot(color: AppColors.ok, label: 'Сейчас', size: 6)
-                        else
-                          Text('↓ ${sessions[i].rxBytes}',
-                              style: TextStyle(fontSize: 12.5, color: p.inkMute)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
     );
   }
 }

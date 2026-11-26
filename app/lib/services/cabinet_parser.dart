@@ -897,8 +897,6 @@ class CabinetParser {
       }
       final tok = _navToken;
       if (tok == null) continue;
-      await add('S$n. договор $n, сессии (aaaotch, work=radius)',
-          () => raw('${AppConfig.billingBase}/aaaotch?login=$tok&oper=otch&work=radius'));
       break;
     }
     _navToken = null;

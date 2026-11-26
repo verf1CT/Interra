@@ -52,12 +52,5 @@ void main() {
       expect(payments.any((p) => p.amount > 0), true);
       expect(payments.any((p) => p.amount < 0), true);
     });
-
-    test('demoSessions contains active and completed sessions', () {
-      final sessions = DemoMode.demoSessions;
-      expect(sessions.isNotEmpty, true);
-      expect(sessions.any((s) => s.isActive), true);
-      expect(sessions.any((s) => !s.isActive), true);
-    });
   });
 }
