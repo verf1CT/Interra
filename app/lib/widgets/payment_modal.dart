@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/site_pay.dart';
 import '../theme.dart';
 
 class PaymentModal extends StatefulWidget {
@@ -35,6 +36,47 @@ class PaymentModal extends StatefulWidget {
 
 class _PaymentModalState extends State<PaymentModal> {
   bool _copied = false;
+  late final _amount = TextEditingController(
+    text: RegExp(r'\d+').firstMatch(widget.recommendedAmount ?? '')?.group(0) ?? '',
+  );
+  bool _paying = false;
+  String? _payError;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  bool get _hasAccount => widget.account.isNotEmpty && widget.account != '-';
+
+  /// сразу на страницу банка: ссылку отдаёт API сайта. сайт не ответил -
+  /// открываем его форму оплаты, как раньше
+  Future<void> _payByCard() async {
+    final amount = int.tryParse(_amount.text.trim());
+    if (amount == null || amount <= 0) {
+      setState(() => _payError = 'Введите сумму');
+      return;
+    }
+    if (!_hasAccount) {
+      await _launch(SitePay.fallbackUrl(''));
+      return;
+    }
+    setState(() {
+      _paying = true;
+      _payError = null;
+    });
+    final link = await SitePay.request(widget.account, amount);
+    if (!mounted) return;
+    setState(() => _paying = false);
+    if (link.url != null) {
+      await _launch(link.url!);
+    } else if (link.error != null) {
+      setState(() => _payError = link.error);
+    } else {
+      await _launch(SitePay.fallbackUrl(widget.account));
+    }
+  }
 
   @override
   void initState() {
@@ -73,11 +115,7 @@ class _PaymentModalState extends State<PaymentModal> {
 
   @override
   Widget build(BuildContext context) {
-    final displayAccount =
-        (widget.account.isNotEmpty && widget.account != '-') ? widget.account : '-';
-    final cardPayUrl = (widget.account.isNotEmpty && widget.account != '-')
-        ? 'https://interra.ru/sberbank/?epay=${widget.account}'
-        : 'https://interra.ru/sberbank/';
+    final displayAccount = _hasAccount ? widget.account : '-';
 
     return Container(
       padding: EdgeInsets.only(
@@ -221,9 +259,25 @@ class _PaymentModalState extends State<PaymentModal> {
 
             const SizedBox(height: 16),
 
+            TextField(
+              controller: _amount,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+              onChanged: (_) {
+                if (_payError != null) setState(() => _payError = null);
+              },
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: context.p.ink),
+              decoration: InputDecoration(
+                labelText: 'Сумма, ₽',
+                errorText: _payError,
+                errorMaxLines: 3,
+              ),
+            ),
+            const SizedBox(height: 12),
+
             // Кнопка 1: Банковская карта, SberPay, T-Pay, СБП
             ElevatedButton(
-              onPressed: () => _launch(cardPayUrl),
+              onPressed: _paying ? null : _payByCard,
               style: ElevatedButton.styleFrom(
                 backgroundColor: context.p.card,
                 foregroundColor: context.p.ink,
@@ -234,15 +288,21 @@ class _PaymentModalState extends State<PaymentModal> {
                   side: BorderSide(color: context.p.line),
                 ),
               ),
-              child: Text(
-                'Банковская карта, SberPay, T-Pay, СБП',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: context.p.ink,
-                ),
-              ),
+              child: _paying
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand),
+                    )
+                  : Text(
+                      'Банковская карта, SberPay, T-Pay, СБП',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: context.p.ink,
+                      ),
+                    ),
             ),
             const SizedBox(height: 12),
 
