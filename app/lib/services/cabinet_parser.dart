@@ -800,16 +800,10 @@ class CabinetParser {
     for (var i = 0; i < accounts.length && i < 2; i++) {
       final href = accounts[i].loginUrl;
       final n = i + 1;
-      await add('A$n. договор $n, ссылка как в списке (без oper)',
-          () => raw('${AppConfig.billingBase}/$href'));
-      final withOper = accountPageUrl(href);
-      if (withOper != null) {
-        await add('B$n. договор $n, с oper=info', () => raw(withOper));
-      }
-    }
-    if (saved != null) {
-      await add('C. сохранённая ссылка выбранного договора (oper=info)',
-          () => raw(accountPageUrl(saved) ?? saved));
+      final info = accountPageUrl(href);
+      if (info != null) await add('B$n. договор $n, oper=info', () => raw(info));
+      final tariffs = accountPageUrl(href, oper: 'tariffs');
+      if (tariffs != null) await add('T$n. договор $n, oper=tariffs', () => raw(tariffs));
     }
 
     // login=... - это сессия абонента: подменяем значение номером по порядку
