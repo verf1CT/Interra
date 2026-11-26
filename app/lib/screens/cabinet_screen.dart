@@ -6,7 +6,7 @@ import '../services/balance_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/charge_reminder.dart';
 import '../services/analytics.dart';
-import '../services/api_client.dart';
+import '../services/debug_dump.dart';
 import '../services/quick_actions_service.dart';
 import '../services/demo_mode.dart';
 import '../widgets/design_system.dart';
@@ -210,30 +210,36 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     if (mounted) _payLoading.value = false;
   }
 
-  /// долгое нажатие на чип договора: копирует сырые страницы кабинета в буфер,
-  /// чтобы вставить в заметки и отправить разработчику для разбора вёрстки
+  /// долгое нажатие на чип договора: сырые страницы кабинета для разбора
+  /// вёрстки. шлём на компьютер разработчика в той же wi-fi сети
+  /// (app/tool/dump_server.dart), а если адрес пустой или комп не ответил - в буфер
   Future<void> _copyDebugPages() async {
     final token = await AuthStore().appToken;
     if (token == null || !mounted) return;
     HapticFeedback.mediumImpact();
+    final saved = await DebugDump.savedTarget() ?? '';
+    if (!mounted) return;
+    final target = await showAppSheet<String>(context, _DumpTargetSheet(initial: saved));
+    if (target == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(const SnackBar(
       content: Text('Собираю страницы кабинета...'),
       duration: Duration(seconds: 2),
     ));
     final dump = await CabinetParser.collectDebugDump(token);
-    // сначала шлём на наш сервер, оттуда дамп забирает разработчик;
-    // сервер недоступен - по-старому в буфер
-    if (await ApiClient.sendDebugDump(dump)) {
+    final kb = (dump.length / 1024).round();
+    if (target.isNotEmpty && await DebugDump.send(target, dump)) {
       messenger.showSnackBar(SnackBar(
-        content: Text('Дамп отправлен разработчику, ${(dump.length / 1024).round()} КБ'),
+        content: Text('Дамп отправлен на компьютер, $kb КБ'),
         duration: const Duration(seconds: 4),
       ));
       return;
     }
     await Clipboard.setData(ClipboardData(text: dump));
     messenger.showSnackBar(SnackBar(
-      content: Text('Сервер недоступен. Скопировано ${(dump.length / 1024).round()} КБ, вставьте в чат'),
+      content: Text(target.isEmpty
+          ? 'Скопировано $kb КБ, вставьте в чат'
+          : 'Компьютер не ответил. Скопировано $kb КБ, вставьте в чат'),
       duration: const Duration(seconds: 5),
     ));
   }
@@ -652,6 +658,68 @@ class _AccountRow extends StatelessWidget {
               const Icon(Icons.check_circle_rounded, color: AppColors.brand, size: 22),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// куда слать дамп: адрес компьютера с приёмником. пустой адрес - в буфер
+class _DumpTargetSheet extends StatefulWidget {
+  final String initial;
+  const _DumpTargetSheet({required this.initial});
+
+  @override
+  State<_DumpTargetSheet> createState() => _DumpTargetSheetState();
+}
+
+class _DumpTargetSheetState extends State<_DumpTargetSheet> {
+  late final _ctrl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Дамп страниц кабинета',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: p.ink)),
+          const SizedBox(height: 6),
+          Text('Адрес компьютера в этой же wi-fi сети, его печатает приёмник при запуске',
+              style: TextStyle(fontSize: 13, color: p.inkMute, height: 1.35)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _ctrl,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            decoration: const InputDecoration(hintText: '192.168.1.10:8787'),
+            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(_ctrl.text.trim()),
+              child: const Text('Отправить'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 48,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(''),
+              child: const Text('Только скопировать'),
+            ),
+          ),
+        ],
       ),
     );
   }
