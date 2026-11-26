@@ -237,7 +237,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _smsSaving = false;
       if (after != null) _sms = after;
     });
-    if (after?.enabled == value) {
+    if (CabinetParser.smsCodeRequested(CabinetParser.lastSmsResponse)) {
+      // ввод кода в приложении сделаем, когда увидим страницу ответа в дампе
+      _snack('Биллинг отправил SMS-код подтверждения. Ввести его пока можно только в кабинете на сайте');
+    } else if (after?.enabled == value) {
       _snack(value ? 'SMS перед блокировкой включены' : 'SMS перед блокировкой выключены');
     } else {
       _snack('Биллинг не принял изменение. Попробуйте позже или в кабинете на сайте');

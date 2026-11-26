@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lk_interra/screens/payments_history_screen.dart';
 import 'package:lk_interra/services/cabinet_parser.dart';
 import 'package:lk_interra/services/charge_reminder.dart';
+import 'package:lk_interra/services/site_pay.dart';
 import 'package:lk_interra/utils/billing_math.dart';
 
 // куски настоящих страниц кабинета, имена и номера заменены
@@ -76,6 +77,24 @@ const _iptvPackage = """
 </pre><hr>всего: 133 </td></tr></tbody></table></body>""";
 
 void main() {
+  test('ошибки API оплаты сайта собираются в строку', () {
+    expect(
+      SitePay.parseError({
+        'epay': ['Лицевой счёт указан некорректно'],
+        'amount': ['Сумма не может быть отрицательной или равной нулю.'],
+      }),
+      'Лицевой счёт указан некорректно. Сумма не может быть отрицательной или равной нулю.',
+    );
+    expect(SitePay.parseError('x'), isNull);
+    expect(SitePay.fallbackUrl('276997'), 'https://interra.ru/sberbank/?epay=276997');
+  });
+
+  test('ответ sms-формы: обычная страница - не запрос кода', () {
+    expect(CabinetParser.smsCodeRequested(_sms), isFalse);
+    expect(CabinetParser.smsCodeRequested('<body>Введите код из SMS</body>'), isTrue);
+    expect(CabinetParser.smsCodeRequested(null), isFalse);
+  });
+
   test('страница пакета Premium TV: цена за период и форма включения', () {
     final d = parseTvPackageDetails(_premiumPackage)!;
     expect(d.name, 'Базовый');

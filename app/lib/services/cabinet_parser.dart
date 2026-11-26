@@ -933,6 +933,8 @@ class CabinetParser {
 
     final saved = activeLogin;
     out.writeln('activeLogin: $saved');
+    final smsReply = lastSmsResponse;
+    if (smsReply != null) await add('ответ на отправку sms-формы', () async => smsReply);
     // ссылка из списка одноразовая: для каждого договора берём список заново
     for (var i = 0; i < 2; i++) {
       var listHtml = '';
@@ -1157,6 +1159,17 @@ class CabinetParser {
   /// отправляет форму sms-уведомлений как кнопка «внести изменения».
   /// галочки браузер шлёт только отмеченными, так же делаем и мы. возвращает
   /// состояние страницы после отправки - по нему видно, принял ли биллинг
+  /// ответ биллинга на последнюю отправку sms-формы: после неё приходит
+  /// SMS-код, и как его вводить, видно только по этой странице. идёт в дамп
+  static String? lastSmsResponse;
+
+  /// биллинг ответил, что отправил код подтверждения
+  static bool smsCodeRequested(String? html) {
+    if (html == null) return false;
+    final t = (parser.parse(html).body?.text ?? '').toLowerCase();
+    return t.contains('код') && !t.contains('позволит вам входить');
+  }
+
   static Future<SmsSettings?> saveSmsSettings(
     String appToken,
     SmsSettings current, {
@@ -1171,7 +1184,7 @@ class CabinetParser {
     }
       ..remove('login')
       ..remove('oper');
-    await _fetchSection(appToken, 'aaasmssvc', 'smssvc', form: form);
+    lastSmsResponse = await _fetchSection(appToken, 'aaasmssvc', 'smssvc', form: form);
     // ответ на POST может быть другой страницей, поэтому перечитываем
     return fetchSmsSettings(appToken);
   }
