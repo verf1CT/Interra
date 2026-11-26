@@ -222,17 +222,20 @@ class CabinetParser {
   /// aaatarif?oper=tarif или aaaotch?oper=otch. null - не удалось открыть
   /// [form] - поля формы раздела: тогда страница запрашивается POST, как её
   /// отправляет кнопка в браузере (login и oper подставляются сами)
+  /// [query] - добавка к адресу, например `&xid=10`. [authInBody] = false -
+  /// login и oper только в адресе, как у форм с action=""
   static Future<String?> _fetchSection(String appToken, String script, String oper,
-      {Map<String, String>? form}) async {
+      {Map<String, String>? form, String query = '', bool authInBody = true}) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         await _ensureNavToken(appToken);
         final token = _navToken;
         if (token == null) return null;
-        final url = Uri.parse('${AppConfig.billingBase}/$script?login=$token&oper=$oper');
+        final url = Uri.parse('${AppConfig.billingBase}/$script?login=$token&oper=$oper$query');
         final res = await (form == null
                 ? SecureHttp.get(url)
-                : SecureHttp.post(url, body: {'login': token, 'oper': oper, ...form}))
+                : SecureHttp.post(url,
+                    body: {if (authInBody) 'login': token, if (authInBody) 'oper': oper, ...form}))
             .timeout(const Duration(seconds: 15));
         if (res.statusCode != 200) return null;
         final html = decodeResponseBody(res.bodyBytes);
@@ -1112,7 +1115,8 @@ class CabinetParser {
         final cost = charge == null
             ? ''
             : '${BalanceStore.format(charge)}${monthly ? ' / мес' : ''}';
-        return [ServiceItem(name: name, status: 'Активна', cost: cost)];
+        // статуса у тарифа на странице нет: «действующий» уже сказано заголовком
+        return [ServiceItem(name: name, status: '', cost: cost)];
       }
     }
     try {
@@ -1191,15 +1195,31 @@ class CabinetParser {
     );
   }
 
-  /// адрес страницы раздела для браузера: относительную ссылку из кабинета
-  /// (`?login=…&oper=…`) привязываем к скрипту и текущему токену
-  static Future<String?> sectionWebUrl(String appToken, String script, String href) async {
-    await _ensureNavToken(appToken);
-    final token = _navToken;
-    if (token == null) return null;
-    final q = href.startsWith('?') ? href.substring(1) : href;
-    final fixed = q.replaceFirst(RegExp(r'login=[^&]*'), 'login=$token').replaceAll('&amp;', '&');
-    return '${AppConfig.billingBase}/$script?$fixed';
+  /// oper и xid из ссылки пакета (`?login=…&oper=xtvpsmm&xid=10`)
+  static (String, String)? _packageRef(String href) {
+    final q = Uri.splitQueryString(
+        (href.startsWith('?') ? href.substring(1) : href).replaceAll('&amp;', '&'));
+    final oper = q['oper'], xid = q['xid'];
+    if (oper == null || xid == null) return null;
+    return (oper, xid);
+  }
+
+  static Future<TvPackageDetails?> fetchTvPackage(String appToken, String script, String href) async {
+    final ref = _packageRef(href);
+    if (ref == null) return null;
+    final html = await _fetchSection(appToken, script, ref.$1, query: '&xid=${ref.$2}');
+    return html == null ? null : parseTvPackageDetails(html);
+  }
+
+  /// жмёт «включить этот пакет» и перечитывает страницу пакета: по ней видно,
+  /// принял ли биллинг. списание с баланса делает сам биллинг
+  static Future<TvPackageDetails?> enableTvPackage(
+      String appToken, String script, String href, TvPackageDetails details) async {
+    final ref = _packageRef(href);
+    if (ref == null || !details.canEnable) return null;
+    await _fetchSection(appToken, script, ref.$1,
+        query: '&xid=${ref.$2}', form: details.form, authInBody: false);
+    return fetchTvPackage(appToken, script, href);
   }
 
   /// ссылка на раздел тарифов выбранного договора для браузера. токен сессии

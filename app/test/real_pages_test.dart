@@ -60,7 +60,45 @@ const _iptv = """
 <div class="font-l mb-24"><b>IPTV</b></div><a href="?login=x&amp;oper=iptv">Описание услуги</a><hr width="350" align="left">По умолчанию у всех абонентов подключен <a href="?login=x&amp;oper=iptvm&amp;xid=0" title="посмотреть список каналов">базовый бесплатный пакет </a>.<br><br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=iptvm&amp;xid=1" title="+128 каналов к Базовому пакету (итого 150)">Полный</a>+128 каналов к Базовому пакету (итого 150)<br>Цена <b>200</b> рублей за месяц<br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=iptvm&amp;xid=8" title="Матч! Премьер">Матч! Премьер</a>Матч! Премьер<br>Цена <b>299</b> рублей за месяц<br>
 </td></tr></tbody></table></body>""";
 
+const _premiumPackage = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<div class="font-l mb-24"><b>Premium TV</b></div>
+<a href="?login=x&amp;oper=xtvpsm">Описание услуги</a><br><p>Ваш персональный логин для просмотра Premium TV: <b>123456interra</b><br> Ваш пароль: <b>000000</b><br></p><hr><a href="?login=x&amp;oper=xtvpsmm"><font size="-0">Вернуться к списку пакетов</font></a><font size="-0"><br><br><font size="+0">Пакет <span>Базовый</span></font><br>Цена <font color="red"> 200.00</font> рублей за 30 суток<font><br><br>
+<form action="" method="post">Можно <input type="hidden" name="op" value="1"><input type="hidden" name="ctm" value="1795724595"><input class="btn" type="submit" value="включить этот пакет"></form>
+<pre class="iptvchan" id="iptvchan"></pre>
+</font></font></td></tr></tbody></table></body>""";
+
+const _iptvPackage = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<div class="font-l mb-24"><b>IPTV</b></div><a href="?login=x&amp;oper=iptv">Описание услуги</a><hr width="350" align="left">По умолчанию у всех абонентов подключен <a href="?login=x&amp;oper=iptvm&amp;xid=0">базовый бесплатный пакет </a>.<br><br><hr><a href="?login=x&amp;oper=iptvm">Вернуться к списку пакетов</a><br><br><font size="+0">пакет <span>Полный</span></font><br>цена <font color="red"> 200.00</font> рублей за месяц<br><br>+128 каналов к Базовому пакету (итого 150)<br><br><form action="" method="post">Можно <input type="hidden" name="op" value="1"><input class="btn" type="submit" value="включить этот пакет"></form><br><hr>Список каналов:<hr><pre class="iptvchan">Солнце
+Ретро ТВ
+Драйв
+</pre><hr>всего: 133 </td></tr></tbody></table></body>""";
+
 void main() {
+  test('страница пакета Premium TV: цена за период и форма включения', () {
+    final d = parseTvPackageDetails(_premiumPackage)!;
+    expect(d.name, 'Базовый');
+    expect(d.price, 200.0);
+    expect(d.period, '30 суток');
+    expect(d.canEnable, isTrue);
+    expect(d.status, 'Можно');
+    expect(d.form, {'op': '1', 'ctm': '1795724595'});
+    expect(d.note, isNull);
+    expect(d.channels, isEmpty);
+  });
+
+  test('страница пакета IPTV: описание, каналы по строкам и их число', () {
+    final d = parseTvPackageDetails(_iptvPackage)!;
+    expect(d.name, 'Полный');
+    expect(d.period, 'месяц');
+    expect(d.note, '+128 каналов к Базовому пакету (итого 150)');
+    expect(d.channels, ['Солнце', 'Ретро ТВ', 'Драйв']);
+    expect(d.channelCount, 133);
+    final on = parseTvPackageDetails(_iptvPackage.replaceFirst('включить этот пакет', 'выключить этот пакет'))!;
+    expect(on.canEnable, isFalse);
+  });
+
   test('Premium TV: вход в Смотрёшку и пакеты с ценами', () {
     final (login, password) = parsePremiumCredentials(_premium);
     expect(login, '123456interra');

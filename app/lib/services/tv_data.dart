@@ -82,5 +82,82 @@ List<TvPackage> parseTvPackages(String html) {
   return (find(r'логин[^:\n]*:\s*(\S+)'), find(r'пароль:\s*(\S+)'));
 }
 
+/// страница одного пакета: цена, описание, каналы и форма «включить этот пакет»
+class TvPackageDetails {
+  final String name;
+  final double? price;
+  final String? period; // «30 суток», «месяц»
+  final String? note;
+  final List<String> channels;
+  final int? channelCount;
+
+  /// текст биллинга рядом с кнопкой, например «Можно»
+  final String status;
+
+  /// кнопка «включить» есть - пакет можно подключить
+  final bool canEnable;
+
+  /// скрытые поля формы (op, ctm) - отправляем как есть
+  final Map<String, String> form;
+
+  const TvPackageDetails({
+    required this.name,
+    this.price,
+    this.period,
+    this.note,
+    this.channels = const [],
+    this.channelCount,
+    this.status = '',
+    this.canEnable = false,
+    this.form = const {},
+  });
+}
+
+TvPackageDetails? parseTvPackageDetails(String html) {
+  final doc = parser.parse(html);
+  final root = doc.querySelector('#aaatds') ?? doc.body;
+  if (root == null) return null;
+  final text = root.text.replaceAll(' ', ' ');
+  final priceM = RegExp(r'цена\s*([\d.,]+)\s*рубл\S*\s+за\s+(\d+\s+\S+|месяц)', caseSensitive: false)
+      .firstMatch(text);
+  if (priceM == null) return null;
+  final name = root
+          .querySelectorAll('span')
+          .map((e) => e.text.trim())
+          .firstWhere((t) => t.isNotEmpty, orElse: () => '');
+  if (name.isEmpty) return null;
+
+  final form = root.querySelector('form');
+  final button = form?.querySelector('input[type="submit"]')?.attributes['value'] ?? '';
+  final fields = <String, String>{
+    for (final el in form?.querySelectorAll('input[type="hidden"]') ?? const [])
+      if ((el.attributes['name'] ?? '').isNotEmpty) el.attributes['name']!: el.attributes['value'] ?? '',
+  };
+
+  // описание у IPTV стоит между ценой и формой
+  String? note;
+  final after = text.substring(priceM.end);
+  final formText = form?.text ?? '';
+  final cut = formText.isEmpty ? -1 : after.indexOf(formText.trim().split(RegExp(r'\s+')).first);
+  final candidate = (cut > 0 ? after.substring(0, cut) : '').trim();
+  if (candidate.isNotEmpty && candidate.length < 200) note = candidate;
+
+  final pre = root.querySelector('pre.iptvchan')?.text ?? '';
+  final lines = pre.split(RegExp(r'[\r\n]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+  return TvPackageDetails(
+    name: name,
+    price: double.tryParse(priceM.group(1)!.replaceAll(',', '.')),
+    period: priceM.group(2)!.trim(),
+    note: note,
+    // каналы в <pre> идут по строке; если строка одна, названия не разделить
+    channels: lines.length > 2 ? lines : const [],
+    channelCount: int.tryParse(RegExp(r'всего:\s*(\d+)').firstMatch(text)?.group(1) ?? ''),
+    status: formText.replaceAll(button, '').trim(),
+    canEnable: button.toLowerCase().contains('включить'),
+    form: fields,
+  );
+}
+
 bool parseIptvFreeBase(String html) =>
     (parser.parse(html).body?.text ?? '').contains('базовый бесплатный пакет');

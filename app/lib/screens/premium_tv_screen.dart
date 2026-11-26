@@ -8,12 +8,14 @@ import '../services/auth_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
 import '../theme.dart';
+import '../services/balance_store.dart';
+import '../widgets/app_sheets.dart';
 import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
 
 /// вкладка «ТВ»: вход в Смотрёшку и пакеты Premium TV и IPTV с ценами -
-/// всё со страниц кабинета выбранного договора. подключение пакета пока
-/// открывает его страницу в кабинете на сайте
+/// всё со страниц кабинета выбранного договора. пакет открывается шторкой,
+/// подключение - через форму биллинга с подтверждением суммы
 class PremiumTvScreen extends StatefulWidget {
   const PremiumTvScreen({super.key});
 
@@ -72,13 +74,9 @@ class _PremiumTvScreenState extends State<PremiumTvScreen> {
     }
   }
 
-  /// страница пакета в кабинете на сайте: там описание и подключение
-  Future<void> _openPackage(String script, TvPackage pkg) async {
-    if (DemoMode.isEnabled.value || pkg.href.isEmpty) return;
-    final token = await AuthStore().appToken;
-    if (token == null) return;
-    final url = await CabinetParser.sectionWebUrl(token, script, pkg.href);
-    if (url != null) await _open(url);
+  /// шторка пакета: цена, каналы и подключение с подтверждением
+  void _openPackage(String script, TvPackage pkg) {
+    showAppSheet<void>(context, _PackageSheet(script: script, pkg: pkg));
   }
 
   void _openStore() {
@@ -374,5 +372,234 @@ class _ErrorState extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+enum _SheetStep { loading, failed, details, confirm, sending, done }
+
+/// шторка пакета. подключение платное, поэтому в два шага: «Подключить» ->
+/// подтверждение с суммой списания -> запрос в биллинг -> перечитываем пакет
+class _PackageSheet extends StatefulWidget {
+  final String script;
+  final TvPackage pkg;
+  const _PackageSheet({required this.script, required this.pkg});
+
+  @override
+  State<_PackageSheet> createState() => _PackageSheetState();
+}
+
+class _PackageSheetState extends State<_PackageSheet> {
+  _SheetStep _step = _SheetStep.loading;
+  TvPackageDetails? _d;
+  String? _result;
+  bool _ok = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _step = _SheetStep.loading);
+    TvPackageDetails? d;
+    if (DemoMode.isEnabled.value || widget.pkg.href.isEmpty) {
+      d = TvPackageDetails(
+        name: widget.pkg.name,
+        price: widget.pkg.price?.toDouble(),
+        period: 'месяц',
+        note: widget.pkg.note,
+      );
+    } else {
+      try {
+        final token = await AuthStore().appToken;
+        if (token != null) d = await CabinetParser.fetchTvPackage(token, widget.script, widget.pkg.href);
+      } catch (e) {
+        debugPrint('пакет не загрузился: $e');
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _d = d;
+      _step = d == null ? _SheetStep.failed : _SheetStep.details;
+    });
+  }
+
+  Future<void> _enable() async {
+    final before = _d!;
+    setState(() => _step = _SheetStep.sending);
+    TvPackageDetails? after;
+    try {
+      final token = await AuthStore().appToken;
+      if (token != null) {
+        after = await CabinetParser.enableTvPackage(token, widget.script, widget.pkg.href, before);
+      }
+    } catch (e) {
+      debugPrint('пакет не подключился: $e');
+    }
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      // успех - только если биллинг убрал кнопку «включить»
+      _ok = after != null && !after.canEnable;
+      if (after != null) _d = after;
+      final status = after?.status ?? '';
+      _result = _ok
+          ? (status.isNotEmpty ? 'Пакет подключён. $status' : 'Пакет подключён')
+          : 'Биллинг не подтвердил подключение. Проверьте баланс или попробуйте позже';
+      _step = _SheetStep.done;
+    });
+  }
+
+  String _price(TvPackageDetails d) {
+    if (d.price == null) return '';
+    final sum = BalanceStore.format(d.price!);
+    return d.period == null ? sum : '$sum за ${d.period}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    final d = _d;
+    if (_step == _SheetStep.loading) {
+      return const SizedBox(
+        height: 140,
+        child: Center(child: CircularProgressIndicator(color: AppColors.brand)),
+      );
+    }
+    if (_step == _SheetStep.failed || d == null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Не удалось открыть пакет',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.ink)),
+          const SizedBox(height: 16),
+          SizedBox(height: 48, child: FilledButton(onPressed: _load, child: const Text('Повторить'))),
+        ],
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(d.name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: p.ink)),
+        if (d.price != null) ...[
+          const SizedBox(height: 4),
+          Text(_price(d),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: p.inkMute,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+        ],
+        if (d.note != null) ...[
+          const SizedBox(height: 10),
+          Text(d.note!, style: TextStyle(fontSize: 13.5, color: p.ink, height: 1.35)),
+        ],
+        if (d.channels.isNotEmpty || d.channelCount != null) ...[
+          const SizedBox(height: 14),
+          Text(
+            d.channelCount != null ? 'Каналы · ${d.channelCount}' : 'Каналы',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: p.inkMute),
+          ),
+          if (d.channels.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final c in d.channels)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: p.surfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(c,
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: p.ink)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+        const SizedBox(height: 18),
+        ..._actions(d),
+      ],
+    );
+  }
+
+  List<Widget> _actions(TvPackageDetails d) {
+    final p = context.p;
+    switch (_step) {
+      case _SheetStep.confirm:
+        final period = d.period != null ? ' за ${d.period}' : '';
+        return [
+          Text(
+            d.price != null
+                ? 'С баланса спишется ${BalanceStore.format(d.price!)}$period. Подключить?'
+                : 'Пакет платный, сумму спишет биллинг. Подключить?',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(height: 52, child: FilledButton(onPressed: _enable, child: const Text('Да, подключить'))),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 48,
+            child: TextButton(
+              onPressed: () => setState(() => _step = _SheetStep.details),
+              child: const Text('Отмена'),
+            ),
+          ),
+        ];
+      case _SheetStep.sending:
+        return const [
+          SizedBox(height: 52, child: Center(child: CircularProgressIndicator(color: AppColors.brand))),
+        ];
+      case _SheetStep.done:
+        return [
+          Row(
+            children: [
+              Icon(_ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                  color: _ok ? AppColors.ok : AppColors.danger, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(_result ?? '',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Готово')),
+          ),
+        ];
+      default:
+        if (DemoMode.isEnabled.value) {
+          return [Text('В демо-режиме подключение недоступно', style: TextStyle(fontSize: 13, color: p.inkMute))];
+        }
+        if (!d.canEnable) {
+          return [
+            Text(d.status.isNotEmpty ? d.status : 'Подключить этот пакет сейчас нельзя',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink)),
+          ];
+        }
+        return [
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: () => setState(() => _step = _SheetStep.confirm),
+              child: Text(d.price != null ? 'Подключить за ${BalanceStore.format(d.price!)}' : 'Подключить'),
+            ),
+          ),
+        ];
+    }
   }
 }
