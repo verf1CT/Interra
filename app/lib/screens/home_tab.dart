@@ -12,7 +12,6 @@ import '../utils/billing_math.dart';
 import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
 import 'diagnostics_screen.dart';
-import 'lan_devices_screen.dart';
 import 'support_screen.dart';
 
 /// главная вкладка кабинета. показывает только то, что реально пришло из
@@ -216,13 +215,8 @@ class _HomeTabState extends State<HomeTab> {
           children: [
             _QuickAction(
               icon: Icons.speed_rounded,
-              label: 'Тест сети',
+              label: 'Диагностика',
               onTap: () => push(const DiagnosticsScreen()),
-            ),
-            _QuickAction(
-              icon: Icons.devices_other_rounded,
-              label: 'Кто в Wi-Fi',
-              onTap: () => push(const LanDevicesScreen()),
             ),
             _QuickAction(
               icon: Icons.tune_rounded,

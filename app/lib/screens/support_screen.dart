@@ -6,7 +6,6 @@ import '../services/analytics.dart';
 import '../services/app_info.dart';
 import '../widgets/ui_kit.dart';
 import 'diagnostics_screen.dart';
-import 'lan_devices_screen.dart';
 
 /// экран «Поддержка»: связь с провайдером (звонок, ВКонтакте, помощь
 /// на сайте) и версия приложения. контакты - из [AppConfig]
@@ -61,29 +60,13 @@ class SupportScreen extends StatelessWidget {
               builder: (context) => _tile(
                 icon: Icons.network_check_rounded,
                 color: AppColors.accent,
-                title: 'Скорость и диагностика сети',
+                title: 'Диагностика сети',
                 subtitle: 'Проверить, где проблема с интернетом',
                 onTap: () {
                   Analytics.supportOpened('diagnostics');
                   Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const DiagnosticsScreen(),
                     settings: const RouteSettings(name: 'diagnostics'),
-                  ));
-                },
-              ),
-            ),
-            _divider(),
-            Builder(
-              builder: (context) => _tile(
-                icon: Icons.devices_rounded,
-                color: AppColors.brand,
-                title: 'Устройства в сети',
-                subtitle: 'Кто подключён к твоему Wi-Fi',
-                onTap: () {
-                  Analytics.supportOpened('lan');
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const LanDevicesScreen(),
-                    settings: const RouteSettings(name: 'lan_devices'),
                   ));
                 },
               ),

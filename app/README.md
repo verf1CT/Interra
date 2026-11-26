@@ -40,7 +40,6 @@ Flutter-приложение для iOS и Android. Показывает бал�
 | `settings_screen.dart` | тема, уведомления, замок, выход |
 | `support_screen.dart` | звонок, чат, ВКонтакте, помощь |
 | `diagnostics_screen.dart` | проверка по шагам: интернет, DNS, сайт, биллинг |
-| `lan_devices_screen.dart` | устройства в домашней сети |
 | `biometric_gate.dart`, `pin_setup_screen.dart` | замок приложения: биометрия и код |
 
 ## Сервисы
@@ -55,7 +54,7 @@ Flutter-приложение для iOS и Android. Показывает бал�
 | `page_cache.dart` | снимок кабинета на случай офлайна, чистится при выходе |
 | `push_service.dart`, `notify_prefs.dart`, `api_client.dart` | FCM, категории уведомлений, регистрация устройства на сервере |
 | `biometric.dart`, `pin_lock.dart` | Face ID или отпечаток, код-пароль (SHA-256 с солью, пауза после 5 ошибок) |
-| `net_diagnostics.dart`, `lan_scanner.dart` | проверки сети и сканер подсети (TCP и mDNS) |
+| `net_diagnostics.dart` | проверки сети: интернет, DNS, сайт, биллинг |
 | `quick_actions_service.dart` | ярлыки по долгому нажатию на иконку |
 | `update_check.dart` | сверяет версию с `pubspec.yaml` в ветке main, пока приложения нет в сторах |
 | `demo_mode.dart` | вымышленный абонент для скриншотов магазинов и модераторов |
