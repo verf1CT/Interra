@@ -5,6 +5,8 @@ import 'package:html/dom.dart' as dom;
 import 'balance_store.dart';
 import 'billing_api.dart';
 import 'secure_http.dart';
+import 'tv_data.dart';
+export 'tv_data.dart';
 import '../config.dart';
 import '../utils/billing_math.dart';
 import 'package:flutter/foundation.dart';
@@ -652,22 +654,16 @@ class CabinetParser {
         ? foundTariff
         : 'Нет тарифа';
 
-    final isRestricted = (foundBalance != null && foundBalance < 0) ||
-        text.contains('Услуги связи ограничены') ||
+    // ограничение - только когда биллинг пишет об этом сам: минус на балансе
+    // ещё не значит, что услуги выключены
+    final isRestricted = text.contains('Услуги связи ограничены') ||
         text.contains('отключен до пополнения') ||
         text.toLowerCase().contains('услуги ограничены');
 
-    String? recommendedPayment;
-    final recMatch = RegExp(
+    final recommendedPayment = RegExp(
       r'Рекомендуемая\s+сумма\s+(?:платежа)?[:\-]?\s*([0-9\s]+(?:[.,][0-9]+)?\s*(?:руб\.?|₽|р\.?)?)',
       caseSensitive: false,
-    ).firstMatch(text);
-    if (recMatch != null) {
-      recommendedPayment = recMatch.group(1)?.trim();
-    } else if (foundBalance != null && foundBalance < 0) {
-      final needed = (foundBalance.abs() + 10.0).ceil();
-      recommendedPayment = '$needed ₽';
-    }
+    ).firstMatch(text)?.group(1)?.trim();
 
     final List<AccountOption> parsedAccounts = [];
     final allLinks = doc.querySelectorAll('a');
@@ -969,6 +965,10 @@ class CabinetParser {
         ('aaaprcn', 'prcn', 'блокировка'),
         ('aaaiptv', 'iptvm', 'iptv, пакеты'),
         ('aaaxtvpsm', 'xtvpsmm', 'premiumtv, пакеты'),
+        // страницы одного пакета: там видно, как подключать и как помечен подключённый
+        ('aaaxtvpsm', 'xtvpsmm&xid=10', 'premiumtv, пакет Базовый'),
+        ('aaaxtvpsm', 'xtvpsmm&xid=22', 'premiumtv, доп. пакет'),
+        ('aaaiptv', 'iptvm&xid=1', 'iptv, пакет Полный'),
       ]) {
         await add('$title ($script)', () => raw('${AppConfig.billingBase}/$script?login=$tok&oper=$oper'));
       }
@@ -1170,6 +1170,36 @@ class CabinetParser {
     await _fetchSection(appToken, 'aaasmssvc', 'smssvc', form: form);
     // ответ на POST может быть другой страницей, поэтому перечитываем
     return fetchSmsSettings(appToken);
+  }
+
+  /// страницы пакетов Premium TV и IPTV выбранного договора. ни одна не
+  /// открылась - бросаем ошибку, чтобы экран показал «повторить»
+  static Future<TvInfo> fetchTv(String appToken) async {
+    final r = await Future.wait([
+      _fetchSection(appToken, 'aaaxtvpsm', 'xtvpsmm'),
+      _fetchSection(appToken, 'aaaiptv', 'iptvm'),
+    ]);
+    final premium = r[0], iptv = r[1];
+    if (premium == null && iptv == null) throw Exception('network_error');
+    final (login, password) = premium == null ? (null, null) : parsePremiumCredentials(premium);
+    return TvInfo(
+      login: login,
+      password: password,
+      premium: premium == null ? const [] : parseTvPackages(premium),
+      iptvFreeBase: iptv != null && parseIptvFreeBase(iptv),
+      iptv: iptv == null ? const [] : parseTvPackages(iptv),
+    );
+  }
+
+  /// адрес страницы раздела для браузера: относительную ссылку из кабинета
+  /// (`?login=…&oper=…`) привязываем к скрипту и текущему токену
+  static Future<String?> sectionWebUrl(String appToken, String script, String href) async {
+    await _ensureNavToken(appToken);
+    final token = _navToken;
+    if (token == null) return null;
+    final q = href.startsWith('?') ? href.substring(1) : href;
+    final fixed = q.replaceFirst(RegExp(r'login=[^&]*'), 'login=$token').replaceAll('&amp;', '&');
+    return '${AppConfig.billingBase}/$script?$fixed';
   }
 
   /// ссылка на раздел тарифов выбранного договора для браузера. токен сессии

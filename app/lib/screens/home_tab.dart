@@ -330,7 +330,17 @@ class _BalanceHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final restricted = data.isRestricted || data.balance < 0;
+    // плашка только по фактам: биллинг сам написал об ограничении или баланс в минусе
+    final restricted = data.isRestricted;
+    final negative = data.balance < 0;
+    final next = data.nextPaymentDate;
+    final String? warning = restricted
+        ? (data.recommendedPayment != null
+            ? 'Услуги приостановлены. Для включения внесите ${data.recommendedPayment}'
+            : 'Услуги приостановлены. Пополните баланс, чтобы включить')
+        : negative
+            ? 'Баланс отрицательный, пополните${next != null && next.isAfter(DateTime.now()) ? ' до ${shortDate(next)}' : ''}'
+            : null;
     final hasTariff = data.tariff.isNotEmpty &&
         data.tariff != 'Нет тарифа' &&
         data.tariff != 'Неизвестный тариф';
@@ -364,29 +374,16 @@ class _BalanceHero extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: multi
-                      ? _HeroChip(
-                          label: account != null ? 'Договор $account' : 'Договор',
-                          icon: Icons.unfold_more_rounded,
-                          onTap: onPickAccount,
-                          onLongPress: onDumpPages,
-                        )
-                      : _CopyChip(account: account),
-                ),
-                const SizedBox(width: 12),
-                PulseDot(
-                  color: restricted
-                      ? const Color(0xFFFF8A80)
-                      : const Color(0xFF5CF0A8),
-                  label: restricted ? 'Ограничен' : 'Активен',
-                  onBrand: true,
-                  size: 7,
-                ),
-              ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: multi
+                  ? _HeroChip(
+                      label: account != null ? 'Договор $account' : 'Договор',
+                      icon: Icons.unfold_more_rounded,
+                      onTap: onPickAccount,
+                      onLongPress: onDumpPages,
+                    )
+                  : _CopyChip(account: account),
             ),
             const SizedBox(height: 18),
             Text(
@@ -447,7 +444,7 @@ class _BalanceHero extends StatelessWidget {
                 ),
               ),
             ],
-            if (restricted) ...[
+            if (warning != null) ...[
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -462,9 +459,7 @@ class _BalanceHero extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        data.recommendedPayment != null
-                            ? 'Услуги приостановлены. Для включения внесите ${data.recommendedPayment}'
-                            : 'Услуги приостановлены. Пополните баланс, чтобы включить',
+                        warning,
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
