@@ -39,7 +39,29 @@ const _otch = """
 <input class="btn" type="submit" value="Показать"></form>
 </td></tr></tbody></table></div></div></div></body>""";
 
+const _sms = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<hr><br>номер мобильного телефона:<br>
+<form action="" method="POST" id="clkform">
+<input type="hidden" name="login" value="X.216997.3599685159"><input type="hidden" name="oper" value="smssvc"><input type="hidden" name="hrenul" id="hrenul" value="0">
+<input type="text" name="phone" id="phone" size="20" maxlength="20" value="79990000000" autocomplete="off" required=""><br>
+<input type="checkbox" name="sendme" checked=""> присылать уведомления<br><br> привязано приложений: <b class="t">10</b><br><input type="checkbox" name="delapp"> отвязать все приложения<br><br>
+<input class="btn" type="submit" name="set" id="searclk" value="внести изменения"></form>
+</td></tr></tbody></table></body>""";
+
 void main() {
+  test('aaasmssvc: номер, галочка, привязанные приложения и поля формы', () {
+    final s = CabinetParser.parseSmsSettings(_sms)!;
+    expect(s.phone, '79990000000');
+    expect(s.enabled, isTrue);
+    expect(s.linkedApps, 10);
+    expect(s.fields['hrenul'], '0');
+    expect(s.fields.containsKey('sendme'), isFalse);
+    final off = CabinetParser.parseSmsSettings(_sms.replaceFirst('name="sendme" checked=""', 'name="sendme"'))!;
+    expect(off.enabled, isFalse);
+    expect(CabinetParser.parseSmsSettings(_tarif), isNull);
+  });
+
   test('страница договора: тариф, баланс, ФИО и сумма ближайшего платежа', () {
     final d = CabinetParser.parseCabinetHtml(_info);
     expect(d.tariff, 'Месяц 100М');

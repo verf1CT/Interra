@@ -108,6 +108,22 @@ class ServiceItem {
   });
 }
 
+class SmsSettings {
+  final String phone;
+  final bool enabled;
+  final int? linkedApps;
+
+  /// скрытые и текстовые поля формы как есть: отправляем их обратно
+  final Map<String, String> fields;
+
+  const SmsSettings({
+    required this.phone,
+    required this.enabled,
+    this.linkedApps,
+    this.fields = const {},
+  });
+}
+
 class CabinetParser {
   /// Корректно декодирует ответ биллинга в UTF-8.
   /// Apache 2.2 на stat.interra.ru отдаёт заголовок `Content-Type: text/html`
@@ -1105,61 +1121,65 @@ class CabinetParser {
     }
   }
 
-  /// Активация карты экспресс-оплаты или сертификата по номеру и пин-коду
-  static Future<bool> activateCertificate(
-    String appToken, {
-    required String number,
-    required String pin,
+  /// страница «смс-уведомления» (aaasmssvc): номер, галочка «присылать
+  /// уведомления» и счётчик привязанных приложений. null - страница не открылась
+  /// или формы на ней нет
+  @visibleForTesting
+  static SmsSettings? parseSmsSettings(String html) {
+    final doc = parser.parse(html);
+    final form = doc.querySelector('form#clkform') ?? doc.querySelector('form');
+    if (form == null || form.querySelector('input[name="sendme"]') == null) return null;
+    final apps = int.tryParse(
+        RegExp(r'привязано\s+приложений:\s*(\d+)').firstMatch(doc.body?.text ?? '')?.group(1) ?? '');
+    return SmsSettings(
+      phone: form.querySelector('input[name="phone"]')?.attributes['value']?.trim() ?? '',
+      enabled: form.querySelector('input[name="sendme"]')!.attributes.containsKey('checked'),
+      linkedApps: apps,
+      fields: {
+        for (final el in form.querySelectorAll('input[type="hidden"], input[type="text"]'))
+          if ((el.attributes['name'] ?? '').isNotEmpty) el.attributes['name']!: el.attributes['value'] ?? '',
+      },
+    );
+  }
+
+  static Future<SmsSettings?> fetchSmsSettings(String appToken) async {
+    final html = await _fetchSection(appToken, 'aaasmssvc', 'smssvc');
+    return html == null ? null : parseSmsSettings(html);
+  }
+
+  /// отправляет форму sms-уведомлений как кнопка «внести изменения».
+  /// галочки браузер шлёт только отмеченными, так же делаем и мы. возвращает
+  /// состояние страницы после отправки - по нему видно, принял ли биллинг
+  static Future<SmsSettings?> saveSmsSettings(
+    String appToken,
+    SmsSettings current, {
+    required bool enabled,
+    bool unlinkApps = false,
   }) async {
-    final r = await BillingApi.openCabinet(appToken);
-    if (!r.isOk || r.data == null) throw Exception('auth_expired');
-    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'cards');
-    try {
-      final res = await SecureHttp.post(
-        Uri.parse(liveUrl),
-        body: {
-          'number': number,
-          'pin': pin,
-          'card_num': number,
-          'card_pin': pin,
-          'cert_num': number,
-          'cert_pin': pin,
-          'submit': '1',
-          'activate': '1',
-        },
-      ).timeout(const Duration(seconds: 15));
-      return res.statusCode == 200;
-    } catch (_) {
-      return false;
+    final form = <String, String>{
+      ...current.fields,
+      if (enabled) 'sendme': 'on',
+      if (unlinkApps) 'delapp': 'on',
+      'set': 'внести изменения',
     }
+      ..remove('login')
+      ..remove('oper');
+    await _fetchSection(appToken, 'aaasmssvc', 'smssvc', form: form);
+    // ответ на POST может быть другой страницей, поэтому перечитываем
+    return fetchSmsSettings(appToken);
   }
 
-  /// Отвязать все сторонние приложения и мобильные сессии в биллинге UTM5
-  static Future<bool> unlinkAllApps(String appToken) async {
-    final r = await BillingApi.openCabinet(appToken);
-    if (!r.isOk || r.data == null) throw Exception('auth_expired');
-    final liveUrl = AppConfig.cabinetUrl(r.data!, oper: 'sms');
+  /// ссылка на раздел тарифов выбранного договора для браузера. токен сессии
+  /// не привязан к кукам, поэтому открывается и вне приложения. если токена
+  /// нет - старая ссылка cmd=open (у номера с одним договором это его страница)
+  static Future<String?> getTariffsWebUrl(String appToken) async {
     try {
-      final res = await SecureHttp.post(
-        Uri.parse(liveUrl),
-        body: {'unlink_all': '1', 'clear_apps': '1', 'submit': '1'},
-      ).timeout(const Duration(seconds: 15));
-      return res.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Ссылка на веб-версию личного кабинета с авторизованной сессией.
-  /// По умолчанию открывает `oper=info`, так как именно на ней UTM5 авторизует
-  /// сессию в браузере. Если открыть `oper=tariffs` напрямую на чистой сессии,
-  /// UTM5 сбрасывает на пустую форму входа.
-  static Future<String?> getTariffsWebUrl(String appToken,
-      {bool preferInfo = true}) async {
-    try {
+      await _ensureNavToken(appToken);
+      final token = _navToken;
+      if (token != null) return '${AppConfig.billingBase}/aaatarif?login=$token&oper=tarif';
       final r = await BillingApi.openCabinet(appToken);
       if (!r.isOk || r.data == null) return null;
-      return AppConfig.cabinetUrl(r.data!, oper: preferInfo ? 'info' : 'tariffs');
+      return AppConfig.cabinetUrl(r.data!, oper: 'info');
     } catch (_) {
       return null;
     }

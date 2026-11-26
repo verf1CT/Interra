@@ -34,8 +34,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String? _phone;
   bool _notifications = true;
-  bool _smsNotifications = true;
-  int _linkedAppsCount = 9;
+  /// страница sms-уведомлений выбранного договора: номер, галочка и
+  /// число привязанных приложений берём оттуда, а не из памяти телефона
+  SmsSettings? _sms;
+  bool _smsLoading = true;
+  bool _smsSaving = false;
   bool _unlinkingApps = false;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
@@ -48,6 +51,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _load();
+    _loadSms();
+  }
+
+  Future<void> _loadSms() async {
+    SmsSettings? sms;
+    if (DemoMode.isEnabled.value) {
+      sms = const SmsSettings(phone: '79991234567', enabled: true, linkedApps: 2);
+    } else {
+      final token = await AuthStore().appToken;
+      if (token != null) {
+        try {
+          sms = await CabinetParser.fetchSmsSettings(token);
+        } catch (e) {
+          debugPrint('sms-настройки не загрузились: $e');
+        }
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sms = sms;
+        _smsLoading = false;
+      });
+    }
+  }
+
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 3)),
+    );
   }
 
   Future<void> _load() async {
@@ -64,8 +97,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _phone = phone ?? (DemoMode.isEnabled.value ? '79991234567' : null);
       _notifications = prefs.getBool('notifications_enabled') ?? true;
-      _smsNotifications = prefs.getBool('sms_notifications_enabled') ?? true;
-      _linkedAppsCount = prefs.getInt('linked_apps_count') ?? 9;
       _biometricAvailable = bioAvail;
       _biometricEnabled = bioOn;
       _pinSet = pinSet;
@@ -182,66 +213,85 @@ class _SettingsScreenState extends State<SettingsScreen> {
     PushService.registerCurrentToken();
   }
 
+  /// галочка «присылать уведомления» в кабинете. успех засчитываем, только
+  /// если после отправки страница показывает новое состояние
   Future<void> _toggleSmsNotifications(bool value) async {
-    setState(() => _smsNotifications = value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('sms_notifications_enabled', value);
+    final current = _sms;
+    if (current == null) return;
+    if (DemoMode.isEnabled.value) {
+      setState(() => _sms = SmsSettings(phone: current.phone, enabled: value, linkedApps: current.linkedApps));
+      return;
+    }
+    setState(() => _smsSaving = true);
+    SmsSettings? after;
+    try {
+      final token = await AuthStore().appToken;
+      if (token != null) {
+        after = await CabinetParser.saveSmsSettings(token, current, enabled: value);
+      }
+    } catch (e) {
+      debugPrint('sms-настройки не сохранились: $e');
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(value
-            ? 'SMS-уведомления за сутки до блокировки включены'
-            : 'SMS-уведомления отключены'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    setState(() {
+      _smsSaving = false;
+      if (after != null) _sms = after;
+    });
+    if (after?.enabled == value) {
+      _snack(value ? 'SMS перед блокировкой включены' : 'SMS перед блокировкой выключены');
+    } else {
+      _snack('Биллинг не принял изменение. Попробуйте позже или в кабинете на сайте');
+    }
   }
 
   Future<void> _confirmUnlinkApps() async {
+    final current = _sms;
+    if (current == null) return;
     final confirmed = await showConfirmSheet(
       context,
       icon: Icons.link_off_rounded,
       title: 'Отвязать все приложения?',
       message:
-          'Это завершит авторизованные сессии на всех остальных устройствах. Текущее приложение останется активным.',
+          'Привязки сбросятся на всех устройствах. Если вместе с ними отвяжется и это приложение, войдите снова по SMS-коду.',
       confirmLabel: 'Отвязать все',
     );
-
     if (!confirmed || !mounted) return;
 
+    if (DemoMode.isEnabled.value) {
+      setState(() => _sms = SmsSettings(phone: current.phone, enabled: current.enabled, linkedApps: 1));
+      return;
+    }
+
     setState(() => _unlinkingApps = true);
-
+    final token = await AuthStore().appToken;
+    SmsSettings? after;
     try {
-      final token = await AuthStore().appToken;
-      if (token != null && !DemoMode.isEnabled.value) {
-        await CabinetParser.unlinkAllApps(token);
+      if (token != null) {
+        after = await CabinetParser.saveSmsSettings(token, current,
+            enabled: current.enabled, unlinkApps: true);
       }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('linked_apps_count', 1);
+    } catch (e) {
+      debugPrint('отвязка приложений: $e');
+    }
 
-      if (mounted) {
-        setState(() {
-          _linkedAppsCount = 1;
-          _unlinkingApps = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Все сторонние приложения успешно отвязаны'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _unlinkingApps = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Не удалось отвязать приложения. Попробуйте позже.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+    // отвязка могла снять и нашу регистрацию: тогда выходим, как при выходе
+    if (token != null) {
+      final r = await BillingApi.openCabinet(token);
+      if (!r.isOk && r.code == '0') {
+        await _logout();
+        return;
       }
     }
+    if (!mounted) return;
+    setState(() {
+      _unlinkingApps = false;
+      if (after != null) _sms = after;
+    });
+    final before = current.linkedApps;
+    final now = after?.linkedApps;
+    _snack(now != null && (before == null || now < before)
+        ? 'Приложения отвязаны, осталось привязанных: $now'
+        : 'Биллинг не подтвердил отвязку. Попробуйте позже');
   }
 
   Future<void> _confirmLogout() async {
@@ -364,10 +414,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 iconColor: context.p.ink,
                 title: formatRuPhoneFull(_phone),
                 subtitle: 'Номер для входа',
-                trailing: PillChip(
-                  label: '$_linkedAppsCount устр.',
-                  color: context.p.inkMute,
-                ),
+                trailing: _sms?.linkedApps == null
+                    ? null
+                    : PillChip(
+                        label: '${_sms!.linkedApps} устр.',
+                        color: context.p.inkMute,
+                      ),
               ),
             ],
           ),
@@ -451,21 +503,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.sms_outlined,
                 iconColor: AppColors.accent,
                 title: 'SMS за сутки до блокировки',
-                subtitle: 'Оповещение при низком остатке с 11 до 21 ч.',
-                trailing: Switch.adaptive(
-                  value: _smsNotifications,
-                  activeTrackColor: AppColors.brand,
-                  onChanged: _toggleSmsNotifications,
-                ),
+                subtitle: _smsLoading
+                    ? 'Загружаю настройки из кабинета…'
+                    : _sms == null
+                        ? 'Не удалось загрузить настройки'
+                        : _sms!.phone.isEmpty
+                            ? 'Номер для SMS не указан в кабинете'
+                            : 'На ${formatRuPhoneFull(_sms!.phone)}, с 11 до 21 ч',
+                trailing: _smsSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand),
+                      )
+                    : Switch.adaptive(
+                        value: _sms?.enabled ?? false,
+                        activeTrackColor: AppColors.brand,
+                        onChanged: _sms == null || _sms!.phone.isEmpty
+                            ? null
+                            : _toggleSmsNotifications,
+                      ),
               ),
               const PillDivider(),
               PillTile(
                 icon: Icons.devices_rounded,
                 iconColor: AppColors.neutral,
-                title: 'Активные сессии',
-                subtitle: 'Привязано приложений: $_linkedAppsCount',
+                title: 'Привязанные приложения',
+                subtitle: _sms?.linkedApps == null
+                    ? 'Число привязок не загрузилось'
+                    : 'Сейчас привязано: ${_sms!.linkedApps}',
                 trailing: OutlinedButton(
-                  onPressed: _unlinkingApps ? null : _confirmUnlinkApps,
+                  onPressed: _unlinkingApps || _sms == null ? null : _confirmUnlinkApps,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.danger,
                     side: const BorderSide(color: AppColors.danger, width: 0.8),
