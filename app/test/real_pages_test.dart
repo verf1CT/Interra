@@ -49,7 +49,38 @@ const _sms = """
 <input class="btn" type="submit" name="set" id="searclk" value="внести изменения"></form>
 </td></tr></tbody></table></body>""";
 
+const _premium = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<div class="font-l mb-24"><b>Premium TV</b></div>
+<a href="?login=x&amp;oper=xtvpsm">Описание услуги</a><br><p>Ваш персональный логин для просмотра Premium TV: <b>123456interra</b><br> Ваш пароль: <b>000000</b><br> Эти данные необходимо ввести всего один раз.<br></p><hr>Основные пакеты:<br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=xtvpsmm&amp;xid=10" title="нажмите чтобы узнать подробности">Базовый</a>Цена <b>200</b> рублей за месяц<br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=xtvpsmm&amp;xid=12" title="нажмите чтобы узнать подробности">Максимальный</a>Цена <b>800</b> рублей за месяц<br><br><hr><font size="+0">Дополнительные пакеты:</font><br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=xtvpsmm&amp;xid=22" title="нажмите чтобы узнать подробности"><font size="+0">МАТЧ! ПРЕМЬЕР (Наш Футбол)</font></a>Цена <b>299</b> рублей за месяц<br>
+</td></tr></tbody></table></body>""";
+
+const _iptv = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<div class="font-l mb-24"><b>IPTV</b></div><a href="?login=x&amp;oper=iptv">Описание услуги</a><hr width="350" align="left">По умолчанию у всех абонентов подключен <a href="?login=x&amp;oper=iptvm&amp;xid=0" title="посмотреть список каналов">базовый бесплатный пакет </a>.<br><br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=iptvm&amp;xid=1" title="+128 каналов к Базовому пакету (итого 150)">Полный</a>+128 каналов к Базовому пакету (итого 150)<br>Цена <b>200</b> рублей за месяц<br><hr><a class="btn7 --grey --full" href="?login=x&amp;oper=iptvm&amp;xid=8" title="Матч! Премьер">Матч! Премьер</a>Матч! Премьер<br>Цена <b>299</b> рублей за месяц<br>
+</td></tr></tbody></table></body>""";
+
 void main() {
+  test('Premium TV: вход в Смотрёшку и пакеты с ценами', () {
+    final (login, password) = parsePremiumCredentials(_premium);
+    expect(login, '123456interra');
+    expect(password, '000000');
+    final list = parseTvPackages(_premium);
+    expect(list.map((e) => e.name), ['Базовый', 'Максимальный', 'МАТЧ! ПРЕМЬЕР (Наш Футбол)']);
+    expect(list.map((e) => e.price), [200, 800, 299]);
+    expect(list.map((e) => e.extra), [false, false, true]);
+    expect(list.first.href, contains('xid=10'));
+  });
+
+  test('IPTV: бесплатный базовый и платные пакеты с описанием', () {
+    expect(parseIptvFreeBase(_iptv), isTrue);
+    final list = parseTvPackages(_iptv);
+    expect(list.map((e) => e.name), ['Полный', 'Матч! Премьер']);
+    expect(list[0].note, '+128 каналов к Базовому пакету (итого 150)');
+    expect(list[0].price, 200);
+    expect(list[1].note, isNull);
+  });
+
   test('aaasmssvc: номер, галочка, привязанные приложения и поля формы', () {
     final s = CabinetParser.parseSmsSettings(_sms)!;
     expect(s.phone, '79990000000');

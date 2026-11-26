@@ -64,6 +64,22 @@ class DemoMode {
         nextCharge: 750,
       );
 
+  static TvInfo get demoTv => const TvInfo(
+        login: '123456interra',
+        password: '000000',
+        premium: [
+          TvPackage(name: 'Базовый', price: 200, href: ''),
+          TvPackage(name: 'Расширенный', price: 300, href: ''),
+          TvPackage(name: 'Максимальный', price: 800, href: ''),
+          TvPackage(name: 'МАТЧ! ПРЕМЬЕР (Наш Футбол)', price: 299, extra: true, href: ''),
+          TvPackage(name: 'Amediateka', price: 349, extra: true, href: ''),
+        ],
+        iptvFreeBase: true,
+        iptv: [
+          TvPackage(name: 'Полный', price: 200, note: '+128 каналов к Базовому пакету (итого 150)', href: ''),
+        ],
+      );
+
   static List<ServiceItem> get demoServices => [
         ServiceItem(
           name: 'Комфорт 200 (Безлимитный интернет 200 Мбит/с)',

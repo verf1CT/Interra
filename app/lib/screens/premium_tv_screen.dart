@@ -1,383 +1,377 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../services/auth_store.dart';
+import '../services/cabinet_parser.dart';
+import '../services/demo_mode.dart';
 import '../theme.dart';
 import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
 
-/// вкладка «ТВ»: описание сервиса, пакеты каналов (раскрываются по нажатию),
-/// ссылка на просмотр онлайн и инструкция для Smart TV.
-/// состав пакетов и числа - справочный текст, в биллинге их нет
-class PremiumTvScreen extends StatelessWidget {
+/// вкладка «ТВ»: вход в Смотрёшку и пакеты Premium TV и IPTV с ценами -
+/// всё со страниц кабинета выбранного договора. подключение пакета пока
+/// открывает его страницу в кабинете на сайте
+class PremiumTvScreen extends StatefulWidget {
   const PremiumTvScreen({super.key});
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
+  @override
+  State<PremiumTvScreen> createState() => _PremiumTvScreenState();
+}
+
+class _PremiumTvScreenState extends State<PremiumTvScreen> {
+  bool _loading = true;
+  bool _failed = false;
+  TvInfo? _tv;
+
+  @override
+  void initState() {
+    super.initState();
+    DemoMode.isEnabled.addListener(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    DemoMode.isEnabled.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    TvInfo? tv;
+    if (DemoMode.isEnabled.value) {
+      tv = DemoMode.demoTv;
+    } else {
+      try {
+        final token = await AuthStore().appToken;
+        if (token != null) tv = await CabinetParser.fetchTv(token);
+      } catch (e) {
+        debugPrint('тв не загрузилось: $e');
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _tv = tv;
+      _failed = tv == null;
+      _loading = false;
+    });
+  }
+
+  Future<void> _open(String url) async {
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Не удалось открыть $url: $e');
     }
   }
 
-  static const _packages = [
-    _Package(
-      icon: Icons.public_rounded,
-      title: 'Общероссийские и информационные',
-      count: '24 канала',
-      channels:
-          'Первый HD, Россия 1 HD, Матч ТВ HD, НТВ HD, Пятый канал, Россия К, Россия 24, ОТР, ТВ Центр, РЕН ТВ, Спас, СТС, Домашний, ТВ-3, Пятница!, Звезда, МИР, ТНТ, Муз-ТВ',
-    ),
-    _Package(
-      icon: Icons.movie_filter_rounded,
-      title: 'Кино и сериалы',
-      count: '38 каналов',
-      channels:
-          'Кинокомедия HD, Киносемья HD, Киномикс HD, Родное кино, FOX HD, TV1000 HD, TV1000 Action, Киносерия, Кино ТВ HD, Русский Роман HD, Paramount Channel',
-    ),
-    _Package(
-      icon: Icons.sports_soccer_rounded,
-      title: 'Спорт',
-      count: '16 каналов',
-      channels:
-          'Матч Премьер HD, Матч! Футбол 1/2/3 HD, Матч! Боец, КХЛ HD, Старт HD, Extreme Sports, Мир Баскетбола, Моторспорт ТВ',
-    ),
-    _Package(
-      icon: Icons.explore_rounded,
-      title: 'Познавательные и путешествия',
-      count: '28 каналов',
-      channels:
-          'Discovery HD, National Geographic HD, Моя Планета, Наука 2.0, Живая Планета, Animal Planet HD, Travel+Adventure HD, История, RTG HD',
-    ),
-    _Package(
-      icon: Icons.child_care_rounded,
-      title: 'Детские',
-      count: '14 каналов',
-      channels:
-          'Мульт HD, Карусель, СТС Kids HD, Мультиландия, О!, Nickelodeon, Disney, Детский Мир, В гостях у сказки',
-    ),
-  ];
+  /// страница пакета в кабинете на сайте: там описание и подключение
+  Future<void> _openPackage(String script, TvPackage pkg) async {
+    if (DemoMode.isEnabled.value || pkg.href.isEmpty) return;
+    final token = await AuthStore().appToken;
+    if (token == null) return;
+    final url = await CabinetParser.sectionWebUrl(token, script, pkg.href);
+    if (url != null) await _open(url);
+  }
+
+  void _openStore() {
+    // точных ссылок на карточку приложения у нас нет - открываем поиск магазина
+    const q = 'Смотрёшка';
+    _open(Platform.isIOS
+        ? 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=${Uri.encodeComponent(q)}'
+        : 'market://search?q=${Uri.encodeComponent(q)}');
+  }
 
   @override
   Widget build(BuildContext context) {
-    final p = context.p;
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (_loading) return _skeleton();
+    final tv = _tv;
+    if (_failed || tv == null || tv.isEmpty) {
+      return _ErrorState(onRetry: _load);
+    }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-      children: [
-        StaggerIn(index: 0, child: _hero(context)),
-        const SizedBox(height: 22),
-        const PillSectionHeader('Пакеты каналов'),
-        for (var i = 0; i < _packages.length; i++) ...[
-          StaggerIn(
-            index: i + 1,
-            child: _PackageCard(package: _packages[i], initiallyOpen: i == 0),
-          ),
-          const SizedBox(height: 10),
-        ],
-        const SizedBox(height: 12),
-        StaggerIn(
-          index: _packages.length + 1,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-            decoration: cardBox(context, radius: 22),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: p.surfaceAlt,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(Icons.connected_tv_rounded,
-                      size: 22,
-                      color: dark ? AppColors.brand : AppColors.brandInk),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Как смотреть на Smart TV',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: p.ink)),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Приложение «Интерра ТВ» для Samsung, LG и Android TV',
-                        style: TextStyle(
-                            fontSize: 12.5, color: p.inkMute, height: 1.3),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
-                  onPressed: () => _openUrl('https://interra.ru/help/'),
-                  child: const Text('Инструкция'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    var i = 0;
+    final premiumBase = tv.premium.where((e) => !e.extra).toList();
+    final premiumExtra = tv.premium.where((e) => e.extra).toList();
 
-  Widget _hero(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    const radius = 26.0;
-
-    Widget fact(String text) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        );
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: brandGradient(dark),
-        boxShadow: dark
-            ? null
-            : [
-                BoxShadow(
-                  color: AppColors.brandInk.withValues(alpha: 0.28),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      color: AppColors.brand,
+      onRefresh: _load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
         children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.live_tv_rounded,
-                    color: Colors.white, size: 26),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Интерра ТВ',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Премиальное интерактивное ТВ',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              fact('Более 150 каналов'),
-              fact('Архив до 7 дней'),
-              fact('Пауза, перемотка'),
-              fact('Смартфон и Smart TV'),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Pressable(
-            onTap: () => _openUrl('https://online.interra.ru/'),
-            semanticLabel: 'Смотреть онлайн',
-            child: Container(
-              height: 52,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.play_arrow_rounded,
-                      size: 22, color: AppColors.brandInk),
-                  SizedBox(width: 6),
-                  Text(
-                    'Смотреть онлайн',
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.brandInk,
-                    ),
-                  ),
-                ],
-              ),
+          if (tv.login != null) ...[
+            StaggerIn(
+              index: i++,
+              child: _LoginCard(login: tv.login!, password: tv.password, onStore: _openStore),
             ),
-          ),
+            const SizedBox(height: 22),
+          ],
+          if (premiumBase.isNotEmpty) ...[
+            const PillSectionHeader('Premium TV · основные пакеты'),
+            StaggerIn(index: i++, child: _packages(premiumBase, 'aaaxtvpsm')),
+            const SizedBox(height: 18),
+          ],
+          if (premiumExtra.isNotEmpty) ...[
+            const PillSectionHeader('Premium TV · дополнительные'),
+            StaggerIn(index: i++, child: _packages(premiumExtra, 'aaaxtvpsm')),
+            const SizedBox(height: 6),
+            _hint('Заказываются к основному пакету'),
+            const SizedBox(height: 18),
+          ],
+          if (tv.iptvFreeBase || tv.iptv.isNotEmpty) ...[
+            const PillSectionHeader('IPTV'),
+            StaggerIn(
+              index: i++,
+              child: PillGroupCard(children: [
+                if (tv.iptvFreeBase)
+                  const PillTile(
+                    icon: Icons.check_circle_rounded,
+                    iconColor: AppColors.ok,
+                    title: 'Базовый пакет',
+                    subtitle: 'Подключён всем абонентам бесплатно',
+                  ),
+                for (final pkg in tv.iptv) ...[
+                  if (tv.iptvFreeBase || pkg != tv.iptv.first) const PillDivider(),
+                  _packageTile(pkg, 'aaaiptv'),
+                ],
+              ]),
+            ),
+            const SizedBox(height: 6),
+            _hint('На Smart TV смотреть можно без приставки'),
+          ],
         ],
       ),
     );
   }
+
+  Widget _packages(List<TvPackage> list, String script) => PillGroupCard(children: [
+        for (var k = 0; k < list.length; k++) ...[
+          if (k > 0) const PillDivider(),
+          _packageTile(list[k], script),
+        ],
+      ]);
+
+  Widget _packageTile(TvPackage pkg, String script) {
+    final p = context.p;
+    return PillTile(
+      icon: Icons.live_tv_rounded,
+      iconColor: AppColors.brand,
+      title: pkg.name,
+      subtitle: pkg.note,
+      onTap: () => _openPackage(script, pkg),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (pkg.price != null)
+            Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: '${pkg.price} ₽',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: p.ink),
+                ),
+                TextSpan(
+                  text: ' /мес',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: p.inkMute),
+                ),
+              ]),
+              style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+            ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: p.inkFaint),
+        ],
+      ),
+    );
+  }
+
+  Widget _hint(String text) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text(text, style: TextStyle(fontSize: 12.5, color: context.p.inkFaint)),
+      );
+
+  Widget _skeleton() => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+        children: const [
+          SkeletonBox(width: double.infinity, height: 168, radius: 22),
+          SizedBox(height: 22),
+          SkeletonBox(width: 180, height: 14),
+          SizedBox(height: 12),
+          SkeletonBox(width: double.infinity, height: 200, radius: 22),
+        ],
+      );
 }
 
-class _Package {
-  final IconData icon;
-  final String title;
-  final String count;
-  final String channels;
+/// логин и пароль для Смотрёшки: абоненты их теряют, поэтому крупно и с копированием
+class _LoginCard extends StatefulWidget {
+  final String login;
+  final String? password;
+  final VoidCallback onStore;
 
-  const _Package({
-    required this.icon,
-    required this.title,
-    required this.count,
-    required this.channels,
-  });
-}
-
-/// пакет каналов: свёрнутый показывает одну строку-превью, раскрытый - чипы
-class _PackageCard extends StatefulWidget {
-  final _Package package;
-  final bool initiallyOpen;
-
-  const _PackageCard({required this.package, this.initiallyOpen = false});
+  const _LoginCard({required this.login, this.password, required this.onStore});
 
   @override
-  State<_PackageCard> createState() => _PackageCardState();
+  State<_LoginCard> createState() => _LoginCardState();
 }
 
-class _PackageCardState extends State<_PackageCard> {
-  late bool _open = widget.initiallyOpen;
+class _LoginCardState extends State<_LoginCard> {
+  bool _showPassword = false;
 
   @override
   Widget build(BuildContext context) {
     final p = context.p;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final pkg = widget.package;
-    final names = pkg.channels.split(', ');
-
+    final pass = widget.password;
     return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: cardBox(context, radius: 22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Pressable(
-            scale: 0.985,
-            semanticLabel: '${pkg.title}, ${pkg.count}',
-            onTap: () => setState(() => _open = !_open),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: p.surfaceAlt,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(pkg.icon,
-                        size: 22,
-                        color: dark ? AppColors.brand : AppColors.brandInk),
+          Text('Вход в Смотрёшку',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: p.ink)),
+          const SizedBox(height: 4),
+          Text('Вводится один раз в приложении на телефоне, планшете или приставке',
+              style: TextStyle(fontSize: 12.5, color: p.inkMute, height: 1.35)),
+          const SizedBox(height: 14),
+          _CredentialRow(label: 'Логин', value: widget.login, shown: widget.login),
+          if (pass != null) ...[
+            const SizedBox(height: 8),
+            _CredentialRow(
+              label: 'Пароль',
+              value: pass,
+              shown: _showPassword ? pass : '•' * pass.length,
+              extra: IconButton(
+                tooltip: _showPassword ? 'Скрыть пароль' : 'Показать пароль',
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                onPressed: () => setState(() => _showPassword = !_showPassword),
+                icon: Icon(
+                  _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 20,
+                  color: p.inkMute,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: widget.onStore,
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Скачать Смотрёшку'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CredentialRow extends StatefulWidget {
+  final String label;
+  final String value;
+  final String shown;
+  final Widget? extra;
+
+  const _CredentialRow({required this.label, required this.value, required this.shown, this.extra});
+
+  @override
+  State<_CredentialRow> createState() => _CredentialRowState();
+}
+
+class _CredentialRowState extends State<_CredentialRow> {
+  bool _copied = false;
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.value));
+    HapticFeedback.lightImpact();
+    setState(() => _copied = true);
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Container(
+      padding: const EdgeInsets.only(left: 14),
+      decoration: BoxDecoration(
+        color: p.surfaceAlt,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.label, style: TextStyle(fontSize: 11.5, color: p.inkMute)),
+                const SizedBox(height: 2),
+                Text(
+                  widget.shown,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: p.ink,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(pkg.title,
-                            style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: p.ink,
-                                height: 1.25)),
-                        const SizedBox(height: 2),
-                        Text(pkg.count,
-                            style: TextStyle(fontSize: 12.5, color: p.inkMute)),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: _open ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 420),
-                    curve: SpringCurve.bouncy,
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 26, color: p.inkFaint),
-                  ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          if (widget.extra != null) widget.extra!,
+          IconButton(
+            tooltip: 'Скопировать',
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 52),
+            onPressed: _copy,
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+              child: Icon(
+                _copied ? Icons.check_rounded : Icons.copy_rounded,
+                key: ValueKey(_copied),
+                size: 19,
+                color: _copied ? AppColors.ok : p.inkMute,
               ),
             ),
           ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: _open
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final n in names)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: p.surfaceAlt,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(n,
-                                style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: p.ink)),
-                          ),
-                      ],
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        pkg.channels,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12.5, color: p.inkFaint),
-                      ),
-                    ),
-                  ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _ErrorState({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.live_tv_rounded, size: 36, color: p.inkFaint),
+            const SizedBox(height: 12),
+            Text('Не удалось загрузить ТВ',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.ink)),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: onRetry, child: const Text('Повторить')),
+          ],
+        ),
       ),
     );
   }
