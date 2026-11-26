@@ -4,6 +4,7 @@ import '../theme.dart';
 import '../services/auth_store.dart';
 import '../services/balance_store.dart';
 import '../services/cabinet_parser.dart';
+import '../services/charge_reminder.dart';
 import '../services/analytics.dart';
 import '../services/quick_actions_service.dart';
 import '../services/demo_mode.dart';
@@ -126,20 +127,12 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         }
         if (data != null) {
           final prev = _data!;
-          data = CabinetData(
-            balance: data.balance,
-            account: data.account,
+          data = data.copyWith(
             fullName: !CabinetParser.isPlaceholderName(data.fullName)
                 ? data.fullName
                 : prev.fullName,
-            tariff: data.tariff,
             address: data.address.isNotEmpty ? data.address : prev.address,
-            login: data.login,
-            needsPassportData: data.needsPassportData,
-            isRestricted: data.isRestricted,
-            recommendedPayment: data.recommendedPayment,
             accounts: prev.accounts, // на странице договора списка выбора нет
-            rawHtml: data.rawHtml,
           );
         }
       }
@@ -147,6 +140,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       if (data == null) throw Exception('data is null');
 
       await BalanceStore.update(data.balance, account: data.account);
+      ChargeReminder.update(data);
       Analytics.cabinetOpened();
 
       if (mounted) {
@@ -290,23 +284,15 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
         if (!mounted) return;
         setState(() {
           _selectionEpoch++;
-          _data = CabinetData(
-            balance: newData.balance,
-            account: newData.account.isNotEmpty
-                ? newData.account
-                : (_payAccounts.value[acc.loginUrl] ?? ''),
+          _data = newData.copyWith(
+            account: account,
             fullName: !CabinetParser.isPlaceholderName(newData.fullName)
                 ? newData.fullName
                 : acc.name,
-            tariff: newData.tariff,
             address: newData.address.isNotEmpty ? newData.address : acc.address,
-            login: newData.login,
-            needsPassportData: newData.needsPassportData,
-            isRestricted: newData.isRestricted,
-            recommendedPayment: newData.recommendedPayment,
             accounts: _data!.accounts,
-            rawHtml: newData.rawHtml,
           );
+          ChargeReminder.update(_data!);
           _loading = false;
         });
       }

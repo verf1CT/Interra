@@ -60,6 +60,8 @@ class DemoMode {
           ),
         ],
         rawHtml: '',
+        nextPaymentDate: DateTime(DateTime.now().year, DateTime.now().month + 1, 1),
+        nextCharge: 750,
       );
 
   static List<ServiceItem> get demoServices => [

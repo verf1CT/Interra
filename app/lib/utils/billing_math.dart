@@ -43,9 +43,26 @@ int? monthsCovered(double balance, double? fee) {
   return (balance / fee).floor();
 }
 
-/// дата из таблиц биллинга: «04.11.2026» или «04.11.2026 14:22»
+/// день первого списания, на которое баланса уже не хватит: ближайшее списание
+/// плюс столько месяцев, сколько полных платежей покрывает баланс
+DateTime? paidUntil(double balance, double? charge, DateTime? next) {
+  if (charge == null || charge <= 0 || next == null) return null;
+  final covered = balance <= 0 ? 0 : (balance / charge).floor();
+  return addMonths(next, covered);
+}
+
+/// сдвиг на n месяцев с тем же днём; 31-е в коротком месяце становится последним днём
+DateTime addMonths(DateTime d, int n) {
+  final y = d.year + (d.month - 1 + n) ~/ 12;
+  final m = (d.month - 1 + n) % 12 + 1;
+  final last = DateTime(y, m + 1, 0).day;
+  return DateTime(y, m, d.day > last ? last : d.day, d.hour, d.minute);
+}
+
+/// дата из таблиц биллинга: «04.11.2026», «04.11.2026 14:22». в отчётах и
+/// на странице договора UTM5 пишет через дефис: «26-11-2026 14:15»
 DateTime? parseBillingDate(String s) {
-  final m = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?')
+  final m = RegExp(r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})(?:\s+(\d{1,2}):(\d{2}))?')
       .firstMatch(s);
   if (m == null) return null;
   final d = int.parse(m.group(1)!);

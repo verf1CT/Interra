@@ -19,6 +19,11 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
   String? _error;
   List<PaymentItem> _payments = [];
 
+  /// самый старый загруженный месяц: «показать раньше» грузит предыдущий
+  DateTime _cursor = DateTime(DateTime.now().year, DateTime.now().month);
+  bool _loadingMore = false;
+  bool _moreFailed = false;
+
   @override
   void initState() {
     super.initState();
@@ -38,11 +43,48 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
 
 
 
+  DateTime get _prevMonth => DateTime(_cursor.year, _cursor.month - 1);
+
+  bool get _canLoadMore {
+    final from = CabinetParser.reportsFromYear;
+    return !DemoMode.isEnabled.value && from != null && _prevMonth.year >= from;
+  }
+
+  /// листаем назад по месяцу; пустые месяцы пропускаем, но не больше полугода
+  /// за одно нажатие, чтобы не висеть на десятке запросов
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreFailed = false;
+    });
+    try {
+      final token = await AuthStore().appToken;
+      if (token == null) throw Exception('No token');
+      for (var i = 0; i < 6 && _canLoadMore; i++) {
+        final m = _prevMonth;
+        final items = await CabinetParser.fetchPaymentsMonth(token, m.year, m.month);
+        if (!mounted) return;
+        setState(() {
+          _cursor = m;
+          _payments = [..._payments, ...items];
+        });
+        if (items.isNotEmpty) break;
+      }
+    } catch (_) {
+      if (mounted) setState(() => _moreFailed = true);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
   Future<void> _loadData() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
+      _cursor = DateTime(DateTime.now().year, DateTime.now().month);
+      _moreFailed = false;
     });
 
     if (DemoMode.isEnabled.value) {
@@ -136,8 +178,11 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
     if (_payments.isEmpty) {
       return _centerState(
         icon: Icons.receipt_long_rounded,
-        title: 'Операций пока нет',
+        title: _cursor.month == DateTime.now().month && _cursor.year == DateTime.now().year
+            ? 'В этом месяце операций нет'
+            : 'Операций пока нет',
         text: 'Здесь появятся пополнения и списания по договору',
+        action: _canLoadMore ? _moreButton() : null,
       );
     }
 
@@ -169,23 +214,108 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
           ],
           for (final (gi, e) in groups.entries.indexed) ...[
             PillSectionHeader(e.key),
-            StaggerIn(
-              index: gi + 1,
-              child: PillGroupCard(
-                children: [
-                  for (var i = 0; i < e.value.length; i++) ...[
-                    if (i > 0) const PillDivider(),
-                    _OperationRow(item: e.value[i]),
-                  ],
-                ],
-              ),
-            ),
+            StaggerIn(index: gi + 1, child: _MonthCard(items: e.value)),
             const SizedBox(height: 18),
+          ],
+          if (_canLoadMore) _moreButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _moreButton() {
+    final label = _moreFailed
+        ? 'Не загрузилось, ещё раз'
+        : 'Показать ${monthTitle(_prevMonth).toLowerCase()}';
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton(
+        onPressed: _loadingMore ? null : _loadMore,
+        child: _loadingMore
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand))
+            : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+    );
+  }
+}
+
+/// месяц операций: движение денег сверху, записи по 0 ₽ (смена статуса,
+/// создание услуги) свёрнуты в одну строку - их почти никто не читает
+class _MonthCard extends StatefulWidget {
+  final List<PaymentItem> items;
+  const _MonthCard({required this.items});
+
+  @override
+  State<_MonthCard> createState() => _MonthCardState();
+}
+
+class _MonthCardState extends State<_MonthCard> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.p;
+    final money = widget.items.where((e) => e.amount != 0).toList();
+    final service = widget.items.where((e) => e.amount == 0).toList();
+    final rows = <Widget>[
+      for (final item in money) _OperationRow(item: item),
+      if (service.isNotEmpty)
+        Pressable(
+          onTap: () => setState(() => _open = !_open),
+          semanticLabel: _open ? 'Свернуть служебные записи' : 'Показать служебные записи',
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Служебные записи · ${service.length}',
+                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: p.inkMute),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _open ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: Icon(Icons.expand_more_rounded, size: 20, color: p.inkMute),
+                ),
+              ],
+            ),
+          ),
+        ),
+      if (_open)
+        for (final item in service) _OperationRow(item: item),
+    ];
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: PillGroupCard(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const PillDivider(),
+            rows[i],
           ],
         ],
       ),
     );
   }
+}
+
+/// названия операций UTM5 по-человечески. неизвестные оставляем как есть
+@visibleForTesting
+String operationTitle(PaymentItem item) {
+  final op = item.operation.trim().toLowerCase();
+  if (op == 'активация услуги' && item.amount < 0) return 'Абонплата';
+  if (op == 'оплата' && item.amount > 0) return 'Пополнение';
+  final raw = item.operation.trim().isNotEmpty
+      ? item.operation.trim()
+      : (item.comment.trim().isNotEmpty ? item.comment.trim() : 'Операция');
+  return raw[0].toUpperCase() + raw.substring(1);
 }
 
 class _MonthSummary extends StatelessWidget {
@@ -251,14 +381,19 @@ class _OperationRow extends StatelessWidget {
     final p = context.p;
     final income = item.amount > 0;
     final zero = item.amount == 0;
-    final title = item.operation.isNotEmpty
-        ? item.operation
-        : (item.comment.isNotEmpty ? item.comment : 'Операция');
+    final title = operationTitle(item);
     final d = parseBillingDate(item.date);
     final when = d == null
         ? item.date
         : [shortDate(d), shortTime(d)].where((s) => s.isNotEmpty).join(', ');
+    final comment = item.comment.trim();
+    final note = comment.isNotEmpty &&
+            comment.toLowerCase() != item.operation.trim().toLowerCase() &&
+            comment.toLowerCase() != title.toLowerCase()
+        ? comment
+        : null;
     final who = item.operator.isNotEmpty && item.operator != 'SYSTEM' ? item.operator : null;
+    final sub = [when, note, who].whereType<String>().join('  ·  ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -290,7 +425,9 @@ class _OperationRow extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 14.5, fontWeight: FontWeight.w700, color: p.ink, height: 1.25)),
                 const SizedBox(height: 3),
-                Text(who == null ? when : '$when  ·  $who',
+                Text(sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12.5, color: p.inkMute)),
               ],
             ),

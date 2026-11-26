@@ -6,6 +6,7 @@ import 'balance_store.dart';
 import 'billing_api.dart';
 import 'secure_http.dart';
 import '../config.dart';
+import '../utils/billing_math.dart';
 import 'package:flutter/foundation.dart';
 
 class AccountOption {
@@ -35,6 +36,10 @@ class CabinetData {
   final List<AccountOption> accounts;
   final String rawHtml;
 
+  /// «Следующий платёж до» и «Сумма к оплате» со страницы договора
+  final DateTime? nextPaymentDate;
+  final double? nextCharge;
+
   CabinetData({
     required this.balance,
     required this.account,
@@ -47,7 +52,32 @@ class CabinetData {
     this.recommendedPayment,
     this.accounts = const [],
     required this.rawHtml,
+    this.nextPaymentDate,
+    this.nextCharge,
   });
+
+  CabinetData copyWith({
+    String? account,
+    String? fullName,
+    String? tariff,
+    String? address,
+    List<AccountOption>? accounts,
+  }) =>
+      CabinetData(
+        balance: balance,
+        account: account ?? this.account,
+        fullName: fullName ?? this.fullName,
+        tariff: tariff ?? this.tariff,
+        address: address ?? this.address,
+        login: login,
+        needsPassportData: needsPassportData,
+        isRestricted: isRestricted,
+        recommendedPayment: recommendedPayment,
+        accounts: accounts ?? this.accounts,
+        rawHtml: rawHtml,
+        nextPaymentDate: nextPaymentDate,
+        nextCharge: nextCharge,
+      );
 }
 
 class PaymentItem {
@@ -172,15 +202,20 @@ class CabinetParser {
 
   /// страница раздела кабинета выбранного договора, например
   /// aaatarif?oper=tarif или aaaotch?oper=otch. null - не удалось открыть
-  static Future<String?> _fetchSection(String appToken, String script, String oper) async {
+  /// [form] - поля формы раздела: тогда страница запрашивается POST, как её
+  /// отправляет кнопка в браузере (login и oper подставляются сами)
+  static Future<String?> _fetchSection(String appToken, String script, String oper,
+      {Map<String, String>? form}) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         await _ensureNavToken(appToken);
         final token = _navToken;
         if (token == null) return null;
-        final res = await SecureHttp.get(
-          Uri.parse('${AppConfig.billingBase}/$script?login=$token&oper=$oper'),
-        ).timeout(const Duration(seconds: 15));
+        final url = Uri.parse('${AppConfig.billingBase}/$script?login=$token&oper=$oper');
+        final res = await (form == null
+                ? SecureHttp.get(url)
+                : SecureHttp.post(url, body: {'login': token, 'oper': oper, ...form}))
+            .timeout(const Duration(seconds: 15));
         if (res.statusCode != 200) return null;
         final html = decodeResponseBody(res.bodyBytes);
         if (!_looksLoggedOut(html)) return html;
@@ -345,6 +380,8 @@ class CabinetParser {
     String? foundAddress;
     String? foundLogin;
     double? foundBalance;
+    DateTime? foundNextDate;
+    double? foundNextCharge;
 
     // 1. Приоритетно ищем в таблице .b-account (основная таблица абонента в UTM5)
     final accountTable = doc.querySelector('.b-account');
@@ -424,8 +461,18 @@ class CabinetParser {
               }
             }
 
+            // ближайшее списание
+            if (key.contains('следующий платёж') || key.contains('следующий платеж')) {
+              foundNextDate ??= parseBillingDate(val);
+            }
+            if (key.contains('сумма к оплате')) {
+              final m = RegExp(r'([0-9]+(?:[.,][0-9]+)?)').firstMatch(val.replaceAll(RegExp(r'[\s ]'), ''));
+              foundNextCharge ??= m == null ? null : double.tryParse(m.group(1)!.replaceAll(',', '.'));
+            }
+
             // Баланс
             if (foundBalance == null &&
+                !key.contains('сумма к оплате') &&
                 (key.contains('баланс') ||
                     key.contains('остаток') ||
                     key.contains('к оплате'))) {
@@ -650,6 +697,8 @@ class CabinetParser {
       recommendedPayment: recommendedPayment,
       accounts: parsedAccounts,
       rawHtml: htmlString,
+      nextPaymentDate: foundNextDate,
+      nextCharge: foundNextCharge,
     );
   }
 
@@ -897,6 +946,16 @@ class CabinetParser {
       }
       final tok = _navToken;
       if (tok == null) continue;
+      // страницы с формами: по ним делаем sms, сертификаты и блокировку
+      for (final (script, oper, title) in const [
+        ('aaasmssvc', 'smssvc', 'sms-уведомления'),
+        ('aaasyspays', 'syspays', 'сертификаты'),
+        ('aaaprcn', 'prcn', 'блокировка'),
+        ('aaaiptv', 'iptv', 'iptv'),
+        ('aaaxtvpsm', 'xtvpsm', 'premiumtv'),
+      ]) {
+        await add('$title ($script)', () => raw('${AppConfig.billingBase}/$script?login=$tok&oper=$oper'));
+      }
       break;
     }
     _navToken = null;
@@ -904,16 +963,18 @@ class CabinetParser {
     // login=... - это сессия абонента: подменяем значение номером по порядку
     // появления и оставляем форму (цифры -> 0, буквы -> a)
     final seen = <String, int>{};
-    return out.toString().replaceAllMapped(
-          RegExp(r'login=([^&"\x27\s<>]+)'),
-          (m) {
-            final v = m.group(1)!;
-            if (v.isEmpty) return 'login=';
-            final n = seen.putIfAbsent(v, () => seen.length + 1);
-            final shape = v.replaceAll(RegExp(r'\d'), '0').replaceAll(RegExp(r'[A-Za-z]'), 'a');
-            return 'login=TOKEN$n($shape)';
-          },
-        );
+    String mask(String v) {
+      final n = seen.putIfAbsent(v, () => seen.length + 1);
+      final shape = v.replaceAll(RegExp(r'\d'), '0').replaceAll(RegExp(r'[A-Za-z]'), 'a');
+      return 'TOKEN$n($shape)';
+    }
+
+    return out
+        .toString()
+        .replaceAllMapped(RegExp(r'login=([^&"\x27\s<>]+)'),
+            (m) => m.group(1)!.isEmpty ? 'login=' : 'login=${mask(m.group(1)!)}')
+        // тот же токен лежит в скрытых полях форм
+        .replaceAllMapped(RegExp(r'value="([A-Za-z]\.\d+\.\d+)"'), (m) => 'value="${mask(m.group(1)!)}"');
   }
 
   /// [targetUrl] - ссылка выбранного договора. без неё грузим договор по
@@ -936,18 +997,11 @@ class CabinetParser {
         activeLogin = first.loginUrl;
         final subHtml = await _fetchHtml(appToken, directUrl: first.loginUrl);
         final subData = parseCabinetHtml(subHtml);
-        data = CabinetData(
-          balance: subData.balance,
+        data = subData.copyWith(
           account: subData.account.isNotEmpty ? subData.account : first.accountId,
           fullName: !isPlaceholderName(subData.fullName) ? subData.fullName : first.name,
-          tariff: subData.tariff,
           address: subData.address.isNotEmpty ? subData.address : first.address,
-          login: subData.login,
-          needsPassportData: subData.needsPassportData,
-          isRestricted: subData.isRestricted,
-          recommendedPayment: subData.recommendedPayment,
           accounts: data.accounts,
-          rawHtml: subHtml,
         );
       } catch (e) {
         activeLogin = null;
@@ -970,19 +1024,7 @@ class CabinetParser {
             orElse: () => services.first,
           );
           if (active.name.isNotEmpty && !active.name.toLowerCase().contains('нет тарифа')) {
-            data = CabinetData(
-              balance: data.balance,
-              account: data.account,
-              fullName: data.fullName,
-              tariff: active.name,
-              address: data.address,
-              login: data.login,
-              needsPassportData: data.needsPassportData,
-              isRestricted: data.isRestricted,
-              recommendedPayment: data.recommendedPayment,
-              accounts: data.accounts,
-              rawHtml: data.rawHtml,
-            );
+            data = data.copyWith(tariff: active.name);
           }
         }
       } catch (e) {
@@ -993,11 +1035,35 @@ class CabinetParser {
     return data;
   }
 
+  /// самый ранний год, за который биллинг отдаёт отчёты (список «год» в форме
+  /// страницы операций). null - форму не видели, прошлые месяцы не листаем
+  static int? reportsFromYear;
+
+  @visibleForTesting
+  static int? parseReportsFromYear(String html) {
+    final years = parser
+        .parse(html)
+        .querySelectorAll('select[name="god"] option')
+        .map((o) => int.tryParse(o.attributes['value'] ?? ''))
+        .whereType<int>();
+    return years.isEmpty ? null : years.reduce((a, b) => a < b ? a : b);
+  }
+
+  /// операции за конкретный месяц: та же форма «год / месяц» на странице отчётов
+  static Future<List<PaymentItem>> fetchPaymentsMonth(String appToken, int year, int month) async {
+    final html = await _fetchSection(appToken, 'aaaotch', 'otch',
+        form: {'work': 'cost', 'god': '$year', 'mes': '$month'});
+    if (html == null) throw Exception('network_error');
+    return parsePaymentsHtml(html);
+  }
+
   static Future<List<PaymentItem>> fetchPayments(String appToken) async {
     final section = await _fetchSection(appToken, 'aaaotch', 'otch');
     if (section != null) {
+      reportsFromYear = parseReportsFromYear(section);
       final list = parsePaymentsHtml(section);
       if (list.isNotEmpty) return list;
+      if (reportsFromYear != null) return const [];
     }
     // старый путь: так открывался единственный договор
     for (final op in ['reports', 'payments', 'operations']) {

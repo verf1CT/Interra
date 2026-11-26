@@ -109,7 +109,10 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     final d = widget.data;
-    final showStats = _extrasLoading || _fee != null || _lastTopUp != null;
+    final showStats = _extrasLoading ||
+        _fee != null ||
+        _lastTopUp != null ||
+        (d.nextPaymentDate != null && (d.nextCharge ?? 0) > 0);
     var i = 0;
 
     return RefreshIndicator(
@@ -152,10 +155,19 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _statsRow() {
     final balance = widget.data.balance;
+    final next = widget.data.nextPaymentDate;
+    final charge = widget.data.nextCharge;
     final covered = monthsCovered(balance, _fee);
     String? feeNote;
     var feeWarn = false;
-    if (covered != null) {
+    if (next != null && charge != null && charge > 0) {
+      // дата и сумма списания есть на странице договора - считаем от них
+      final until = paidUntil(balance, charge, next)!;
+      feeWarn = balance < charge;
+      feeNote = feeWarn
+          ? '${shortDate(next)}, не хватает ${BalanceStore.format(charge - balance)}'
+          : '${shortDate(next)}, хватит до ${shortDate(until)}';
+    } else if (covered != null) {
       if (covered == 0) {
         feeNote = 'не хватит на следующий месяц';
         feeWarn = true;
@@ -168,25 +180,28 @@ class _HomeTabState extends State<HomeTab> {
 
     final topUp = _lastTopUp;
     final topUpDate = topUp == null ? null : parseBillingDate(topUp.date);
+    final hasCharge = next != null && charge != null && charge > 0;
+    final showFee = hasCharge || _extrasLoading || _fee != null;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_extrasLoading || _fee != null)
+          if (showFee)
             Expanded(
               child: _StatTile(
-                label: 'Абонплата',
-                loading: _extrasLoading,
-                value: _fee == null ? '' : BalanceStore.format(_fee!),
-                suffix: '/мес',
+                label: hasCharge ? 'Следующее списание' : 'Абонплата',
+                loading: !hasCharge && _extrasLoading,
+                value: hasCharge
+                    ? BalanceStore.format(charge)
+                    : (_fee == null ? '' : BalanceStore.format(_fee!)),
+                suffix: hasCharge ? null : '/мес',
                 note: feeNote,
                 noteColor: feeWarn ? AppColors.danger : null,
                 onTap: () => widget.onOpenTab(1),
               ),
             ),
-          if ((_extrasLoading || _fee != null) &&
-              (_extrasLoading || topUp != null))
+          if (showFee && (_extrasLoading || topUp != null))
             const SizedBox(width: 12),
           if (_extrasLoading || topUp != null)
             Expanded(
