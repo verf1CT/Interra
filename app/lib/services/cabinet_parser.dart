@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
+import 'balance_store.dart';
 import 'billing_api.dart';
 import 'secure_http.dart';
 import '../config.dart';
@@ -125,15 +126,40 @@ class CabinetParser {
     activeLogin = null;
     _sessionCookie = null;
     _navToken = null;
+    _navInfoHtml = null;
   }
 
   @visibleForTesting
   static String? extractNavToken(String html) =>
       RegExp(r'aaatarif\?login=([^&"\x27\s<>]+)').firstMatch(html)?.group(1);
 
+  /// страница договора, с которой взят токен: из неё берём сумму ближайшего платежа
+  static String? _navInfoHtml;
+
   static void _captureNavToken(String html) {
     final t = extractNavToken(html);
-    if (t != null && t.isNotEmpty) _navToken = t;
+    if (t != null && t.isNotEmpty) {
+      _navToken = t;
+      _navInfoHtml = html;
+    }
+  }
+
+  /// название действующего тарифа со страницы aaatarif; null - нет тарифа
+  @visibleForTesting
+  static String? parseCurrentTariff(String html) {
+    final text = parser.parse(html).body?.text ?? '';
+    final m = RegExp(r'Действующий\s+тариф:\s*([^\n\r]+)').firstMatch(text);
+    final name = m?.group(1)?.trim();
+    if (name == null || name.isEmpty || name.toLowerCase() == 'нет тарифа') return null;
+    return name;
+  }
+
+  /// «Сумма к оплате» со страницы договора, в рублях
+  @visibleForTesting
+  static double? parseNextCharge(String html) {
+    final text = parser.parse(html).body?.text.replaceAll('\u00A0', ' ') ?? '';
+    final m = RegExp(r'Сумма\s+к\s+оплате\s*([0-9]+(?:[.,][0-9]+)?)').firstMatch(text);
+    return m == null ? null : double.tryParse(m.group(1)!.replaceAll(',', '.'));
   }
 
   static Future<void> _ensureNavToken(String appToken) async {
@@ -387,6 +413,7 @@ class CabinetParser {
                     key == 'тариф:' ||
                     key.contains('тарифный план') ||
                     key.contains('текущий тариф') ||
+                    key.contains('действующий тариф') ||
                     key.contains('пакет') ||
                     key.contains('план'))) {
               if (!val.toLowerCase().contains('тарифы') &&
@@ -638,6 +665,7 @@ class CabinetParser {
     List<PaymentItem> items = [];
     final tables = doc.querySelectorAll('table');
     for (var table in tables) {
+      if (table.querySelector('table') != null) continue;
       final rows = table.querySelectorAll('tr');
       if (rows.length < 2) continue;
 
@@ -990,9 +1018,26 @@ class CabinetParser {
     if (section != null) {
       final list = parseServicesHtml(section);
       if (list.isNotEmpty) return list;
+      // таблицы услуг на странице нет, есть только название тарифа;
+      // цену берём из «Суммы к оплате» страницы договора
+      final name = parseCurrentTariff(section);
+      if (name != null) {
+        final info = _navInfoHtml;
+        final charge = info == null ? null : parseNextCharge(info);
+        final monthly = name.toLowerCase().contains('месяц');
+        final cost = charge == null
+            ? ''
+            : '${BalanceStore.format(charge)}${monthly ? ' / мес' : ''}';
+        return [ServiceItem(name: name, status: 'Активна', cost: cost)];
+      }
     }
-    final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
-    return parseServicesHtml(htmlString);
+    try {
+      final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
+      return parseServicesHtml(htmlString);
+    } catch (e) {
+      if (section != null) return const [];
+      rethrow;
+    }
   }
 
   /// Активация карты экспресс-оплаты или сертификата по номеру и пин-коду
