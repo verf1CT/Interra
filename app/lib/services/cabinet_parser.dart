@@ -148,6 +148,23 @@ class CabinetParser {
     return decodeResponseBody(res.bodyBytes);
   }
 
+  /// постоянная часть ссылки договора: без последнего куска после точки,
+  /// который меняется при каждой выдаче списка
+  @visibleForTesting
+  static String linkKey(String href) {
+    final v = RegExp(r'login=([^&#\s]+)').firstMatch(href)?.group(1) ?? href;
+    final i = v.lastIndexOf('.');
+    return i > 0 && v.indexOf('.') != i ? v.substring(0, i) : v;
+  }
+
+  static String? _findFreshLink(List<AccountOption> accounts, String staleHref) {
+    final want = linkKey(staleHref);
+    for (final a in accounts) {
+      if (linkKey(a.loginUrl) == want) return a.loginUrl;
+    }
+    return null;
+  }
+
   static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
     final explicit = directUrl != null && directUrl.isNotEmpty ? directUrl : activeLogin;
     final contractUrl = explicit != null ? accountPageUrl(explicit, oper: oper) : null;
@@ -166,19 +183,24 @@ class CabinetParser {
         return await _openDefaultPage(appToken, oper);
       }
 
-      // страница договора: нужна кука, которую выдаёт первый заход
+      // страница договора. ссылки из списка живут недолго: если биллинг
+      // ответил формой входа, берём свежий список и ищем в нём тот же договор
+      var url = contractUrl;
       for (var attempt = 0; attempt < 2; attempt++) {
-        if (_sessionCookie == null || attempt > 0) {
-          await _openDefaultPage(appToken, 'info');
-        }
         final res = await SecureHttp.get(
-          Uri.parse(contractUrl),
+          Uri.parse(url),
           headers: {if (_sessionCookie != null) 'Cookie': _sessionCookie!},
         ).timeout(const Duration(seconds: 15));
         if (res.statusCode != 200) throw Exception('network_error');
         _rememberCookie(res);
         final html = decodeResponseBody(res.bodyBytes);
         if (!_looksLoggedOut(html) || attempt == 1) return html;
+
+        final listHtml = await _openDefaultPage(appToken, 'info');
+        final fresh = _findFreshLink(parseCabinetHtml(listHtml).accounts, explicit!);
+        if (fresh == null) return html;
+        if (activeLogin == explicit) activeLogin = fresh;
+        url = accountPageUrl(fresh, oper: oper)!;
       }
       throw Exception('network_error');
     } catch (e) {
@@ -754,27 +776,54 @@ class CabinetParser {
       }
     }
 
+    Future<String> raw(String url) async {
+      final res = await SecureHttp.get(
+        Uri.parse(url),
+        headers: {if (_sessionCookie != null) 'Cookie': _sessionCookie!},
+      ).timeout(const Duration(seconds: 15));
+      _rememberCookie(res);
+      return 'HTTP ${res.statusCode}\n${decodeResponseBody(res.bodyBytes)}';
+    }
+
     final saved = activeLogin;
     out.writeln('activeLogin: $saved');
-    activeLogin = null;
-    try {
-      await add('1. страница по умолчанию (oper=info)', () => _fetchHtml(appToken));
-      final names = _sessionCookie?.split(';').map((e) => e.split('=').first.trim()).join(', ');
-      out.writeln('\nкуки сессии: ${names ?? 'нет'}');
-    } finally {
-      activeLogin = saved;
+    String listHtml = '';
+    await add('1. список договоров (свежая ссылка)', () async {
+      listHtml = await _openDefaultPage(appToken, 'info');
+      return listHtml;
+    });
+    final names = _sessionCookie?.split(';').map((e) => e.split('=').first.trim()).join(', ');
+    out.writeln('\nкуки сессии: ${names ?? 'нет'}');
+
+    final accounts = listHtml.isEmpty ? <AccountOption>[] : parseCabinetHtml(listHtml).accounts;
+    out.writeln('договоров в списке: ${accounts.length}');
+    for (var i = 0; i < accounts.length && i < 2; i++) {
+      final href = accounts[i].loginUrl;
+      final n = i + 1;
+      await add('A$n. договор $n, ссылка как в списке (без oper)',
+          () => raw('${AppConfig.billingBase}/$href'));
+      final withOper = accountPageUrl(href);
+      if (withOper != null) {
+        await add('B$n. договор $n, с oper=info', () => raw(withOper));
+      }
     }
     if (saved != null) {
-      await add('2. выбранный договор (oper=info)', () => _fetchHtml(appToken, directUrl: saved));
-      await add('3. выбранный договор (oper=tariffs)',
-          () => _fetchHtml(appToken, oper: 'tariffs', directUrl: saved));
+      await add('C. сохранённая ссылка выбранного договора (oper=info)',
+          () => raw(accountPageUrl(saved) ?? saved));
     }
-    // ссылки login=... - это сессия абонента: оставляем только форму
-    // (цифры -> 0, буквы -> a), чтобы по ней можно было чинить разбор
+
+    // login=... - это сессия абонента: подменяем значение номером по порядку
+    // появления и оставляем форму (цифры -> 0, буквы -> a)
+    final seen = <String, int>{};
     return out.toString().replaceAllMapped(
           RegExp(r'login=([^&"\x27\s<>]+)'),
-          (m) =>
-              'login=${m.group(1)!.replaceAll(RegExp(r'\d'), '0').replaceAll(RegExp(r'[A-Za-z]'), 'a')}',
+          (m) {
+            final v = m.group(1)!;
+            if (v.isEmpty) return 'login=';
+            final n = seen.putIfAbsent(v, () => seen.length + 1);
+            final shape = v.replaceAll(RegExp(r'\d'), '0').replaceAll(RegExp(r'[A-Za-z]'), 'a');
+            return 'login=TOKEN$n($shape)';
+          },
         );
   }
 

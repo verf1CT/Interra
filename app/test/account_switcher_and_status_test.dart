@@ -97,4 +97,12 @@ void main() {
       expect(data.isRestricted, false);
     });
   });
+
+  test('linkKey отбрасывает последний кусок ссылки договора', () {
+    expect(CabinetParser.linkKey('aaainfo?login=ab.123456.987654321000000001'),
+        'ab.123456');
+    expect(CabinetParser.linkKey('aaainfo?login=ab.123456.111&oper=info'),
+        'ab.123456');
+    expect(CabinetParser.linkKey('?login=plain'), 'plain');
+  });
 }
