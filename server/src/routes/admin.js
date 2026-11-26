@@ -1,6 +1,16 @@
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth.js';
-import { stats, listDevices, recentBroadcasts, broadcastStats, createScheduled, listScheduled, cancelScheduled } from '../db.js';
+import {
+  stats,
+  listDevices,
+  recentBroadcasts,
+  broadcastStats,
+  createScheduled,
+  listScheduled,
+  cancelScheduled,
+  listDumps,
+  getDump,
+} from '../db.js';
 import { fcmEnabled } from '../fcm.js';
 import { runBroadcast } from '../broadcast.js';
 
@@ -23,6 +33,19 @@ adminRouter.get('/devices', (req, res) => {
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
   const search = req.query.search ? String(req.query.search).trim() : '';
   res.json(listDevices({ limit, offset, search }));
+});
+
+/** GET /api/admin/dumps - присланные из приложения дампы кабинета, без тела */
+adminRouter.get('/dumps', (req, res) => {
+  res.json({ items: listDumps() });
+});
+
+/** GET /api/admin/dumps/latest и /api/admin/dumps/:id - текст дампа */
+adminRouter.get('/dumps/:id', (req, res) => {
+  const id = req.params.id === 'latest' ? listDumps()[0]?.id : Number(req.params.id);
+  const dump = id ? getDump(id) : null;
+  if (!dump) return res.status(404).json({ error: 'дампа нет' });
+  res.type('text/plain; charset=utf-8').send(dump.body);
 });
 
 /** GET /api/admin/broadcasts - история рассылок */

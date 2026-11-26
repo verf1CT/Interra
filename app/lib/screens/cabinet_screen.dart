@@ -6,6 +6,7 @@ import '../services/balance_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/charge_reminder.dart';
 import '../services/analytics.dart';
+import '../services/api_client.dart';
 import '../services/quick_actions_service.dart';
 import '../services/demo_mode.dart';
 import '../widgets/design_system.dart';
@@ -221,9 +222,18 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       duration: Duration(seconds: 2),
     ));
     final dump = await CabinetParser.collectDebugDump(token);
+    // сначала шлём на наш сервер, оттуда дамп забирает разработчик;
+    // сервер недоступен - по-старому в буфер
+    if (await ApiClient.sendDebugDump(dump)) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Дамп отправлен разработчику, ${(dump.length / 1024).round()} КБ'),
+        duration: const Duration(seconds: 4),
+      ));
+      return;
+    }
     await Clipboard.setData(ClipboardData(text: dump));
     messenger.showSnackBar(SnackBar(
-      content: Text('Скопировано ${(dump.length / 1024).round()} КБ. Вставьте в заметки и отправьте'),
+      content: Text('Сервер недоступен. Скопировано ${(dump.length / 1024).round()} КБ, вставьте в чат'),
       duration: const Duration(seconds: 5),
     ));
   }

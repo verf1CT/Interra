@@ -51,7 +51,42 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_sched_due ON scheduled_broadcasts(status, send_at);
+
+  -- сырые страницы кабинета из приложения (скрытое долгое нажатие) для
+  -- разбора вёрстки UTM5. в них ФИО и адрес, поэтому храним коротко
+  CREATE TABLE IF NOT EXISTS debug_dumps (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform    TEXT,
+    app_version TEXT,
+    size        INTEGER NOT NULL,
+    body        TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+const DUMPS_KEEP = 20;
+const DUMPS_DAYS = 7;
+
+export function saveDump({ platform, appVersion, body }) {
+  const info = db
+    .prepare('INSERT INTO debug_dumps (platform, app_version, size, body) VALUES (?, ?, ?, ?)')
+    .run(platform || null, appVersion || null, Buffer.byteLength(body, 'utf8'), body);
+  db.prepare(`DELETE FROM debug_dumps WHERE created_at < datetime('now', ?)`).run(`-${DUMPS_DAYS} days`);
+  db.prepare('DELETE FROM debug_dumps WHERE id NOT IN (SELECT id FROM debug_dumps ORDER BY id DESC LIMIT ?)').run(
+    DUMPS_KEEP,
+  );
+  return info.lastInsertRowid;
+}
+
+export function listDumps() {
+  return db
+    .prepare('SELECT id, platform, app_version, size, created_at FROM debug_dumps ORDER BY id DESC')
+    .all();
+}
+
+export function getDump(id) {
+  return db.prepare('SELECT * FROM debug_dumps WHERE id = ?').get(id);
+}
 
 // миграция: добавляем opens (счётчик открытий) для старых БД без этого столбца
 {

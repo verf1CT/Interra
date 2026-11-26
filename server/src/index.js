@@ -6,6 +6,7 @@ import { devicesRouter } from './routes/devices.js';
 import { adminRouter } from './routes/admin.js';
 import { eventsRouter } from './routes/events.js';
 import { botRouter } from './routes/bot.js';
+import { debugRouter } from './routes/debug.js';
 import { startScheduler } from './scheduler.js';
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/devices', devicesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/bot', botRouter);
+app.use('/api/debug', debugRouter);
 
 app.use((err, req, res, next) => {
   console.error('[error]', err);

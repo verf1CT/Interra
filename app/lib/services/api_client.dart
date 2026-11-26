@@ -51,6 +51,28 @@ class ApiClient {
     } catch (_) {}
   }
 
+  /// отправляет дамп страниц кабинета разработчику на наш сервер.
+  /// true - сервер принял, иначе приложение кладёт дамп в буфер обмена
+  static Future<bool> sendDebugDump(String dump) async {
+    final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/debug/dump');
+    try {
+      final res = await SecureHttp
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'X-Platform': Platform.isIOS ? 'ios' : 'android',
+              'X-App-Version': AppInfo.version,
+            },
+            body: utf8.encode(dump),
+          )
+          .timeout(const Duration(seconds: 20));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> unregisterDevice(String token) async {
     final uri = Uri.parse('${AppConfig.backendBaseUrl}/api/devices/unregister');
     try {
