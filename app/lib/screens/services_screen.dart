@@ -235,7 +235,6 @@ class _TariffHero extends StatelessWidget {
     final m = RegExp(r'^(.*?)\s*/\s*(мес.*)$').firstMatch(item.cost.trim());
     final price = m?.group(1) ?? item.cost;
     final per = m?.group(2);
-    final active = _isActive(item);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
@@ -243,19 +242,8 @@ class _TariffHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Ваш тариф',
-                  style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: p.inkMute)),
-              PulseDot(
-                color: active ? AppColors.ok : p.inkFaint,
-                label: item.status.isNotEmpty ? item.status : 'Неизвестно',
-                size: 6.5,
-              ),
-            ],
-          ),
+          Text('Ваш тариф',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: p.inkMute)),
           const SizedBox(height: 10),
           Text(title,
               style: TextStyle(
@@ -354,25 +342,14 @@ class _ServiceRow extends StatelessWidget {
                 Text(item.cost,
                     style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700, color: p.ink)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: active ? AppColors.ok : p.inkFaint,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    item.status.isNotEmpty ? item.status : 'Неизвестно',
-                    style: TextStyle(fontSize: 12, color: p.inkMute),
-                  ),
-                ],
-              ),
+              // статус показываем, только если его написал биллинг
+              if (item.status.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  item.status,
+                  style: TextStyle(fontSize: 12, color: active ? AppColors.ok : p.inkMute),
+                ),
+              ],
             ],
           ),
         ],
