@@ -105,4 +105,11 @@ void main() {
         'ab.123456');
     expect(CabinetParser.linkKey('?login=plain'), 'plain');
   });
+
+  test('extractNavToken берёт токен из ссылок навигации договора', () {
+    const html = '<a class="nav-link" href="aaatarif?login=ab.123456.0987654321&amp;oper=tarif">Тарифы</a>'
+        '<a href="aaaotch?login=ab.123456.0987654321&amp;oper=otch">Отчёты</a>';
+    expect(CabinetParser.extractNavToken(html), 'ab.123456.0987654321');
+    expect(CabinetParser.extractNavToken('<a href="aaainfo?login=&amp;oper=info">x</a>'), isNull);
+  });
 }

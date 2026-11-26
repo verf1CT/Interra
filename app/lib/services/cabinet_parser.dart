@@ -115,9 +115,57 @@ class CabinetParser {
   /// и без неё страницы конкретных договоров отвечают формой входа
   static String? _sessionCookie;
 
+  /// токен сессии из навигации страницы договора. разделы кабинета (тарифы,
+  /// отчёты) лежат в отдельных скриптах aaatarif и aaaotch и открываются
+  /// только с ним: ссылка договора из списка одноразовая
+  static String? _navToken;
+  static Future<void>? _navLoading;
+
   static void resetSession() {
     activeLogin = null;
     _sessionCookie = null;
+    _navToken = null;
+  }
+
+  @visibleForTesting
+  static String? extractNavToken(String html) =>
+      RegExp(r'aaatarif\?login=([^&"\x27\s<>]+)').firstMatch(html)?.group(1);
+
+  static void _captureNavToken(String html) {
+    final t = extractNavToken(html);
+    if (t != null && t.isNotEmpty) _navToken = t;
+  }
+
+  static Future<void> _ensureNavToken(String appToken) async {
+    if (_navToken != null) return;
+    _navLoading ??= _fetchHtml(appToken)
+        .then((_) {})
+        .whenComplete(() => _navLoading = null);
+    await _navLoading;
+  }
+
+  /// страница раздела кабинета выбранного договора, например
+  /// aaatarif?oper=tarif или aaaotch?oper=otch. null - не удалось открыть
+  static Future<String?> _fetchSection(String appToken, String script, String oper) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await _ensureNavToken(appToken);
+        final token = _navToken;
+        if (token == null) return null;
+        final res = await SecureHttp.get(
+          Uri.parse('${AppConfig.billingBase}/$script?login=$token&oper=$oper'),
+        ).timeout(const Duration(seconds: 15));
+        if (res.statusCode != 200) return null;
+        final html = decodeResponseBody(res.bodyBytes);
+        if (!_looksLoggedOut(html)) return html;
+        _navToken = null;
+      } catch (e) {
+        if (e.toString().contains('auth_expired')) rethrow;
+        debugPrint('CabinetParser section $script error: $e');
+        return null;
+      }
+    }
+    return null;
   }
 
   static void _rememberCookie(http.Response res) {
@@ -166,6 +214,12 @@ class CabinetParser {
   }
 
   static Future<String> _fetchHtml(String appToken, {String oper = 'info', String? directUrl}) async {
+    final html = await _loadHtml(appToken, oper: oper, directUrl: directUrl);
+    _captureNavToken(html);
+    return html;
+  }
+
+  static Future<String> _loadHtml(String appToken, {String oper = 'info', String? directUrl}) async {
     final explicit = directUrl != null && directUrl.isNotEmpty ? directUrl : activeLogin;
     final contractUrl = explicit != null ? accountPageUrl(explicit, oper: oper) : null;
 
@@ -750,7 +804,7 @@ class CabinetParser {
     final doc = parser.parse(html);
     doc
         .querySelectorAll(
-            'script, style, noscript, svg, img, link, meta, head, iframe, [class*="nav-footer"], footer')
+            'script, style, noscript, svg, img, link, meta, head, iframe, .sidebar, [class*="nav-footer"], footer')
         .forEach((e) => e.remove());
     var body = (doc.body?.outerHtml ?? html)
         .replaceAll(RegExp(r'\s+'), ' ')
@@ -782,29 +836,43 @@ class CabinetParser {
         headers: {if (_sessionCookie != null) 'Cookie': _sessionCookie!},
       ).timeout(const Duration(seconds: 15));
       _rememberCookie(res);
-      return 'HTTP ${res.statusCode}\n${decodeResponseBody(res.bodyBytes)}';
+      return decodeResponseBody(res.bodyBytes);
     }
 
     final saved = activeLogin;
     out.writeln('activeLogin: $saved');
-    String listHtml = '';
-    await add('1. список договоров (свежая ссылка)', () async {
-      listHtml = await _openDefaultPage(appToken, 'info');
-      return listHtml;
-    });
-    final names = _sessionCookie?.split(';').map((e) => e.split('=').first.trim()).join(', ');
-    out.writeln('\nкуки сессии: ${names ?? 'нет'}');
-
-    final accounts = listHtml.isEmpty ? <AccountOption>[] : parseCabinetHtml(listHtml).accounts;
-    out.writeln('договоров в списке: ${accounts.length}');
-    for (var i = 0; i < accounts.length && i < 2; i++) {
-      final href = accounts[i].loginUrl;
+    // ссылка из списка одноразовая: для каждого договора берём список заново
+    for (var i = 0; i < 2; i++) {
+      var listHtml = '';
+      if (i == 0) {
+        await add('список договоров', () async => listHtml = await _openDefaultPage(appToken, 'info'));
+      } else {
+        try {
+          listHtml = await _openDefaultPage(appToken, 'info');
+        } catch (e) {
+          out.writeln('ОШИБКА списка: $e');
+        }
+      }
+      final accounts = listHtml.isEmpty ? <AccountOption>[] : parseCabinetHtml(listHtml).accounts;
+      if (accounts.length <= i) break;
       final n = i + 1;
-      final info = accountPageUrl(href);
-      if (info != null) await add('B$n. договор $n, oper=info', () => raw(info));
-      final tariffs = accountPageUrl(href, oper: 'tariffs');
-      if (tariffs != null) await add('T$n. договор $n, oper=tariffs', () => raw(tariffs));
+      final info = accountPageUrl(accounts[i].loginUrl);
+      if (info == null) continue;
+      _navToken = null;
+      try {
+        final html = await raw(info);
+        _captureNavToken(html);
+        out.writeln('\nдоговор $n, oper=info: ${_looksLoggedOut(html) ? 'форма входа' : 'открылся'}, '
+            'токен раздела: ${_navToken != null ? 'есть' : 'нет'}');
+      } catch (e) {
+        out.writeln('\nдоговор $n, oper=info: ОШИБКА $e');
+      }
+      final tok = _navToken;
+      if (tok == null) continue;
+      await add('T$n. договор $n, aaatarif', () => raw('${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif'));
+      await add('O$n. договор $n, aaaotch', () => raw('${AppConfig.billingBase}/aaaotch?login=$tok&oper=otch'));
     }
+    _navToken = null;
 
     // login=... - это сессия абонента: подменяем значение номером по порядку
     // появления и оставляем форму (цифры -> 0, буквы -> a)
@@ -824,6 +892,7 @@ class CabinetParser {
   /// [targetUrl] - ссылка выбранного договора. без неё грузим договор по
   /// умолчанию, а если номер ведёт на страницу выбора - первый из списка
   static Future<CabinetData?> fetchCabinetData(String appToken, {String? targetUrl}) async {
+    _navToken = null;
     if (targetUrl != null) {
       activeLogin = targetUrl;
     } else {
@@ -898,7 +967,12 @@ class CabinetParser {
   }
 
   static Future<List<PaymentItem>> fetchPayments(String appToken) async {
-    // Пробуем oper=reports (отчеты и операции за месяц), oper=payments, oper=operations
+    final section = await _fetchSection(appToken, 'aaaotch', 'otch');
+    if (section != null) {
+      final list = parsePaymentsHtml(section);
+      if (list.isNotEmpty) return list;
+    }
+    // старый путь: так открывался единственный договор
     for (final op in ['reports', 'payments', 'operations']) {
       try {
         final html = await _fetchHtml(appToken, oper: op);
@@ -912,6 +986,11 @@ class CabinetParser {
   }
 
   static Future<List<ServiceItem>> fetchServices(String appToken) async {
+    final section = await _fetchSection(appToken, 'aaatarif', 'tarif');
+    if (section != null) {
+      final list = parseServicesHtml(section);
+      if (list.isNotEmpty) return list;
+    }
     final htmlString = await _fetchHtml(appToken, oper: 'tariffs');
     return parseServicesHtml(htmlString);
   }
