@@ -13,7 +13,10 @@ import '../widgets/motion_kit.dart';
 class ServicesScreen extends StatefulWidget {
   final VoidCallback? onOpenPassportForm;
 
-  const ServicesScreen({super.key, this.onOpenPassportForm});
+  /// биллинг просит паспортные данные у этого договора
+  final bool needsPassport;
+
+  const ServicesScreen({super.key, this.onOpenPassportForm, this.needsPassport = false});
 
   @override
   State<ServicesScreen> createState() => _ServicesScreenState();
@@ -140,7 +143,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             StaggerIn(index: 0, child: _TariffHero(item: main)),
             const SizedBox(height: 22),
           ],
-          if (_services.isEmpty) const StaggerIn(index: 0, child: _EmptyServices()),
+          if (_services.isEmpty) StaggerIn(index: 0, child: _EmptyServices(needsPassport: widget.needsPassport)),
           if (rest.isNotEmpty) ...[
             const PillSectionHeader('Подключено'),
             StaggerIn(
@@ -184,6 +187,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             StaggerIn(
               index: 2,
               child: _ChangeTariffCard(
+                needsPassport: widget.needsPassport,
                 onPassport: _openPassport,
                 onWeb: _openWebCabinet,
               ),
@@ -378,9 +382,14 @@ class _ServiceRow extends StatelessWidget {
 }
 
 class _ChangeTariffCard extends StatelessWidget {
+  final bool needsPassport;
   final VoidCallback onPassport;
   final VoidCallback onWeb;
-  const _ChangeTariffCard({required this.onPassport, required this.onWeb});
+  const _ChangeTariffCard({
+    required this.needsPassport,
+    required this.onPassport,
+    required this.onWeb,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -392,15 +401,19 @@ class _ChangeTariffCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Чтобы выбрать или сменить тариф, нужны паспортные данные - этого требует закон «О связи»',
+            needsPassport
+                ? 'Чтобы выбрать или сменить тариф, нужны паспортные данные - этого требует закон «О связи»'
+                : 'Тариф меняется в кабинете на сайте. Новый тариф вступит в силу после окончания текущего периода',
             style: TextStyle(fontSize: 13.5, color: p.inkMute, height: 1.4),
           ),
           const SizedBox(height: 14),
-          FilledButton(
-            onPressed: onPassport,
-            child: const Text('Ввести паспортные данные'),
-          ),
-          const SizedBox(height: 8),
+          if (needsPassport) ...[
+            FilledButton(
+              onPressed: onPassport,
+              child: const Text('Ввести паспортные данные'),
+            ),
+            const SizedBox(height: 8),
+          ],
           OutlinedButton(
             onPressed: onWeb,
             child: const Text('Открыть кабинет на сайте'),
@@ -412,7 +425,8 @@ class _ChangeTariffCard extends StatelessWidget {
 }
 
 class _EmptyServices extends StatelessWidget {
-  const _EmptyServices();
+  final bool needsPassport;
+  const _EmptyServices({required this.needsPassport});
 
   @override
   Widget build(BuildContext context) {
@@ -433,7 +447,9 @@ class _EmptyServices extends StatelessWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: p.ink)),
           const SizedBox(height: 4),
           Text(
-            'Заполните паспортные данные ниже, чтобы выбрать тариф',
+            needsPassport
+                ? 'Заполните паспортные данные ниже, чтобы выбрать тариф'
+                : 'Выбрать тариф можно в кабинете на сайте',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: p.inkMute, height: 1.35),
           ),

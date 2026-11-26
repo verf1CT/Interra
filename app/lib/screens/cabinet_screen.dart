@@ -354,6 +354,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           _buildHomeTab(),
           ServicesScreen(
             key: ValueKey('services$_selectionEpoch'),
+            needsPassport: _data?.needsPassportData ?? false,
             onOpenPassportForm: _openPassportForm,
           ),
           PremiumTvScreen(key: ValueKey('tv$_selectionEpoch')),
