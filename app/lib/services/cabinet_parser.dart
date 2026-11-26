@@ -967,8 +967,8 @@ class CabinetParser {
         ('aaasmssvc', 'smssvc', 'sms-уведомления'),
         ('aaasyspays', 'syspays', 'сертификаты'),
         ('aaaprcn', 'prcn', 'блокировка'),
-        ('aaaiptv', 'iptv', 'iptv'),
-        ('aaaxtvpsm', 'xtvpsm', 'premiumtv'),
+        ('aaaiptv', 'iptvm', 'iptv, пакеты'),
+        ('aaaxtvpsm', 'xtvpsmm', 'premiumtv, пакеты'),
       ]) {
         await add('$title ($script)', () => raw('${AppConfig.billingBase}/$script?login=$tok&oper=$oper'));
       }
@@ -990,7 +990,10 @@ class CabinetParser {
         .replaceAllMapped(RegExp(r'login=([^&"\x27\s<>]+)'),
             (m) => m.group(1)!.isEmpty ? 'login=' : 'login=${mask(m.group(1)!)}')
         // тот же токен лежит в скрытых полях форм
-        .replaceAllMapped(RegExp(r'value="([A-Za-z]\.\d+\.\d+)"'), (m) => 'value="${mask(m.group(1)!)}"');
+        .replaceAllMapped(RegExp(r'value="([A-Za-z]\.\d+\.\d+)"'), (m) => 'value="${mask(m.group(1)!)}"')
+        // пароль от Premium TV в дамп не нужен, хватит формы разметки
+        .replaceAllMapped(RegExp(r'(пароль:\s*(?:<[^>]*>\s*)*)([^<\s]+)', caseSensitive: false),
+            (m) => '${m.group(1)}***');
   }
 
   /// [targetUrl] - ссылка выбранного договора. без неё грузим договор по
