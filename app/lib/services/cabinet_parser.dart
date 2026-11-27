@@ -6,7 +6,9 @@ import 'balance_store.dart';
 import 'billing_api.dart';
 import 'secure_http.dart';
 import 'tv_data.dart';
+import 'tariff_data.dart';
 export 'tv_data.dart';
+export 'tariff_data.dart';
 import '../config.dart';
 import '../utils/billing_math.dart';
 import 'package:flutter/foundation.dart';
@@ -978,29 +980,19 @@ class CabinetParser {
       ]) {
         await add('$title ($script)', () => raw('${AppConfig.billingBase}/$script?login=$tok&oper=$oper'));
       }
-      // тарифы: страница со списком групп, сами группы и пара ссылок внутри
-      // группы - по ним будет смена тарифа в приложении
+      // тарифы: список групп, сами группы и страница действующего тарифа.
+      // открываем только действующий: если переход по ссылке сам заказывает
+      // тариф, то заказ того же тарифа ничего не меняет (он и так продлится)
       var tarif = '';
       await add('тарифы (aaatarif)',
           () async => tarif = await raw('${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif'));
-      final groups = RegExp(r'oper=tarif&(?:amp;)?gro=(\d+)')
-          .allMatches(tarif)
-          .map((m) => m.group(1)!)
-          .toSet()
-          .take(4);
-      for (final g in groups) {
+      final current = parseCurrentTariff(tarif);
+      for (final g in parseTariffGroups(tarif).take(4)) {
         var page = '';
-        await add('тарифы, группа $g', () async => page = await raw(
-            '${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif&gro=$g'));
-        final inner = RegExp(r'''href="([^"]*oper=tarif[^"]*)"''')
-            .allMatches(page)
-            .map((m) => m.group(1)!.replaceAll('&amp;', '&'))
-            .where((h) => !RegExp(r'gro=\d+$').hasMatch(h))
-            .toSet()
-            .take(2);
-        for (final h in inner) {
-          final q = h.contains('?') ? h.substring(h.indexOf('?') + 1) : h;
-          await add('тарифы, $q', () => raw('${AppConfig.billingBase}/aaatarif?$q'));
+        await add('тарифы, группа ${g.id}', () async => page = await raw(
+            '${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif&gro=${g.id}'));
+        for (final o in parseTariffOffers(page).where((o) => current != null && o.name == current).take(1)) {
+          await add('тарифы, страница действующего тарифа (pack=${o.pack})', () => raw(tariffWebUrl(o)));
         }
       }
       break;
@@ -1260,6 +1252,26 @@ class CabinetParser {
         query: '&xid=${ref.$2}', form: details.form, authInBody: false);
     return fetchTvPackage(appToken, script, href);
   }
+
+  /// группы тарифов и тарифы внутри них для выбранного счёта. null - раздел
+  /// не открылся; группа, которая не загрузилась, остаётся без тарифов
+  static Future<TariffCatalog?> fetchTariffs(String appToken) async {
+    final main = await _fetchSection(appToken, 'aaatarif', 'tarif');
+    if (main == null) return null;
+    final groups = parseTariffGroups(main);
+    final offers = <String, List<TariffOffer>>{};
+    await Future.wait([
+      for (final g in groups)
+        _fetchSection(appToken, 'aaatarif', 'tarif', query: '&gro=${g.id}').then((h) {
+          if (h != null) offers[g.id] = parseTariffOffers(h);
+        }),
+    ]);
+    return TariffCatalog(current: parseCurrentTariff(main), groups: groups, offers: offers);
+  }
+
+  /// страница тарифа в браузере: ссылка из группы относительная (`?login=…`)
+  static String tariffWebUrl(TariffOffer offer) =>
+      '${AppConfig.billingBase}/aaatarif${offer.href.startsWith('?') ? '' : '?'}${offer.href}';
 
   /// ссылка на раздел тарифов выбранного договора для браузера. токен сессии
   /// не привязан к кукам, поэтому открывается и вне приложения. если токена

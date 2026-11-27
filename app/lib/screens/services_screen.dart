@@ -9,6 +9,7 @@ import '../services/balance_store.dart';
 import '../utils/billing_math.dart';
 import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
+import 'tariffs_screen.dart';
 
 class ServicesScreen extends StatefulWidget {
   final VoidCallback? onOpenPassportForm;
@@ -180,19 +181,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ),
             ),
           ],
-          // смена тарифа требует паспорт по закону о связи - в демо не показываем
-          if (!DemoMode.isEnabled.value) ...[
-            const SizedBox(height: 22),
-            const PillSectionHeader('Смена тарифа'),
-            StaggerIn(
-              index: 2,
-              child: _ChangeTariffCard(
-                needsPassport: widget.needsPassport,
-                onPassport: _openPassport,
-                onWeb: _openWebCabinet,
-              ),
+          const SizedBox(height: 22),
+          const PillSectionHeader('Смена тарифа'),
+          StaggerIn(
+            index: 2,
+            child: _ChangeTariffCard(
+              needsPassport: widget.needsPassport,
+              onPassport: _openPassport,
+              onWeb: _openWebCabinet,
+              onTariffs: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const TariffsScreen())),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -362,10 +362,12 @@ class _ChangeTariffCard extends StatelessWidget {
   final bool needsPassport;
   final VoidCallback onPassport;
   final VoidCallback onWeb;
+  final VoidCallback onTariffs;
   const _ChangeTariffCard({
     required this.needsPassport,
     required this.onPassport,
     required this.onWeb,
+    required this.onTariffs,
   });
 
   @override
@@ -380,7 +382,7 @@ class _ChangeTariffCard extends StatelessWidget {
           Text(
             needsPassport
                 ? 'Чтобы выбрать или сменить тариф, нужны паспортные данные - этого требует закон «О связи»'
-                : 'Тариф меняется в кабинете на сайте. Новый тариф вступит в силу после окончания текущего периода',
+                : 'Новый тариф начнёт действовать после окончания текущего периода',
             style: TextStyle(fontSize: 13.5, color: p.inkMute, height: 1.4),
           ),
           const SizedBox(height: 14),
@@ -390,11 +392,18 @@ class _ChangeTariffCard extends StatelessWidget {
               child: const Text('Ввести паспортные данные'),
             ),
             const SizedBox(height: 8),
-          ],
-          OutlinedButton(
-            onPressed: onWeb,
-            child: const Text('Открыть кабинет на сайте'),
-          ),
+            OutlinedButton(
+              onPressed: onWeb,
+              child: const Text('Открыть кабинет на сайте'),
+            ),
+          ] else
+            SizedBox(
+              height: 48,
+              child: FilledButton(
+                onPressed: onTariffs,
+                child: const Text('Выбрать тариф'),
+              ),
+            ),
         ],
       ),
     );

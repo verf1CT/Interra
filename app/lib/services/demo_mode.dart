@@ -64,6 +64,40 @@ class DemoMode {
         nextCharge: 750,
       );
 
+  static TariffCatalog get demoTariffs => const TariffCatalog(
+        current: 'Комфорт 200',
+        groups: [
+          TariffGroup(id: '1', name: '200 мегабит'),
+          TariffGroup(
+            id: '0',
+            name: 'Нет тарифа',
+            note: 'Нет тарифа - это состояние, при котором отсутствует доступ в Интернет и не снимается абонентская плата.',
+          ),
+        ],
+        offers: {
+          '1': [
+            TariffOffer(
+              name: 'Комфорт 200',
+              price: 750,
+              days: 30,
+              details: ['Скорость доступа - до 200 Мбит/сек'],
+            ),
+            TariffOffer(
+              name: 'Комфорт 200 на год',
+              price: 7500,
+              days: 365,
+              perMonth: 625,
+              details: [
+                'Стоимость в перерасчёте на месяц - 625 рублей',
+                'Экономия - 1500 руб.',
+                'Скорость доступа - до 200 Мбит/сек',
+              ],
+            ),
+          ],
+          '0': [TariffOffer(name: 'Нет тарифа')],
+        },
+      );
+
   static TvInfo get demoTv => const TvInfo(
         login: '123456interra',
         password: '000000',
