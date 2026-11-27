@@ -20,6 +20,17 @@ const _group18 = """
 const _group0 = """
 <body><table class="tlt"><tbody><tr><td><a class="btn7 --grey --full" href="?login=x&amp;oper=tarif&amp;gro=0&amp;pack=0" onmouseover="tooltip.show(&quot;Нет тарифа&quot;);" onmouseout="tooltip.hide();"><font size="+0">Нет тарифа</font></a></td></tr></tbody></table></body>""";
 
+const _order = """
+<body><table class="b-content"><tbody><tr><td id="aaatds">
+<font>Действующий тариф: <span><b>Месяц 100М</b></span></font><br>
+<hr><a href="?login=x&amp;oper=tarif"><font size="+0">Вернуться к списку групп тарифов</font></a><hr><br><br><font size="+0">После окончания действующего тарифа <b> 16-12-2026 14:29</b>.<br> Вы собираетесь переключиться на тариф<br><b>Месяц 100М (1200руб на 30 сут.)</b><br><br><div>Описание тарифа:<br>Стоимость - 1200 рублей</div><br></font>
+<form action="" method="POST">
+<input type="hidden" name="login" value="x"><input type="hidden" name="oper" value="tarif">
+<input type="hidden" name="gro" value="18"><input type="hidden" name="pack" value="3041">
+<input type="submit" class="btn" name="set" value="ДА">
+<input type="submit" class="btn" name="set" value="НЕТ"><br><br>
+</form></td></tr></tbody></table></body>""";
+
 void main() {
   test('группы тарифов: id, название и пояснение биллинга', () {
     final g = parseTariffGroups(_groups);
@@ -54,5 +65,19 @@ void main() {
     expect(o.single.price, isNull);
     expect(o.single.details, isEmpty);
     expect(o.single.pack, '0');
+  });
+
+  test('страница подтверждения: дата смены и скрытые поля формы', () {
+    final p = parseTariffOrderPage(_order)!;
+    expect(p.switchAt, DateTime(2026, 12, 16, 14, 29));
+    expect(p.form, {'login': 'x', 'oper': 'tarif', 'gro': '18', 'pack': '3041'});
+    expect(p.canOrder, true);
+    expect(parseTariffOrderPage(_group18), isNull);
+  });
+
+  test('заказ принят, только если формы подтверждения больше нет', () {
+    expect(tariffOrderAccepted(_order), false);
+    expect(tariffOrderAccepted(null), false);
+    expect(tariffOrderAccepted(_groups), true);
   });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_store.dart';
@@ -6,6 +7,7 @@ import '../services/balance_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
 import '../theme.dart';
+import '../utils/billing_math.dart';
 import '../widgets/app_sheets.dart';
 import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
@@ -212,8 +214,10 @@ class _OfferRow extends StatelessWidget {
   }
 }
 
-/// шторка тарифа: цена, описание биллинга и выбор. как биллинг принимает
-/// выбор, пока не видели, поэтому выбор завершается на его странице в браузере
+enum _Step { details, loading, confirm, sending, done, failed }
+
+/// шторка тарифа: цена и описание биллинга. выбор в два шага, как на сайте:
+/// открываем страницу подтверждения (там дата смены), затем жмём «ДА»
 class _OfferSheet extends StatefulWidget {
   final TariffOffer offer;
   final TariffGroup group;
@@ -226,7 +230,42 @@ class _OfferSheet extends StatefulWidget {
 }
 
 class _OfferSheetState extends State<_OfferSheet> {
-  bool _confirm = false;
+  _Step _step = _Step.details;
+  TariffOrderPage? _page;
+  bool _ok = false;
+
+  Future<void> _prepare() async {
+    setState(() => _step = _Step.loading);
+    TariffOrderPage? page;
+    try {
+      final token = await AuthStore().appToken;
+      if (token != null) page = await CabinetParser.fetchTariffOrder(token, widget.offer);
+    } catch (e) {
+      debugPrint('страница подтверждения тарифа: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _page = page;
+      _step = page != null && page.canOrder ? _Step.confirm : _Step.failed;
+    });
+  }
+
+  Future<void> _order() async {
+    setState(() => _step = _Step.sending);
+    var ok = false;
+    try {
+      final token = await AuthStore().appToken;
+      if (token != null) ok = await CabinetParser.orderTariff(token, widget.offer, _page!);
+    } catch (e) {
+      debugPrint('заказ тарифа: $e');
+    }
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _ok = ok;
+      _step = _Step.done;
+    });
+  }
 
   Future<void> _openBilling() async {
     final url = CabinetParser.tariffWebUrl(widget.offer);
@@ -236,6 +275,11 @@ class _OfferSheetState extends State<_OfferSheet> {
     } catch (e) {
       debugPrint('не открылась страница тарифа: $e');
     }
+  }
+
+  String get _when {
+    final d = _page?.switchAt;
+    return d == null ? 'после окончания текущего тарифа' : 'с ${shortDate(d)}';
   }
 
   @override
@@ -274,51 +318,88 @@ class _OfferSheetState extends State<_OfferSheet> {
     );
   }
 
+  Widget _message(String text, {IconData? icon, Color? color}) {
+    final p = context.p;
+    final t = Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35));
+    if (icon == null) return t;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(width: 10),
+        Expanded(child: t),
+      ],
+    );
+  }
+
   List<Widget> _actions() {
     final p = context.p;
     final o = widget.offer;
     final none = widget.group.isNoTariff;
     if (widget.current) {
-      return [
-        Text(
-          none ? 'Сейчас тарифа нет' : 'Это ваш тариф. Если ничего не выбрать, он продлится сам',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35),
-        ),
-      ];
+      return [_message(none ? 'Сейчас тарифа нет' : 'Это ваш тариф. Если ничего не выбрать, он продлится сам')];
     }
     if (DemoMode.isEnabled.value) {
       return [Text('В демо-режиме выбор тарифа недоступен', style: TextStyle(fontSize: 13, color: p.inkMute))];
     }
-    if (_confirm) {
-      return [
-        Text(
-          none
-              ? 'Когда закончится текущий тариф, интернет отключится до выбора нового. '
-                  'Выбор подтверждается на странице биллинга, она откроется в браузере'
-              : 'Тариф «${o.name}» начнёт действовать, когда закончится текущий. '
-                  'Выбор подтверждается на странице биллинга, она откроется в браузере',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 52,
-          child: FilledButton(onPressed: _openBilling, child: const Text('Открыть страницу биллинга')),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 48,
-          child: TextButton(onPressed: () => setState(() => _confirm = false), child: const Text('Отмена')),
-        ),
-      ];
+    switch (_step) {
+      case _Step.loading:
+      case _Step.sending:
+        return const [
+          SizedBox(height: 52, child: Center(child: CircularProgressIndicator(color: AppColors.brand))),
+        ];
+      case _Step.confirm:
+        return [
+          _message(none
+              ? 'Тариф закончится $_when, после этого интернет отключится, а абонплата сниматься не будет. Продолжить?'
+              : 'Тариф сменится на «${o.name}» $_when. Сменить?'),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: _order,
+              child: Text(none ? 'Да, остаться без тарифа' : 'Да, сменить'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 48,
+            child: TextButton(onPressed: () => setState(() => _step = _Step.details), child: const Text('Отмена')),
+          ),
+        ];
+      case _Step.done:
+        return [
+          _ok
+              ? _message(none ? 'Готово, $_when тарифа не будет' : 'Готово, $_when будет «${o.name}»',
+                  icon: Icons.check_circle_rounded, color: AppColors.ok)
+              : _message('Биллинг не подтвердил смену тарифа. Попробуйте позже или выберите на сайте',
+                  icon: Icons.info_outline_rounded, color: AppColors.danger),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: _ok
+                ? OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Готово'))
+                : OutlinedButton(onPressed: _openBilling, child: const Text('Открыть на сайте')),
+          ),
+        ];
+      case _Step.failed:
+        return [
+          _message('Не удалось открыть подтверждение в биллинге', icon: Icons.info_outline_rounded, color: AppColors.danger),
+          const SizedBox(height: 14),
+          SizedBox(height: 48, child: FilledButton(onPressed: _prepare, child: const Text('Повторить'))),
+          const SizedBox(height: 8),
+          SizedBox(height: 48, child: TextButton(onPressed: _openBilling, child: const Text('Открыть на сайте'))),
+        ];
+      case _Step.details:
+        return [
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              onPressed: _prepare,
+              child: Text(none ? 'Остаться без тарифа' : 'Выбрать со следующего периода'),
+            ),
+          ),
+        ];
     }
-    return [
-      SizedBox(
-        height: 52,
-        child: FilledButton(
-          onPressed: () => setState(() => _confirm = true),
-          child: Text(none ? 'Остаться без тарифа' : 'Выбрать со следующего периода'),
-        ),
-      ),
-    ];
   }
 }

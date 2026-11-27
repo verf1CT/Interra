@@ -938,6 +938,8 @@ class CabinetParser {
     out.writeln('activeLogin: $saved');
     final smsReply = lastSmsResponse;
     if (smsReply != null) await add('ответ на отправку sms-формы', () async => smsReply);
+    final tariffReply = lastTariffResponse;
+    if (tariffReply != null) await add('ответ на заказ тарифа', () async => tariffReply);
     // ссылка из списка одноразовая: для каждого договора берём список заново
     for (var i = 0; i < 2; i++) {
       var listHtml = '';
@@ -1267,6 +1269,31 @@ class CabinetParser {
         }),
     ]);
     return TariffCatalog(current: parseCurrentTariff(main), groups: groups, offers: offers);
+  }
+
+  static String _offerQuery(TariffOffer o) {
+    final gro = RegExp(r'gro=(\d+)').firstMatch(o.href)?.group(1);
+    return '${gro == null ? '' : '&gro=$gro'}&pack=${o.pack}';
+  }
+
+  /// страница подтверждения тарифа: дата переключения и форма. null - не открылась
+  static Future<TariffOrderPage?> fetchTariffOrder(String appToken, TariffOffer offer) async {
+    if (offer.pack == null) return null;
+    final html = await _fetchSection(appToken, 'aaatarif', 'tarif', query: _offerQuery(offer));
+    return html == null ? null : parseTariffOrderPage(html);
+  }
+
+  /// ответ биллинга на последний заказ тарифа - уходит в дамп, чтобы видеть,
+  /// как биллинг подтверждает выбор
+  static String? lastTariffResponse;
+
+  /// нажимает «ДА» на странице подтверждения. true - биллинг принял выбор
+  static Future<bool> orderTariff(String appToken, TariffOffer offer, TariffOrderPage page) async {
+    if (!page.canOrder) return false;
+    final html = await _fetchSection(appToken, 'aaatarif', 'tarif',
+        query: _offerQuery(offer), form: {...page.form, 'set': 'ДА'}, authInBody: false);
+    lastTariffResponse = html;
+    return tariffOrderAccepted(html);
   }
 
   /// страница тарифа в браузере: ссылка из группы относительная (`?login=…`)

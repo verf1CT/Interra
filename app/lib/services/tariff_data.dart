@@ -1,5 +1,7 @@
 import 'package:html/parser.dart' as parser;
 
+import '../utils/billing_math.dart';
+
 /// группа тарифов со страницы aaatarif?oper=tarif, например «100 мегабит».
 /// группа 0 - «Нет тарифа»: интернет выключен, абонплата не снимается
 class TariffGroup {
@@ -50,6 +52,41 @@ class TariffCatalog {
   final Map<String, List<TariffOffer>> offers;
 
   const TariffCatalog({this.current, this.groups = const [], this.offers = const {}});
+}
+
+/// страница подтверждения тарифа (`…&gro=18&pack=3041`): «После окончания
+/// действующего тарифа <дата>. Вы собираетесь переключиться на тариф…» и
+/// форма с кнопками ДА/НЕТ. сам заход на страницу ничего не заказывает
+class TariffOrderPage {
+  /// когда закончится действующий тариф и включится выбранный
+  final DateTime? switchAt;
+
+  /// скрытые поля формы: login, oper, gro, pack
+  final Map<String, String> form;
+
+  const TariffOrderPage({this.switchAt, this.form = const {}});
+
+  bool get canOrder => form.containsKey('pack');
+}
+
+TariffOrderPage? parseTariffOrderPage(String html) {
+  final doc = parser.parse(html);
+  final form = doc.querySelectorAll('form').where((f) => f.querySelector('input[name="pack"]') != null).firstOrNull;
+  if (form == null) return null;
+  final fields = <String, String>{
+    for (final i in form.querySelectorAll('input[type="hidden"]'))
+      if ((i.attributes['name'] ?? '').isNotEmpty) i.attributes['name']!: i.attributes['value'] ?? '',
+  };
+  final text = doc.body?.text ?? '';
+  final m = RegExp(r'окончания\s+действующего\s+тарифа\s*([\d\-.: ]+)').firstMatch(text);
+  return TariffOrderPage(switchAt: m == null ? null : parseBillingDate(m.group(1)!), form: fields);
+}
+
+/// биллинг принял выбор: в ответе нет той же формы подтверждения и нет ошибки
+bool tariffOrderAccepted(String? html) {
+  if (html == null || html.trim().isEmpty) return false;
+  final low = html.toLowerCase();
+  return !low.contains('вы собираетесь переключиться') && !low.contains('ошибк');
 }
 
 List<TariffGroup> parseTariffGroups(String html) {
