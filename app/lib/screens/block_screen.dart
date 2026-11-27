@@ -213,7 +213,7 @@ class _BlockScreenState extends State<BlockScreen> {
             Text(s.warning!,
                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.danger, height: 1.4)),
           ],
-          for (final group in _forms(s.actions)) ...[
+          for (final group in _forms(_withResend(s.actions))) ...[
             if (group.first.hint != null) ...[
               const SizedBox(height: 12),
               // биллинг пишет ошибку кода в той же форме: её выделяем
@@ -258,6 +258,23 @@ class _BlockScreenState extends State<BlockScreen> {
       ),
     );
   }
+}
+
+/// пока код родительского контроля не введён, биллинг держит форму кода и
+/// убирает кнопку «получить код». потерял sms - выхода нет, поэтому шлём тот
+/// же запрос, что и та кнопка: если биллинг его примет, придёт новая sms
+List<BlockAction> _withResend(List<BlockAction> actions) {
+  final waitsCode = actions.any((a) => a.needsCode);
+  final canRequest = actions.any((a) => a.fields.containsKey('isms'));
+  if (!waitsCode || canRequest) return actions;
+  return [
+    ...actions,
+    const BlockAction(
+      label: 'прислать код ещё раз',
+      fields: {'isms': 'получить код родительского контроля'},
+      form: -1,
+    ),
+  ];
 }
 
 /// кнопки по формам, в порядке страницы
