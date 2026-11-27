@@ -19,6 +19,7 @@ import '../services/update_check.dart';
 import '../widgets/privacy_shield.dart';
 import '../widgets/design_system.dart';
 import '../widgets/app_sheets.dart';
+import 'block_screen.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
 import 'support_screen.dart';
@@ -559,6 +560,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                 ),
+              ),
+              const PillDivider(),
+              PillTile(
+                icon: Icons.wifi_off_rounded,
+                iconColor: AppColors.neutral,
+                title: 'Блокировка интернета',
+                subtitle: 'На время отпуска или родительский контроль',
+                trailing: Icon(Icons.chevron_right_rounded, color: context.p.inkFaint),
+                onTap: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const BlockScreen())),
               ),
             ],
           ),

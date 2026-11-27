@@ -15,6 +15,7 @@ import 'package:lk_interra/services/demo_mode.dart';
 import 'package:lk_interra/screens/cabinet_screen.dart';
 import 'package:lk_interra/screens/settings_screen.dart';
 import 'package:lk_interra/screens/tariffs_screen.dart';
+import 'package:lk_interra/screens/block_screen.dart';
 
 Future<void> _loadFont(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -129,6 +130,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 50));
       }
       await snap(tester, key, '6_tariff_sheet_$tag');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('block $tag', (tester) async {
+      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+
+      final key = await open(tester, b, const BlockScreen());
+      await snap(tester, key, '7_block_$tag');
       await tester.pumpWidget(const SizedBox());
     });
 

@@ -7,8 +7,10 @@ import 'billing_api.dart';
 import 'secure_http.dart';
 import 'tv_data.dart';
 import 'tariff_data.dart';
+import 'block_data.dart';
 export 'tv_data.dart';
 export 'tariff_data.dart';
+export 'block_data.dart';
 import '../config.dart';
 import '../utils/billing_math.dart';
 import 'package:flutter/foundation.dart';
@@ -940,6 +942,8 @@ class CabinetParser {
     if (smsReply != null) await add('ответ на отправку sms-формы', () async => smsReply);
     final tariffReply = lastTariffResponse;
     if (tariffReply != null) await add('ответ на заказ тарифа', () async => tariffReply);
+    final blockReply = lastBlockResponse;
+    if (blockReply != null) await add('ответ на кнопку блокировки', () async => blockReply);
     // ссылка из списка одноразовая: для каждого договора берём список заново
     for (var i = 0; i < 2; i++) {
       var listHtml = '';
@@ -1305,6 +1309,26 @@ class CabinetParser {
   /// ссылка на раздел тарифов выбранного договора для браузера. токен сессии
   /// не привязан к кукам, поэтому открывается и вне приложения. если токена
   /// нет - старая ссылка cmd=open (у номера с одним договором это его страница)
+  /// страница блокировки выбранного счёта (aaaprcn). null - не открылась
+  static Future<String?> fetchBlockPage(String appToken) =>
+      _fetchSection(appToken, 'aaaprcn', 'prcn');
+
+  /// ответ биллинга на последнюю кнопку блокировки - уходит в дамп
+  static String? lastBlockResponse;
+
+  /// жмёт кнопку формы блокировки. у форм action="" или «?login=…&oper=prcn»,
+  /// то есть тот же адрес раздела, поэтому login и oper только в адресе
+  static Future<String?> submitBlockAction(String appToken, BlockAction action, {String? code}) async {
+    final html = await _fetchSection(appToken, 'aaaprcn', 'prcn',
+        form: {
+          ...action.fields,
+          if (action.codeField != null && code != null) action.codeField!: code,
+        },
+        authInBody: false);
+    lastBlockResponse = html;
+    return html;
+  }
+
   static Future<String?> getTariffsWebUrl(String appToken) async {
     try {
       await _ensureNavToken(appToken);
