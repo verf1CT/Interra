@@ -216,16 +216,29 @@ class _BlockScreenState extends State<BlockScreen> {
           for (final group in _forms(s.actions)) ...[
             if (group.first.hint != null) ...[
               const SizedBox(height: 12),
-              Text(_cap(group.first.hint!),
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35)),
+              // биллинг пишет ошибку кода в той же форме: её выделяем
+              for (final line in group.first.hint!.split('
+'))
+                Text(_cap(line),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: line.toLowerCase().contains('невер') ? AppColors.danger : p.ink,
+                        height: 1.35)),
             ],
             if (group.first.needsCode) ...[
               const SizedBox(height: 10),
               TextField(
                 controller: _code,
+                maxLength: group.first.codeLength,
                 keyboardType: TextInputType.number,
                 autofillHints: const [AutofillHints.oneTimeCode],
-                decoration: const InputDecoration(hintText: 'Код из sms'),
+                decoration: InputDecoration(
+                  hintText: group.first.codeLength != null
+                      ? '${group.first.codeLength} цифр из sms родительского контроля'
+                      : 'Код из sms',
+                  counterText: '',
+                ),
                 onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
               ),
             ],

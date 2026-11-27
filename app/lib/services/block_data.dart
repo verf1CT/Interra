@@ -13,13 +13,23 @@ class BlockAction {
   /// поле для кода из sms, если форма его просит
   final String? codeField;
 
+  /// длина кода из атрибута maxlength поля: у родительского контроля 5 цифр
+  final int? codeLength;
+
   /// текст формы вокруг кнопки: «для активации услуги нужно … в смс»
   final String? hint;
 
   /// номер формы на странице: кнопки одной формы рисуются вместе, с общим текстом и полем
   final int form;
 
-  const BlockAction({required this.label, this.fields = const {}, this.codeField, this.hint, this.form = 0});
+  const BlockAction({
+    required this.label,
+    this.fields = const {},
+    this.codeField,
+    this.codeLength,
+    this.hint,
+    this.form = 0,
+  });
 
   bool get needsCode => codeField != null;
 }
@@ -114,15 +124,13 @@ List<BlockAction> _formActions(dom.Element form, int no) {
       if ((i.attributes['name'] ?? '').isNotEmpty) i.attributes['name']!: i.attributes['value'] ?? '',
   };
   // поле для кода: любое видимое текстовое поле
-  final code = form
-      .querySelectorAll('input')
-      .where((i) {
-        final t = (i.attributes['type'] ?? 'text').toLowerCase();
-        return (t == 'text' || t == 'tel' || t == 'number' || t == 'password') &&
-            (i.attributes['name'] ?? '').isNotEmpty;
-      })
-      .map((i) => i.attributes['name']!)
-      .firstOrNull;
+  final codeInput = form.querySelectorAll('input').where((i) {
+    final t = (i.attributes['type'] ?? 'text').toLowerCase();
+    return (t == 'text' || t == 'tel' || t == 'number' || t == 'password') &&
+        (i.attributes['name'] ?? '').isNotEmpty;
+  }).firstOrNull;
+  final code = codeInput?.attributes['name'];
+  final codeLength = int.tryParse(codeInput?.attributes['maxlength'] ?? '');
   final buttons = [
     ...form.querySelectorAll('input[type="submit"]'),
     ...form.querySelectorAll('button'),
@@ -166,6 +174,7 @@ List<BlockAction> _formActions(dom.Element form, int no) {
           if ((b.attributes['name'] ?? '').isNotEmpty) b.attributes['name']!: b.attributes['value'] ?? b.text.trim(),
         },
         codeField: code,
+        codeLength: codeLength,
         hint: hint.isEmpty ? null : hint,
         form: no,
       ),

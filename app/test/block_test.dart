@@ -34,6 +34,7 @@ void main() {
     final a = parseBlockPage(page).single.actions.single;
     expect(a.label, 'Отключить интернет');
     expect(a.codeField, 'smscd');
+    expect(a.codeLength, 5);
     expect(a.fields, {'login': 'x', 'oper': 'prcn', 'ctm': '1795787142', 'idw': 'Отключить интернет'});
     expect(a.hint, 'код родительского контроля из смс:');
   });
