@@ -246,7 +246,10 @@ class _LoginCardState extends State<_LoginCard> {
               shown: _showPassword ? pass : '•' * pass.length,
               extra: IconButton(
                 tooltip: _showPassword ? 'Скрыть пароль' : 'Показать пароль',
-                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 52),
+                padding: EdgeInsets.zero,
+                // иконку жмём к соседней кнопке копирования, зона нажатия остаётся 44
+                style: IconButton.styleFrom(alignment: Alignment.centerRight),
                 onPressed: () => setState(() => _showPassword = !_showPassword),
                 icon: Icon(
                   _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -331,6 +334,7 @@ class _CredentialRowState extends State<_CredentialRow> {
           IconButton(
             tooltip: 'Скопировать',
             constraints: const BoxConstraints(minWidth: 44, minHeight: 52),
+            padding: EdgeInsets.zero,
             onPressed: _copy,
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),

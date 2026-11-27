@@ -181,7 +181,7 @@ class _PaymentsHistoryScreenState extends State<PaymentsHistoryScreen> {
         title: _cursor.month == DateTime.now().month && _cursor.year == DateTime.now().year
             ? 'В этом месяце операций нет'
             : 'Операций пока нет',
-        text: 'Здесь появятся пополнения и списания по договору',
+        text: 'Здесь появятся пополнения и списания по лицевому счёту',
         action: _canLoadMore ? _moreButton() : null,
       );
     }

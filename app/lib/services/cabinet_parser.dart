@@ -877,16 +877,17 @@ class CabinetParser {
     return items;
   }
 
-  /// номер лицевого счёта, по которому оплачивают, для договора из списка выбора.
-  /// в ссылке `?login=…` лежит внутренний логин биллинга, а не этот номер,
-  /// поэтому приходится открыть страницу самого договора. пустая строка - не нашли
-  static Future<String> fetchPayAccount(String appToken, String loginUrl) async {
+  /// номер лицевого счёта и адрес для строки из списка выбора.
+  /// в ссылке `?login=…` лежит внутренний логин биллинга, а не номер, и адреса
+  /// в списке нет, поэтому открываем страницу самого счёта. пустые строки - не нашли
+  static Future<({String number, String address})> fetchPayAccount(
+      String appToken, String loginUrl) async {
     try {
-      final html = await _fetchHtml(appToken, directUrl: loginUrl);
-      return parseCabinetHtml(html).account;
+      final d = parseCabinetHtml(await _fetchHtml(appToken, directUrl: loginUrl));
+      return (number: d.account, address: d.address);
     } catch (e) {
       debugPrint('fetchPayAccount error: $e');
-      return '';
+      return (number: '', address: '');
     }
   }
 
@@ -976,6 +977,31 @@ class CabinetParser {
         ('aaaiptv', 'iptvm&xid=1', 'iptv, пакет Полный'),
       ]) {
         await add('$title ($script)', () => raw('${AppConfig.billingBase}/$script?login=$tok&oper=$oper'));
+      }
+      // тарифы: страница со списком групп, сами группы и пара ссылок внутри
+      // группы - по ним будет смена тарифа в приложении
+      var tarif = '';
+      await add('тарифы (aaatarif)',
+          () async => tarif = await raw('${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif'));
+      final groups = RegExp(r'oper=tarif&(?:amp;)?gro=(\d+)')
+          .allMatches(tarif)
+          .map((m) => m.group(1)!)
+          .toSet()
+          .take(4);
+      for (final g in groups) {
+        var page = '';
+        await add('тарифы, группа $g', () async => page = await raw(
+            '${AppConfig.billingBase}/aaatarif?login=$tok&oper=tarif&gro=$g'));
+        final inner = RegExp(r'''href="([^"]*oper=tarif[^"]*)"''')
+            .allMatches(page)
+            .map((m) => m.group(1)!.replaceAll('&amp;', '&'))
+            .where((h) => !RegExp(r'gro=\d+$').hasMatch(h))
+            .toSet()
+            .take(2);
+        for (final h in inner) {
+          final q = h.contains('?') ? h.substring(h.indexOf('?') + 1) : h;
+          await add('тарифы, $q', () => raw('${AppConfig.billingBase}/aaatarif?$q'));
+        }
       }
       break;
     }

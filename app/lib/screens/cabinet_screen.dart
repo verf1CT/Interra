@@ -187,8 +187,9 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     PassportFormSheet.show(context, onSaved: () => _refresh());
   }
 
-  /// loginUrl договора -> номер для оплаты, подгружается при открытии окна выбора
-  final ValueNotifier<Map<String, String>> _payAccounts = ValueNotifier({});
+  /// loginUrl договора -> номер лицевого счёта и адрес, подгружаются при открытии окна выбора
+  final ValueNotifier<Map<String, ({String number, String address})>> _payAccounts =
+      ValueNotifier({});
 
   final ValueNotifier<bool> _payLoading = ValueNotifier(false);
 
@@ -199,9 +200,9 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
     final jobs = <Future<void>>[];
     for (final acc in _data?.accounts ?? const <AccountOption>[]) {
       if (_payAccounts.value.containsKey(acc.loginUrl)) continue;
-      jobs.add(CabinetParser.fetchPayAccount(token, acc.loginUrl).then((number) {
-        if (!mounted || number.isEmpty) return;
-        _payAccounts.value = {..._payAccounts.value, acc.loginUrl: number};
+      jobs.add(CabinetParser.fetchPayAccount(token, acc.loginUrl).then((info) {
+        if (!mounted || (info.number.isEmpty && info.address.isEmpty)) return;
+        _payAccounts.value = {..._payAccounts.value, acc.loginUrl: info};
       }));
     }
     if (jobs.isEmpty) return;
@@ -295,7 +296,7 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
       if (mounted && newData != null) {
         final account = newData.account.isNotEmpty
             ? newData.account
-            : (_payAccounts.value[acc.loginUrl] ?? '');
+            : (_payAccounts.value[acc.loginUrl]?.number ?? '');
         await BalanceStore.update(newData.balance, account: account);
         if (!mounted) return;
         setState(() {
@@ -305,7 +306,11 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
             fullName: !CabinetParser.isPlaceholderName(newData.fullName)
                 ? newData.fullName
                 : acc.name,
-            address: newData.address.isNotEmpty ? newData.address : acc.address,
+            address: newData.address.isNotEmpty
+                ? newData.address
+                : (acc.address.isNotEmpty
+                    ? acc.address
+                    : (_payAccounts.value[acc.loginUrl]?.address ?? '')),
             accounts: _data!.accounts,
           );
           ChargeReminder.update(_data!);
@@ -487,10 +492,10 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
 }
 
 
-/// содержимое шторки выбора договора: фио, под ним номер счёта, ниже адрес
+/// содержимое шторки выбора счёта: фио, под ним адрес, ниже номер счёта
 class _AccountPickerBody extends StatefulWidget {
   final List<AccountOption> accounts;
-  final ValueNotifier<Map<String, String>> payAccounts;
+  final ValueNotifier<Map<String, ({String number, String address})>> payAccounts;
   final ValueNotifier<bool> payLoading;
   final bool Function(AccountOption acc, String number) isCurrent;
   final Future<void> Function(AccountOption acc) onSelect;
@@ -525,7 +530,7 @@ class _AccountPickerBodyState extends State<_AccountPickerBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Выберите договор',
+          'Лицевые счета',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
@@ -535,7 +540,7 @@ class _AccountPickerBodyState extends State<_AccountPickerBody> {
         const SizedBox(height: 14),
         Flexible(
           child: SingleChildScrollView(
-            child: ValueListenableBuilder<Map<String, String>>(
+            child: ValueListenableBuilder<Map<String, ({String number, String address})>>(
               valueListenable: widget.payAccounts,
               builder: (_, payAccounts, __) => ValueListenableBuilder<bool>(
                 valueListenable: widget.payLoading,
@@ -543,12 +548,17 @@ class _AccountPickerBodyState extends State<_AccountPickerBody> {
                   children: [
                     for (final acc in widget.accounts) ...[
                       Builder(builder: (_) {
-                        final number = payAccounts[acc.loginUrl] ??
+                        final info = payAccounts[acc.loginUrl];
+                        final number = info?.number ??
                             (DemoMode.isEnabled.value ? acc.accountId : '');
+                        final address = acc.address.isNotEmpty
+                            ? acc.address
+                            : (info?.address ?? '');
                         return _AccountRow(
                           account: acc,
                           number: number,
-                          numberLoading: loading && number.isEmpty,
+                          address: address,
+                          numberLoading: loading && info == null,
                           current: widget.isCurrent(acc, number),
                           busy: _busy == acc.loginUrl,
                           onTap: () => _tap(acc),
@@ -570,6 +580,7 @@ class _AccountPickerBodyState extends State<_AccountPickerBody> {
 class _AccountRow extends StatelessWidget {
   final AccountOption account;
   final String number;
+  final String address;
   final bool numberLoading;
   final bool current;
   final bool busy;
@@ -578,6 +589,7 @@ class _AccountRow extends StatelessWidget {
   const _AccountRow({
     required this.account,
     required this.number,
+    required this.address,
     required this.numberLoading,
     required this.current,
     required this.busy,
@@ -616,34 +628,33 @@ class _AccountRow extends StatelessWidget {
                       color: p.ink,
                     ),
                   ),
+                  if (address.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      address,
+                      style: TextStyle(fontSize: 13.5, color: p.inkMute, height: 1.25),
+                    ),
+                  ],
                   const SizedBox(height: 3),
                   if (number.isNotEmpty)
                     Text(
-                      'Л/С $number',
+                      'Лицевой счёт $number',
                       style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: p.ink.withValues(alpha: 0.75),
+                        fontSize: 12.5,
+                        color: p.inkFaint,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     )
                   else if (numberLoading)
                     Container(
-                      width: 96,
-                      height: 12,
+                      width: 120,
+                      height: 11,
                       margin: const EdgeInsets.symmetric(vertical: 2),
                       decoration: BoxDecoration(
                         color: p.line,
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                  if (account.address.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      account.address,
-                      style: TextStyle(fontSize: 12.5, color: p.inkMute),
-                    ),
-                  ],
                 ],
               ),
             ),

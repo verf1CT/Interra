@@ -9,9 +9,7 @@ import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
 import '../theme.dart';
 import '../utils/billing_math.dart';
-import '../widgets/design_system.dart';
 import '../widgets/motion_kit.dart';
-import 'diagnostics_screen.dart';
 import 'support_screen.dart';
 
 /// главная вкладка кабинета. показывает только то, что реально пришло из
@@ -113,6 +111,7 @@ class _HomeTabState extends State<HomeTab> {
         _fee != null ||
         _lastTopUp != null ||
         (d.nextPaymentDate != null && (d.nextCharge ?? 0) > 0);
+    final tariff = _tariffCard();
     var i = 0;
 
     return RefreshIndicator(
@@ -124,7 +123,6 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           StaggerIn(index: i++, child: _BalanceHero(
             data: d,
-            tariffFallback: _mainService,
             refreshing: widget.refreshing,
             onPay: widget.onPay,
             onPickAccount: widget.onPickAccount,
@@ -135,7 +133,7 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 12),
             StaggerIn(index: i++, child: _Notice(
               icon: Icons.assignment_ind_outlined,
-              text: 'Для договора нужны паспортные данные',
+              text: 'Биллинг просит паспортные данные',
               action: 'Заполнить',
               onTap: widget.onOpenPassport,
             )),
@@ -144,9 +142,11 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 12),
             StaggerIn(index: i++, child: _statsRow()),
           ],
-          const SizedBox(height: 22),
-          StaggerIn(index: i++, child: _quickActions()),
-          const SizedBox(height: 22),
+          if (tariff != null) ...[
+            const SizedBox(height: 12),
+            StaggerIn(index: i++, child: tariff),
+          ],
+          const SizedBox(height: 12),
           StaggerIn(index: i++, child: _supportCard()),
         ],
       ),
@@ -219,33 +219,58 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _quickActions() {
-    void push(Widget w) =>
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const PillSectionHeader('Быстрые действия'),
-        Row(
+  /// тариф отдельной карточкой: название с главной страницы биллинга, а если
+  /// его там нет - первая услуга с месячной ценой. ничего нет - карточки нет
+  Widget? _tariffCard() {
+    final d = widget.data;
+    final known = d.tariff.isNotEmpty &&
+        d.tariff != 'Нет тарифа' &&
+        d.tariff != 'Неизвестный тариф';
+    final name = known
+        ? d.tariff
+        : (_mainService ?? (d.tariff == 'Нет тарифа' ? 'Нет тарифа' : null));
+    if (name == null && !_extrasLoading) return null;
+    final p = context.p;
+    return Pressable(
+      onTap: () => widget.onOpenTab(1),
+      semanticLabel: name == null ? 'Тариф' : 'Тариф: $name',
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        decoration: cardBox(context, radius: 20),
+        child: Row(
           children: [
-            _QuickAction(
-              icon: Icons.speed_rounded,
-              label: 'Диагностика',
-              onTap: () => push(const DiagnosticsScreen()),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Тариф',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: p.inkMute)),
+                  const SizedBox(height: 6),
+                  if (name == null)
+                    const SkeletonBox(width: 140, height: 20)
+                  else
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: p.ink,
+                        height: 1.2,
+                      ),
+                    ),
+                ],
+              ),
             ),
-            _QuickAction(
-              icon: Icons.tune_rounded,
-              label: 'Услуги',
-              onTap: () => widget.onOpenTab(1),
-            ),
-            _QuickAction(
-              icon: Icons.live_tv_rounded,
-              label: 'ТВ',
-              onTap: () => widget.onOpenTab(2),
-            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: p.inkFaint, size: 22),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -310,7 +335,6 @@ class _HomeTabState extends State<HomeTab> {
 /// главная карточка: баланс крупно, статус, тариф и оплата
 class _BalanceHero extends StatelessWidget {
   final CabinetData data;
-  final String? tariffFallback;
   final bool refreshing;
   final VoidCallback onPay;
   final VoidCallback onPickAccount;
@@ -319,7 +343,6 @@ class _BalanceHero extends StatelessWidget {
 
   const _BalanceHero({
     required this.data,
-    this.tariffFallback,
     required this.refreshing,
     required this.onPay,
     required this.onPickAccount,
@@ -341,14 +364,10 @@ class _BalanceHero extends StatelessWidget {
         : negative
             ? 'Баланс отрицательный, пополните${next != null && next.isAfter(DateTime.now()) ? ' до ${shortDate(next)}' : ''}'
             : null;
-    final hasTariff = data.tariff.isNotEmpty &&
-        data.tariff != 'Нет тарифа' &&
-        data.tariff != 'Неизвестный тариф';
     final account =
         (data.account.isNotEmpty && data.account != '-') ? data.account : null;
     final multi = data.accounts.length > 1;
 
-    final tariff = hasTariff ? data.tariff : tariffFallback;
     final address = data.address.isNotEmpty ? data.address : null;
 
     const radius = 26.0;
@@ -378,7 +397,7 @@ class _BalanceHero extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: multi
                   ? _HeroChip(
-                      label: account != null ? 'Договор $account' : 'Договор',
+                      label: account != null ? 'Лицевой счёт $account' : 'Лицевой счёт',
                       icon: Icons.unfold_more_rounded,
                       onTap: onPickAccount,
                       onLongPress: onDumpPages,
@@ -409,30 +428,8 @@ class _BalanceHero extends StatelessWidget {
                 ),
               ),
             ),
-            if (tariff != null) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.bolt_rounded,
-                      size: 18, color: Colors.white.withValues(alpha: 0.9)),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      tariff,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
             if (address != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 address,
                 maxLines: 1,
@@ -615,7 +612,7 @@ class _CopyChipState extends State<_CopyChip> {
     final a = widget.account;
     return Pressable(
       onTap: a == null ? null : _copy,
-      semanticLabel: a == null ? null : 'Скопировать номер договора',
+      semanticLabel: a == null ? null : 'Скопировать номер лицевого счёта',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         constraints: const BoxConstraints(minHeight: 36),
@@ -628,7 +625,7 @@ class _CopyChipState extends State<_CopyChip> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              a == null ? 'Договор' : 'Договор $a',
+              a == null ? 'Лицевой счёт' : 'Лицевой счёт $a',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -742,49 +739,6 @@ class _StatTile extends StatelessWidget {
                 ),
               ],
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickAction({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.p;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.92,
-        semanticLabel: label,
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: cardBox(context, radius: 20),
-              child: Icon(icon,
-                  size: 26, color: dark ? AppColors.brand : AppColors.brandInk),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: p.ink,
-              ),
-            ),
           ],
         ),
       ),

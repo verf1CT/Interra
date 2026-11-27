@@ -96,8 +96,9 @@ void main() {
         }
       }
 
-      await tester.tap(find.text('Договор 123456'));
+      await tester.tap(find.text('Лицевой счёт 123456'));
       await frames();
+      await snap(tester, key, '1_accounts_$tag');
       await tester.tap(find.text('Иванов И.И. (Дача)'));
       await frames();
       await snap(tester, key, '1_home_restricted_$tag');

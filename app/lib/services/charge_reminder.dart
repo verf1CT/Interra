@@ -45,7 +45,7 @@ class ChargeReminder {
         scheduledDate: tz.TZDateTime.from(at.toUtc(), tz.UTC),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         title: 'Через $_daysBefore дня списание ${BalanceStore.format(d.nextCharge!)}',
-        body: 'Договор ${d.account}: не хватает $lack, пополните до ${shortDate(d.nextPaymentDate!)}',
+        body: 'Лицевой счёт ${d.account}: не хватает $lack, пополните до ${shortDate(d.nextPaymentDate!)}',
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'interra_default',
