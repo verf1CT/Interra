@@ -79,12 +79,19 @@ class _PremiumTvScreenState extends State<PremiumTvScreen> {
     showAppSheet<void>(context, _PackageSheet(script: script, pkg: pkg));
   }
 
-  void _openStore() {
-    // точных ссылок на карточку приложения у нас нет - открываем поиск магазина
-    const q = 'Смотрёшка';
-    _open(Platform.isIOS
-        ? 'itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=${Uri.encodeComponent(q)}'
-        : 'market://search?q=${Uri.encodeComponent(q)}');
+  /// биллинг велит ставить на телефон Смотрёшку (LifeStream). ссылка поиска
+  /// в App Store открывала главную магазина, поэтому ведём прямо в карточку
+  Future<void> _openStore() async {
+    final (app, web) = Platform.isIOS
+        ? ('itms-apps://apps.apple.com/app/id911254937', 'https://apps.apple.com/ru/app/id911254937')
+        // market:// открывает тот магазин, что стоит: Google Play или RuStore
+        : ('market://details?id=tv.lfstrm.smotreshka', 'https://www.rustore.ru/catalog/app/tv.lfstrm.smotreshka');
+    try {
+      if (await launchUrl(Uri.parse(app), mode: LaunchMode.externalApplication)) return;
+    } catch (e) {
+      debugPrint('магазин не открылся: $e');
+    }
+    await _open(web);
   }
 
   @override
