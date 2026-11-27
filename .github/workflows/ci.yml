@@ -103,10 +103,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # кэш gradle: без него каждая сборка заново качает зависимости, и Maven
+      # Central иногда отвечает 429 Too Many Requests - сборка падает
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            app/android/*.gradle*
+            app/android/app/*.gradle*
+            app/android/gradle/wrapper/gradle-wrapper.properties
+            app/pubspec.lock
 
       - uses: subosito/flutter-action@v2
         with:
