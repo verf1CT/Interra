@@ -263,6 +263,16 @@ class _HomeTabState extends State<HomeTab> {
                         height: 1.2,
                       ),
                     ),
+                  // заказанная смена тарифа - со страницы договора
+                  if (d.nextTariff != null && d.nextTariff != name) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      d.nextPaymentDate != null
+                          ? 'С ${shortDate(d.nextPaymentDate!)}: ${d.nextTariff}'
+                          : 'Следующий: ${d.nextTariff}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: p.inkMute),
+                    ),
+                  ],
                 ],
               ),
             ),

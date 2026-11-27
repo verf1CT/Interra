@@ -55,19 +55,34 @@ class _BlockScreenState extends State<BlockScreen> {
 
   String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  /// код, введённый последним: биллинг может спросить его ещё раз в следующей форме
+  final _code = TextEditingController();
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
   Future<void> _press(BlockSection section, BlockAction action) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (DemoMode.isEnabled.value) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('В демо-режиме блокировка недоступна')));
       return;
     }
-    String? code;
-    if (action.needsCode) {
-      code = await showAppSheet<String>(context, _CodeSheet(label: _cap(action.label)));
-      if (code == null || code.isEmpty || !mounted) return;
-    } else {
-      final long = section.title.toLowerCase().contains('долгосроч');
-      final sms = action.label.toLowerCase().contains('код');
+    final code = _code.text.trim();
+    if (action.needsCode && code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Введите код из sms')));
+      return;
+    }
+    // своё подтверждение - только перед блоком и запросом sms. на остальные
+    // кнопки («Да», «Нет», «Отключить интернет» с кодом) биллинг спрашивает сам
+    final label = action.label.toLowerCase();
+    final long = label.contains('заблокировать');
+    final sms = label.contains('код') && !action.needsCode;
+    if (long || sms) {
       final ok = await showConfirmSheet(
         context,
         icon: sms ? Icons.sms_outlined : Icons.lock_outline_rounded,
@@ -75,15 +90,13 @@ class _BlockScreenState extends State<BlockScreen> {
         message: long
             ? 'Интернет отключится, пока блокировка не снята. Пользоваться ей можно не чаще раза в три месяца, '
                 'а если блок продлится больше двух месяцев, тариф отключится'
-            : sms
-                ? 'Биллинг пришлёт sms с кодом на номер из кабинета'
-                : 'Отправить в биллинг «${action.label}»?',
+            : 'Биллинг пришлёт sms с кодом на номер из кабинета',
         confirmLabel: _cap(action.label),
-        danger: !sms,
+        danger: long,
       );
       if (!ok || !mounted) return;
     }
-    await _submit(action, code);
+    await _submit(action, action.needsCode ? code : null);
   }
 
   Future<void> _submit(BlockAction action, String? code) async {
@@ -109,12 +122,6 @@ class _BlockScreenState extends State<BlockScreen> {
       if (after.any((s) => s.actions.isNotEmpty)) _sections = after;
     });
     if (after.every((s) => s.actions.isEmpty)) await _load();
-    // биллинг прислал форму для кода - сразу открываем ввод
-    final codeAction = _sections.expand((s) => s.actions).where((a) => a.needsCode).firstOrNull;
-    if (codeAction != null && !action.needsCode && mounted) {
-      final section = _sections.firstWhere((s) => s.actions.contains(codeAction));
-      await _press(section, codeAction);
-    }
   }
 
   @override
@@ -206,17 +213,34 @@ class _BlockScreenState extends State<BlockScreen> {
             Text(s.warning!,
                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.danger, height: 1.4)),
           ],
-          for (final a in s.actions) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 48,
-              child: _busy == a.label
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
-                  : OutlinedButton(
-                      onPressed: _busy != null ? null : () => _press(s, a),
-                      child: Text(_cap(a.label), textAlign: TextAlign.center),
-                    ),
-            ),
+          for (final group in _forms(s.actions)) ...[
+            if (group.first.hint != null) ...[
+              const SizedBox(height: 12),
+              Text(_cap(group.first.hint!),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.ink, height: 1.35)),
+            ],
+            if (group.first.needsCode) ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _code,
+                keyboardType: TextInputType.number,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                decoration: const InputDecoration(hintText: 'Код из sms'),
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+              ),
+            ],
+            for (final a in group) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 48,
+                child: _busy == a.label
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
+                    : OutlinedButton(
+                        onPressed: _busy != null ? null : () => _press(s, a),
+                        child: Text(_cap(a.label), textAlign: TextAlign.center),
+                      ),
+              ),
+            ],
           ],
         ],
       ),
@@ -224,55 +248,17 @@ class _BlockScreenState extends State<BlockScreen> {
   }
 }
 
-/// ввод кода из sms для формы, которую прислал биллинг
-class _CodeSheet extends StatefulWidget {
-  final String label;
-  const _CodeSheet({required this.label});
-
-  @override
-  State<_CodeSheet> createState() => _CodeSheetState();
-}
-
-class _CodeSheetState extends State<_CodeSheet> {
-  final _c = TextEditingController();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
+/// кнопки по формам, в порядке страницы
+List<List<BlockAction>> _forms(List<BlockAction> actions) {
+  final out = <List<BlockAction>>[];
+  for (final a in actions) {
+    if (out.isNotEmpty && out.last.first.form == a.form) {
+      out.last.add(a);
+    } else {
+      out.add([a]);
+    }
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.p;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Код из sms', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: p.ink)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _c,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            autofillHints: const [AutofillHints.oneTimeCode],
-            decoration: const InputDecoration(hintText: 'Код'),
-            onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(_c.text.trim()),
-              child: Text(widget.label),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  return out;
 }
 
 // страница из дампа для демо-режима и скриншотов

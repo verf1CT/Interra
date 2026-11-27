@@ -52,10 +52,28 @@ class _TariffsScreenState extends State<TariffsScreen> {
   }
 
   void _open(TariffOffer offer, TariffGroup group) {
+    final c = _catalog!;
+    final current = group.isNoTariff ? c.current == null : offer.name == c.current;
     showAppSheet<void>(
       context,
-      _OfferSheet(offer: offer, group: group, current: offer.name == _catalog?.current),
+      _OfferSheet(
+        offer: offer,
+        group: group,
+        current: current,
+        chosen: c.next != null && offer.name == c.next && !current,
+        changeOrdered: c.next != null && c.next != (c.current ?? 'Нет тарифа'),
+        // биллинг принял заказ: отмечаем у себя, страница договора обновится позже
+        onOrdered: () => setState(() => _catalog = c.withNext(current ? null : offer.name)),
+      ),
     );
+  }
+
+  /// подпись под тарифом: действует сейчас или выбран на следующий период
+  String? _badge(TariffCatalog c, TariffOffer o, {bool none = false}) {
+    final current = none ? c.current == null : o.name == c.current;
+    if (current) return 'Действует сейчас';
+    if (c.next != null && o.name == c.next) return 'Выбран со следующего периода';
+    return null;
   }
 
   @override
@@ -120,7 +138,7 @@ class _TariffsScreenState extends State<TariffsScreen> {
             PillGroupCard(children: [
               for (final (k, o) in c.offers[g.id]!.indexed) ...[
                 if (k > 0) const PillDivider(),
-                _OfferRow(offer: o, current: o.name == c.current, onTap: () => _open(o, g)),
+                _OfferRow(offer: o, badge: _badge(c, o), onTap: () => _open(o, g)),
               ],
             ]),
             const SizedBox(height: 18),
@@ -129,7 +147,7 @@ class _TariffsScreenState extends State<TariffsScreen> {
             PillGroupCard(children: [
               _OfferRow(
                 offer: c.offers[g.id]!.first,
-                current: c.current == null,
+                badge: _badge(c, c.offers[g.id]!.first, none: true),
                 note: g.note,
                 onTap: () => _open(c.offers[g.id]!.first, g),
               ),
@@ -154,11 +172,11 @@ String _days(int n) {
 
 class _OfferRow extends StatelessWidget {
   final TariffOffer offer;
-  final bool current;
+  final String? badge;
   final String? note;
   final VoidCallback onTap;
 
-  const _OfferRow({required this.offer, required this.current, this.note, required this.onTap});
+  const _OfferRow({required this.offer, this.badge, this.note, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -181,10 +199,10 @@ class _OfferRow extends StatelessWidget {
                   children: [
                     Text(offer.name,
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: p.ink)),
-                    if (current) ...[
+                    if (badge != null) ...[
                       const SizedBox(height: 2),
-                      const Text('Действует сейчас',
-                          style: TextStyle(
+                      Text(badge!,
+                          style: const TextStyle(
                               fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.brand)),
                     ] else if (sub.isNotEmpty || note != null) ...[
                       const SizedBox(height: 2),
@@ -223,7 +241,21 @@ class _OfferSheet extends StatefulWidget {
   final TariffGroup group;
   final bool current;
 
-  const _OfferSheet({required this.offer, required this.group, required this.current});
+  /// этот тариф уже заказан на следующий период
+  final bool chosen;
+
+  /// заказана смена на другой тариф: тогда действующий можно вернуть
+  final bool changeOrdered;
+  final VoidCallback onOrdered;
+
+  const _OfferSheet({
+    required this.offer,
+    required this.group,
+    required this.current,
+    this.chosen = false,
+    this.changeOrdered = false,
+    required this.onOrdered,
+  });
 
   @override
   State<_OfferSheet> createState() => _OfferSheetState();
@@ -261,6 +293,7 @@ class _OfferSheetState extends State<_OfferSheet> {
     }
     if (!mounted) return;
     HapticFeedback.mediumImpact();
+    if (ok) widget.onOrdered();
     setState(() {
       _ok = ok;
       _step = _Step.done;
@@ -336,7 +369,11 @@ class _OfferSheetState extends State<_OfferSheet> {
     final p = context.p;
     final o = widget.offer;
     final none = widget.group.isNoTariff;
-    if (widget.current) {
+    final keep = widget.current && widget.changeOrdered;
+    if (widget.chosen && _step == _Step.details) {
+      return [_message('Этот тариф уже выбран, он начнёт действовать после окончания текущего')];
+    }
+    if (widget.current && !keep) {
       return [_message(none ? 'Сейчас тарифа нет' : 'Это ваш тариф. Если ничего не выбрать, он продлится сам')];
     }
     if (DemoMode.isEnabled.value) {
@@ -350,15 +387,17 @@ class _OfferSheetState extends State<_OfferSheet> {
         ];
       case _Step.confirm:
         return [
-          _message(none
-              ? 'Тариф закончится $_when, после этого интернет отключится, а абонплата сниматься не будет. Продолжить?'
-              : 'Тариф сменится на «${o.name}» $_when. Сменить?'),
+          _message(keep
+              ? 'Заказанная смена отменится, «${o.name}» останется и после окончания текущего периода. Оставить?'
+              : none
+                  ? 'Тариф закончится $_when, после этого интернет отключится, а абонплата сниматься не будет. Продолжить?'
+                  : 'Тариф сменится на «${o.name}» $_when. Сменить?'),
           const SizedBox(height: 12),
           SizedBox(
             height: 52,
             child: FilledButton(
               onPressed: _order,
-              child: Text(none ? 'Да, остаться без тарифа' : 'Да, сменить'),
+              child: Text(keep ? 'Да, оставить' : none ? 'Да, остаться без тарифа' : 'Да, сменить'),
             ),
           ),
           const SizedBox(height: 8),
@@ -370,7 +409,11 @@ class _OfferSheetState extends State<_OfferSheet> {
       case _Step.done:
         return [
           _ok
-              ? _message(none ? 'Готово, $_when тарифа не будет' : 'Готово, $_when будет «${o.name}»',
+              ? _message(keep
+                      ? 'Готово, «${o.name}» останется'
+                      : none
+                          ? 'Готово, $_when тарифа не будет'
+                          : 'Готово, $_when будет «${o.name}»',
                   icon: Icons.check_circle_rounded, color: AppColors.ok)
               : _message('Биллинг не подтвердил смену тарифа. Попробуйте позже или выберите на сайте',
                   icon: Icons.info_outline_rounded, color: AppColors.danger),
@@ -396,7 +439,7 @@ class _OfferSheetState extends State<_OfferSheet> {
             height: 52,
             child: FilledButton(
               onPressed: _prepare,
-              child: Text(none ? 'Остаться без тарифа' : 'Выбрать со следующего периода'),
+              child: Text(keep ? 'Оставить этот тариф' : none ? 'Остаться без тарифа' : 'Выбрать со следующего периода'),
             ),
           ),
         ];

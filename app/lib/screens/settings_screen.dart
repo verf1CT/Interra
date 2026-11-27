@@ -19,6 +19,7 @@ import '../services/update_check.dart';
 import '../widgets/privacy_shield.dart';
 import '../widgets/design_system.dart';
 import '../widgets/app_sheets.dart';
+import '../widgets/code_sheet.dart';
 import 'block_screen.dart';
 import 'pin_setup_screen.dart';
 import 'register_screen.dart';
@@ -238,13 +239,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _smsSaving = false;
       if (after != null) _sms = after;
     });
-    if (CabinetParser.smsCodeRequested(CabinetParser.lastSmsResponse)) {
-      // ввод кода в приложении сделаем, когда увидим страницу ответа в дампе
-      _snack('Биллинг отправил SMS-код подтверждения. Ввести его пока можно только в кабинете на сайте');
+    if (CabinetParser.smsCodeAsked(CabinetParser.lastSmsResponse)) {
+      final confirmed = await _confirmSmsCode();
+      if (!mounted) return;
+      if (confirmed == null) {
+        _snack('Биллинг отправил SMS-код, но поля для него не прислал. Код можно ввести в кабинете на сайте');
+        return;
+      }
+      setState(() => _sms = confirmed);
+      _snack(confirmed.enabled == value
+          ? (value ? 'SMS перед блокировкой включены' : 'SMS перед блокировкой выключены')
+          : 'Биллинг не принял код. Попробуйте ещё раз');
     } else if (after?.enabled == value) {
       _snack(value ? 'SMS перед блокировкой включены' : 'SMS перед блокировкой выключены');
     } else {
       _snack('Биллинг не принял изменение. Попробуйте позже или в кабинете на сайте');
+    }
+  }
+
+  /// код подтверждения для sms-формы: шторка по полю из ответа биллинга.
+  /// null - поля для кода в ответе нет или ввод отменили
+  Future<SmsSettings?> _confirmSmsCode() async {
+    final form = CabinetParser.smsCodeForm(CabinetParser.lastSmsResponse);
+    if (form == null) return null;
+    final label = form.label.isEmpty ? 'Подтвердить' : form.label[0].toUpperCase() + form.label.substring(1);
+    final code = await showCodeSheet(context,
+        title: 'Код из sms', hint: form.hint ?? 'Биллинг прислал код подтверждения', button: label);
+    if (code == null || code.isEmpty) return null;
+    final token = await AuthStore().appToken;
+    if (token == null) return null;
+    try {
+      return await CabinetParser.submitSmsCode(token, form, code);
+    } catch (e) {
+      debugPrint('код sms-формы: $e');
+      return null;
     }
   }
 
@@ -276,6 +304,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       debugPrint('отвязка приложений: $e');
+    }
+    // отвязка уходит той же формой, что и sms: биллинг шлёт код и ждёт его
+    if (CabinetParser.smsCodeAsked(CabinetParser.lastSmsResponse) && mounted) {
+      after = await _confirmSmsCode() ?? after;
     }
 
     // отвязка могла снять и нашу регистрацию: тогда выходим, как при выходе
@@ -410,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          // 2. аккаунт: номер, с которого вошли, и число привязанных устройств
+          // 2. аккаунт: номер, с которого вошли
           PillGroupCard(
             children: [
               PillTile(
@@ -418,12 +450,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 iconColor: context.p.ink,
                 title: formatRuPhoneFull(_phone),
                 subtitle: 'Номер для входа',
-                trailing: _sms?.linkedApps == null
-                    ? null
-                    : PillChip(
-                        label: '${_sms!.linkedApps} устр.',
-                        color: context.p.inkMute,
-                      ),
               ),
             ],
           ),
@@ -533,9 +559,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.devices_rounded,
                 iconColor: AppColors.neutral,
                 title: 'Привязанные приложения',
+                // биллинг считает не устройства, а входы по sms: переустановил
+                // приложение и вошёл снова - старая привязка остаётся
                 subtitle: _sms?.linkedApps == null
                     ? 'Число привязок не загрузилось'
-                    : 'Сейчас привязано: ${_sms!.linkedApps}',
+                    : 'Привязок: ${_sms!.linkedApps}. Каждый вход по sms добавляет новую',
                 trailing: OutlinedButton(
                   onPressed: _unlinkingApps || _sms == null ? null : _confirmUnlinkApps,
                   style: OutlinedButton.styleFrom(

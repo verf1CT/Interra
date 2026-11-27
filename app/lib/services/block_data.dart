@@ -16,7 +16,10 @@ class BlockAction {
   /// текст формы вокруг кнопки: «для активации услуги нужно … в смс»
   final String? hint;
 
-  const BlockAction({required this.label, this.fields = const {}, this.codeField, this.hint});
+  /// номер формы на странице: кнопки одной формы рисуются вместе, с общим текстом и полем
+  final int form;
+
+  const BlockAction({required this.label, this.fields = const {}, this.codeField, this.hint, this.form = 0});
 
   bool get needsCode => codeField != null;
 }
@@ -44,6 +47,7 @@ List<BlockSection> parseBlockPage(String html) {
   String? warning;
   var actions = <BlockAction>[];
   final buf = StringBuffer();
+  var formNo = 0;
 
   void flushLine() {
     final t = buf.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -82,7 +86,7 @@ List<BlockSection> parseBlockPage(String html) {
     }
     if (tag == 'form') {
       flushLine();
-      actions.addAll(_formActions(n));
+      actions.addAll(_formActions(n, formNo++));
       return;
     }
     if (tag == 'br' || tag == 'hr') {
@@ -104,7 +108,7 @@ List<BlockSection> parseBlockPage(String html) {
   return sections;
 }
 
-List<BlockAction> _formActions(dom.Element form) {
+List<BlockAction> _formActions(dom.Element form, int no) {
   final hidden = <String, String>{
     for (final i in form.querySelectorAll('input[type="hidden"]'))
       if ((i.attributes['name'] ?? '').isNotEmpty) i.attributes['name']!: i.attributes['value'] ?? '',
@@ -123,12 +127,36 @@ List<BlockAction> _formActions(dom.Element form) {
     ...form.querySelectorAll('input[type="submit"]'),
     ...form.querySelectorAll('button'),
   ];
-  // текст формы без кнопок: подсказка рядом с кнопкой
-  final hint = form.nodes
-      .map((n) => n is dom.Element && (n.localName == 'input' || n.localName == 'button') ? ' ' : n.text ?? '')
-      .join(' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
+  // текст формы: биллинг пишет вопрос прямо в форме, рядом с кнопками
+  // («для активации услуги нужно [кнопка] в смс»). кнопку заменяем её
+  // названием в кавычках, поле кода выкидываем - оно рисуется отдельно
+  final hintBuf = StringBuffer();
+  void collect(dom.Node n) {
+    if (n is dom.Text) {
+      hintBuf.write(n.text);
+    } else if (n is dom.Element) {
+      final t = (n.attributes['type'] ?? '').toLowerCase();
+      if (n.localName == 'input' && t == 'submit') {
+        hintBuf.write(' «${(n.attributes['value'] ?? '').trim()}» ');
+      } else if (n.localName == 'button') {
+        hintBuf.write(' «${n.text.trim()}» ');
+      } else if (n.localName == 'br') {
+        hintBuf.write('\n');
+      } else if (n.localName != 'input' && n.localName != 'script') {
+        n.nodes.forEach(collect);
+      }
+    }
+  }
+
+  form.nodes.forEach(collect);
+  // текст, где остались только названия кнопок, ничего не добавляет
+  final hint = hintBuf
+      .toString()
+      .split('\n')
+      .map((l) => l.replaceAll(RegExp(r'\s+'), ' ').trim())
+      .where((l) => l.isNotEmpty && l.replaceAll(RegExp(r'«[^»]*»'), '').trim().isNotEmpty)
+      .join('\n')
+      .replaceAll(RegExp(r'\s+:'), ':');
   return [
     for (final b in buttons)
       BlockAction(
@@ -139,6 +167,7 @@ List<BlockAction> _formActions(dom.Element form) {
         },
         codeField: code,
         hint: hint.isEmpty ? null : hint,
+        form: no,
       ),
   ];
 }

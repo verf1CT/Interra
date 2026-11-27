@@ -51,7 +51,13 @@ class TariffCatalog {
   /// тарифы по id группы
   final Map<String, List<TariffOffer>> offers;
 
-  const TariffCatalog({this.current, this.groups = const [], this.offers = const {}});
+  /// заказанный на следующий период, со страницы договора; null - не заказан
+  final String? next;
+
+  const TariffCatalog({this.current, this.groups = const [], this.offers = const {}, this.next});
+
+  TariffCatalog withNext(String? name) =>
+      TariffCatalog(current: current, groups: groups, offers: offers, next: name);
 }
 
 /// страница подтверждения тарифа (`…&gro=18&pack=3041`): «После окончания

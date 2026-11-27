@@ -84,4 +84,19 @@ void main() {
     expect(tariffOrderAccepted(_groups), false);
     expect(tariffOrderAccepted(null), false);
   });
+
+  test('страница договора: заказанный следующий тариф без «подробнее»', () {
+    const info = '<body><table class="b-account"><tbody>'
+        '<tr><td><b>Электронный счёт</b></td><td>100000</td></tr>'
+        '<tr><td><b>Баланс</b></td><td>8800.00 руб.</td></tr>'
+        '<tr><td><b>Действующий тариф</b></td><td>Месяц 100М</td></tr>'
+        '<tr><td><b>Следующий тариф</b></td><td>Квартал+Неделя 100М &nbsp; <a href="#">подробнее</a></td></tr>'
+        '<tr><td><b>Следующий платёж до</b></td><td>16-12-2026 14:29</td></tr>'
+        '<tr><td><b>Сумма к оплате</b></td><td>3600.00 руб.</td></tr>'
+        '</tbody></table></body>';
+    final d = CabinetParser.parseCabinetHtml(info);
+    expect(d.tariff, 'Месяц 100М');
+    expect(d.nextTariff, 'Квартал+Неделя 100М');
+    expect(d.nextCharge, 3600);
+  });
 }

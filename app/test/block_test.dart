@@ -23,7 +23,19 @@ void main() {
     final sms = s[1].actions.single;
     expect(sms.label, 'получить код родительского контроля');
     expect(sms.fields, {'isms': 'получить код родительского контроля'});
-    expect(sms.hint, 'для активации услуги нужно в смс');
+    expect(sms.hint, 'для активации услуги нужно «получить код родительского контроля» в смс');
+  });
+
+  test('форма после запроса кода: поле smscd и кнопка «Отключить интернет»', () {
+    const page = '<body><td id="aaatds"><h2>Краткосрочная блокировка</h2>Данной блокировкой можно пользоваться сколь угодно часто.<br>'
+        '<form action="" method="post"></form><br><form action="" method="post"><input type="hidden" name="login" value="x"><input type="hidden" name="oper" value="prcn">'
+        '<input type="hidden" name="ctm" value="1795787142"><input class="btn" type="submit" name="idw" value="Отключить интернет">'
+        '<br><br>код родительского контроля из смс: <input type="text" name="smscd" id="smscd" size="5" maxlength="5" value="" required=""></form></td></body>';
+    final a = parseBlockPage(page).single.actions.single;
+    expect(a.label, 'Отключить интернет');
+    expect(a.codeField, 'smscd');
+    expect(a.fields, {'login': 'x', 'oper': 'prcn', 'ctm': '1795787142', 'idw': 'Отключить интернет'});
+    expect(a.hint, 'код родительского контроля из смс:');
   });
 
   test('форма с полем кода: поле находится, кнопка несёт свои поля', () {

@@ -46,6 +46,10 @@ class CabinetData {
   final DateTime? nextPaymentDate;
   final double? nextCharge;
 
+  /// «Следующий тариф» со страницы договора: его биллинг показывает, когда
+  /// абонент заказал смену; null - смена не заказана
+  final String? nextTariff;
+
   CabinetData({
     required this.balance,
     required this.account,
@@ -60,6 +64,7 @@ class CabinetData {
     required this.rawHtml,
     this.nextPaymentDate,
     this.nextCharge,
+    this.nextTariff,
   });
 
   CabinetData copyWith({
@@ -83,6 +88,7 @@ class CabinetData {
         rawHtml: rawHtml,
         nextPaymentDate: nextPaymentDate,
         nextCharge: nextCharge,
+        nextTariff: nextTariff,
       );
 }
 
@@ -407,6 +413,7 @@ class CabinetParser {
     double? foundBalance;
     DateTime? foundNextDate;
     double? foundNextCharge;
+    String? foundNextTariff;
 
     // 1. Приоритетно ищем в таблице .b-account (основная таблица абонента в UTM5)
     final accountTable = doc.querySelector('.b-account');
@@ -484,6 +491,12 @@ class CabinetParser {
                   !val.toLowerCase().contains('вход')) {
                 foundTariff = val;
               }
+            }
+
+            // заказанная смена тарифа: «Квартал+Неделя 100М  подробнее»
+            if (key.contains('следующий тариф')) {
+              final t = val.replaceAll(RegExp(r'\s*подробнее\s*$', caseSensitive: false), '').trim();
+              if (t.isNotEmpty) foundNextTariff ??= t;
             }
 
             // ближайшее списание
@@ -718,6 +731,7 @@ class CabinetParser {
       rawHtml: htmlString,
       nextPaymentDate: foundNextDate,
       nextCharge: foundNextCharge,
+      nextTariff: foundNextTariff,
     );
   }
 
@@ -1215,6 +1229,26 @@ class CabinetParser {
     return fetchSmsSettings(appToken);
   }
 
+  /// форма для кода подтверждения в ответе на sms-форму: после «внести
+  /// изменения» биллинг шлёт одноразовый код и ждёт его. null - поля для кода нет
+  static BlockAction? smsCodeForm(String? html) => html == null
+      ? null
+      : parseBlockPage(html)
+          .expand((s) => s.actions)
+          // поле номера телефона в обычной форме - не код
+          .where((a) => a.needsCode && a.codeField != 'phone')
+          .firstOrNull;
+
+  /// после отправки sms-формы биллинг ждёт код: есть поле для него или текст про код
+  static bool smsCodeAsked(String? html) => smsCodeForm(html) != null || smsCodeRequested(html);
+
+  /// отправляет код в форму из ответа и перечитывает настройки
+  static Future<SmsSettings?> submitSmsCode(String appToken, BlockAction form, String code) async {
+    lastSmsResponse = await _fetchSection(appToken, 'aaasmssvc', 'smssvc',
+        form: {...form.fields, form.codeField!: code}, authInBody: false);
+    return fetchSmsSettings(appToken);
+  }
+
   /// страницы пакетов Premium TV и IPTV выбранного договора. ни одна не
   /// открылась - бросаем ошибку, чтобы экран показал «повторить»
   static Future<TvInfo> fetchTv(String appToken) async {
@@ -1274,7 +1308,13 @@ class CabinetParser {
           if (h != null) offers[g.id] = parseTariffOffers(h);
         }),
     ]);
-    return TariffCatalog(current: parseCurrentTariff(main), groups: groups, offers: offers);
+    // заказанную смену страница тарифов не показывает, только страница договора
+    final info = _navInfoHtml;
+    String? next;
+    try {
+      next = info == null ? null : parseCabinetHtml(info).nextTariff;
+    } catch (_) {}
+    return TariffCatalog(current: parseCurrentTariff(main), groups: groups, offers: offers, next: next);
   }
 
   static String _offerQuery(TariffOffer o) {
