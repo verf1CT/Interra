@@ -151,7 +151,8 @@ class _PremiumTvScreenState extends State<PremiumTvScreen> {
               ]),
             ),
             const SizedBox(height: 6),
-            _hint('На Smart TV смотреть можно без приставки'),
+            // так пишет биллинг на странице IPTV
+            _hint('Для телевизора нужна IPTV-приставка из центра обслуживания, на Smart TV можно без неё'),
           ],
         ],
       ),
