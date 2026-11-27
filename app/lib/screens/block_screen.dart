@@ -217,8 +217,7 @@ class _BlockScreenState extends State<BlockScreen> {
             if (group.first.hint != null) ...[
               const SizedBox(height: 12),
               // биллинг пишет ошибку кода в той же форме: её выделяем
-              for (final line in group.first.hint!.split('
-'))
+              for (final line in group.first.hint!.split('\n'))
                 Text(_cap(line),
                     style: TextStyle(
                         fontSize: 14,
