@@ -111,14 +111,6 @@ void main() {
             () => Future<void>.delayed(const Duration(milliseconds: 300)));
         await tester.pump();
         await snap(tester, key, '${e.value}_$tag');
-        if (e.key == 'ТВ') {
-          // раскрываем второй пакет: проверяем чипы каналов и свёрнутое превью
-          await tester.tap(find.text('Кино и сериалы'));
-          for (var i = 0; i < 20; i++) {
-            await tester.pump(const Duration(milliseconds: 50));
-          }
-          await snap(tester, key, '3_tv_expanded_$tag');
-        }
       }
       await tester.pumpWidget(const SizedBox());
     });
