@@ -82,11 +82,12 @@ TariffOrderPage? parseTariffOrderPage(String html) {
   return TariffOrderPage(switchAt: m == null ? null : parseBillingDate(m.group(1)!), form: fields);
 }
 
-/// биллинг принял выбор: в ответе нет той же формы подтверждения и нет ошибки
+/// биллинг принял выбор: «операция выбора тарифа прошла успешно, следить за
+/// выполнением операций можно на вкладке Основная информация»
 bool tariffOrderAccepted(String? html) {
-  if (html == null || html.trim().isEmpty) return false;
-  final low = html.toLowerCase();
-  return !low.contains('вы собираетесь переключиться') && !low.contains('ошибк');
+  if (html == null) return false;
+  return RegExp(r'выбора\s+тарифа\s+прошла\s+успешно', caseSensitive: false)
+      .hasMatch(parser.parse(html).body?.text ?? '');
 }
 
 List<TariffGroup> parseTariffGroups(String html) {

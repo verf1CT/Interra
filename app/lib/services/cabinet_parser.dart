@@ -961,6 +961,8 @@ class CabinetParser {
       try {
         final html = await raw(info);
         _captureNavToken(html);
+        // здесь же биллинг показывает заказанные операции, например следующий тариф
+        if (i == 0) await add('основная информация, договор 1', () async => html);
         out.writeln('\nдоговор $n, oper=info: ${_looksLoggedOut(html) ? 'форма входа' : 'открылся'}, '
             'токен раздела: ${_navToken != null ? 'есть' : 'нет'}');
       } catch (e) {

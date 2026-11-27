@@ -75,9 +75,13 @@ void main() {
     expect(parseTariffOrderPage(_group18), isNull);
   });
 
-  test('заказ принят, только если формы подтверждения больше нет', () {
+  test('заказ принят, только когда биллинг написал об успехе', () {
+    const reply = '<body><td id="aaatds"><font>Действующий тариф: <span><b>Месяц 100М</b></span></font><br>'
+        '<br>операция выбора тарифа прошла успешно,<br>следить за выполнением операций можно на вкладке '
+        '<a href="aaainfo?login=x&amp;oper=info"><font size="+0">Основная информация</font></a></td></body>';
+    expect(tariffOrderAccepted(reply), true);
     expect(tariffOrderAccepted(_order), false);
+    expect(tariffOrderAccepted(_groups), false);
     expect(tariffOrderAccepted(null), false);
-    expect(tariffOrderAccepted(_groups), true);
   });
 }
