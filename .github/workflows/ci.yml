@@ -6,8 +6,30 @@ on:
   pull_request:
 
 jobs:
+  # что поменялось в пуше: правка README или сервера не должна гонять сборки приложения
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      server: ${{ steps.filter.outputs.server }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'app/**'
+              - '.github/workflows/**'
+            server:
+              - 'server/**'
+              - '.github/workflows/**'
+
   test-flutter:
     name: Analyze & test (Flutter)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,6 +63,8 @@ jobs:
 
   test-node:
     name: Test (Node.js)
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -124,9 +148,12 @@ jobs:
             app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
+  # не ждёт тестов, чтобы ipa была раньше. релиз всё равно не выйдет при
+  # упавших тестах: его ждёт android-build, а тот зависит от test-flutter
   ios-build:
     name: Build iOS IPA (release)
-    needs: test-flutter
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: macos-latest
     defaults:
       run:
@@ -142,6 +169,15 @@ jobs:
 
       - name: Pub get
         run: flutter pub get
+
+      # поды и их загрузки между прогонами: ключ по версиям подов и плагинов
+      - uses: actions/cache@v4
+        with:
+          path: |
+            app/ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ hashFiles('app/ios/Podfile.lock', 'app/pubspec.lock') }}
+          restore-keys: pods-${{ runner.os }}-
 
       - name: Build iOS unsigned IPA
         run: |
