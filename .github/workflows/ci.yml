@@ -170,14 +170,15 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # поды и их загрузки между прогонами: ключ по версиям подов и плагинов
+      # плагины собираются через Swift Package Manager: без кэша Xcode каждый
+      # раз почти две минуты качает пакеты, в основном firebase-ios-sdk
       - uses: actions/cache@v4
         with:
           path: |
-            app/ios/Pods
-            ~/Library/Caches/CocoaPods
-          key: pods-${{ runner.os }}-${{ hashFiles('app/ios/Podfile.lock', 'app/pubspec.lock') }}
-          restore-keys: pods-${{ runner.os }}-
+            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+          restore-keys: spm-${{ runner.os }}-
 
       - name: Build iOS unsigned IPA
         run: |
