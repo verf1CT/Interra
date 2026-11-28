@@ -241,5 +241,7 @@ jobs:
             Автосборка из коммита ${{ github.sha }}.
             Включает сборки для Android (APK, AAB) и iOS (IPA для установки через AltStore/Sideloadly).
           prerelease: true
-          files: release-assets/*
+          # артефакт android раскладывается по подпапкам flutter-apk/ и bundle/release/,
+          # одиночная звёздочка их не видит, и в релиз попадал только ipa
+          files: release-assets/**/*
           fail_on_unmatched_files: true
