@@ -54,12 +54,26 @@ void main() {
     DemoMode.isEnabled.value = true;
   });
 
+  // SHOTS_STORE=ios - 1290x2796 (App Store 6.9"), android - 1080x2160 (Google Play
+  // и RuStore не берут кадр длиннее 2:1), без переменной - обычный айфон для ревью
+  final (logical, dpr) = switch (Platform.environment['SHOTS_STORE']) {
+    'ios' => (const Size(430, 932), 3.0),
+    'android' => (const Size(400, 800), 2.7),
+    _ => (const Size(393, 852), 2.0),
+  };
+
+  void setView(WidgetTester tester) {
+    tester.view.physicalSize = logical * dpr;
+    tester.view.devicePixelRatio = dpr;
+    addTearDown(tester.view.reset);
+  }
+
   Future<void> snap(WidgetTester tester, GlobalKey key, String name) async {
     await tester.pump(const Duration(milliseconds: 1500));
     await tester.runAsync(() async {
       final boundary =
           key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 2);
+      final image = await boundary.toImage(pixelRatio: dpr);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       await File('$outDir/$name.png').writeAsBytes(data!.buffer.asUint8List());
     });
@@ -85,9 +99,7 @@ void main() {
     final tag = b == Brightness.dark ? 'dark' : 'light';
 
     testWidgets('cabinet tabs $tag', (tester) async {
-      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
-      tester.view.devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
+      setView(tester);
 
       final key = await open(tester, b, const CabinetScreen());
       await snap(tester, key, '1_home_$tag');
@@ -120,9 +132,7 @@ void main() {
     });
 
     testWidgets('tariffs $tag', (tester) async {
-      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
-      tester.view.devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
+      setView(tester);
 
       final key = await open(tester, b, const TariffsScreen());
       await snap(tester, key, '6_tariffs_$tag');
@@ -135,9 +145,7 @@ void main() {
     });
 
     testWidgets('block $tag', (tester) async {
-      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
-      tester.view.devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
+      setView(tester);
 
       final key = await open(tester, b, const BlockScreen());
       await snap(tester, key, '7_block_$tag');
@@ -145,9 +153,7 @@ void main() {
     });
 
     testWidgets('payment $tag', (tester) async {
-      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
-      tester.view.devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
+      setView(tester);
       Future<void> frames() async {
         for (var i = 0; i < 20; i++) {
           await tester.pump(const Duration(milliseconds: 50));
@@ -169,8 +175,6 @@ void main() {
           ));
       await tester.tap(find.text('open'));
       await frames();
-      await snap(tester, key, '8_pay_copied_$tag');
-      await tester.pump(const Duration(seconds: 3));
       await snap(tester, key, '8_pay_$tag');
       await tester.tap(find.text('Банковская карта, SberPay, T-Pay, СБП'));
       await frames();
@@ -181,9 +185,7 @@ void main() {
     });
 
     testWidgets('settings $tag', (tester) async {
-      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
-      tester.view.devicePixelRatio = 2;
-      addTearDown(tester.view.reset);
+      setView(tester);
 
       final key = await open(tester, b, const SettingsScreen());
       await snap(tester, key, '5_settings_$tag');
