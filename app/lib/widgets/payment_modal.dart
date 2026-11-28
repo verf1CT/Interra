@@ -60,9 +60,6 @@ class _PaymentModalState extends State<PaymentModal> {
   void initState() {
     super.initState();
     _amount.addListener(() => setState(() => _payError = null));
-    if (_hasAccount) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _copyAccount(haptic: false));
-    }
   }
 
   @override
@@ -73,10 +70,10 @@ class _PaymentModalState extends State<PaymentModal> {
     super.dispose();
   }
 
-  void _copyAccount({bool haptic = true}) {
+  void _copyAccount() {
     if (!_hasAccount || !mounted) return;
     Clipboard.setData(ClipboardData(text: widget.account));
-    if (haptic) HapticFeedback.lightImpact();
+    HapticFeedback.lightImpact();
     setState(() => _copied = true);
     _copiedTimer?.cancel();
     _copiedTimer = Timer(const Duration(milliseconds: 2200), () {
@@ -177,7 +174,11 @@ class _PaymentModalState extends State<PaymentModal> {
                 _methodButton(
                   title: 'Сбербанк Онл@йн',
                   subtitle: '(обязательно выбирайте регион: Свердловская область)',
-                  onTap: () => _launch('https://online.sberbank.ru/'),
+                  // в Сбербанке счёт вводят руками, поэтому копируем его по нажатию
+                  onTap: () {
+                    _copyAccount();
+                    _launch('https://online.sberbank.ru/');
+                  },
                 ),
               ],
             ),
