@@ -16,7 +16,6 @@ import 'package:lk_interra/screens/cabinet_screen.dart';
 import 'package:lk_interra/screens/settings_screen.dart';
 import 'package:lk_interra/screens/tariffs_screen.dart';
 import 'package:lk_interra/screens/block_screen.dart';
-import 'package:lk_interra/widgets/payment_modal.dart';
 
 Future<void> _loadFont(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -111,13 +110,7 @@ void main() {
         }
       }
 
-      await tester.tap(find.text('Лицевой счёт 123456'));
-      await frames();
-      await snap(tester, key, '1_accounts_$tag');
-      await tester.tap(find.text('Иванов И.И. (Дача)'));
-      await frames();
-      await snap(tester, key, '1_home_restricted_$tag');
-
+      // вкладки снимаем на основном договоре, до переключения на должника
       const tabs = {'Услуги': '2_services', 'ТВ': '3_tv', 'История': '4_history'};
       for (final e in tabs.entries) {
         final finder = find.text(e.key);
@@ -128,6 +121,15 @@ void main() {
         await tester.pump();
         await snap(tester, key, '${e.value}_$tag');
       }
+      await tester.tap(find.text('Главная').last);
+      await frames();
+
+      await tester.tap(find.text('Лицевой счёт 123456'));
+      await frames();
+      await snap(tester, key, '1_accounts_$tag');
+      await tester.tap(find.text('Иванов И.И. (Дача)'));
+      await frames();
+      await snap(tester, key, '1_home_restricted_$tag');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -136,7 +138,7 @@ void main() {
 
       final key = await open(tester, b, const TariffsScreen());
       await snap(tester, key, '6_tariffs_$tag');
-      await tester.tap(find.text('Комфорт 200 на год'));
+      await tester.tap(find.text('Год+Квартал 100М'));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
@@ -160,25 +162,14 @@ void main() {
         }
       }
 
-      final key = await open(
-          tester,
-          b,
-          Builder(
-            builder: (c) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => PaymentModal.show(c, account: '123456'),
-                  child: const Text('open'),
-                ),
-              ),
-            ),
-          ));
-      await tester.tap(find.text('open'));
+      // шторка поверх главной, как её видит абонент
+      final key = await open(tester, b, const CabinetScreen());
+      await tester.tap(find.text('Пополнить'));
       await frames();
       await snap(tester, key, '8_pay_$tag');
       await tester.tap(find.text('Банковская карта, SberPay, T-Pay, СБП'));
       await frames();
-      await tester.enterText(find.byType(TextField), '1500');
+      await tester.enterText(find.byType(TextField), '1200');
       await frames();
       await snap(tester, key, '8_pay_amount_$tag');
       await tester.pumpWidget(const SizedBox());

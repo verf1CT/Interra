@@ -34,16 +34,15 @@ void main() {
       expect(data.balance, 1250.0);
       expect(data.account, '123456');
       expect(data.fullName, 'Иванов Иван Иванович');
-      expect(data.tariff, 'Комфорт 200');
+      expect(data.tariff, 'Месяц 100М');
       expect(data.needsPassportData, false);
       expect(data.address.isNotEmpty, true);
     });
 
-    test('demoServices contains active tariff, TV and intercom', () {
+    test('demoServices - только действующий тариф, как отдаёт биллинг', () {
       final services = DemoMode.demoServices;
-      expect(services.length, 3);
-      expect(services[0].name.contains('Комфорт 200'), true);
-      expect(services[0].status, 'Активен');
+      expect(services.single.name, 'Месяц 100М');
+      expect(services.single.cost, endsWith('/ мес'));
     });
 
     test('demoPayments contains clean positive and negative balance operations', () {

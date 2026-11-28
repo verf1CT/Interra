@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'balance_store.dart';
 import 'cabinet_parser.dart';
 
 /// Сервис демонстрационного режима для красивых скриншотов в App Store и Google Play.
@@ -40,7 +41,7 @@ class DemoMode {
         balance: 1250.00,
         account: '123456',
         fullName: 'Иванов Иван Иванович',
-        tariff: 'Комфорт 200',
+        tariff: 'Месяц 100М',
         address: 'г. Первоуральск, пр. Ильича, д. 15, кв. 42',
         login: '123456',
         needsPassportData: false,
@@ -60,14 +61,15 @@ class DemoMode {
           ),
         ],
         rawHtml: '',
-        nextPaymentDate: DateTime(DateTime.now().year, DateTime.now().month + 1, 1),
-        nextCharge: 750,
+        nextPaymentDate: DateTime.now().add(const Duration(days: 18)),
+        nextCharge: 1200,
       );
 
+  // тарифы и описания - как на настоящей странице aaatarif
   static TariffCatalog get demoTariffs => const TariffCatalog(
-        current: 'Комфорт 200',
+        current: 'Месяц 100М',
         groups: [
-          TariffGroup(id: '1', name: '200 мегабит'),
+          TariffGroup(id: '18', name: '100 мегабит'),
           TariffGroup(
             id: '0',
             name: 'Нет тарифа',
@@ -75,22 +77,47 @@ class DemoMode {
           ),
         ],
         offers: {
-          '1': [
+          '18': [
             TariffOffer(
-              name: 'Комфорт 200',
-              price: 750,
+              name: 'Месяц 100М',
+              price: 1200,
               days: 30,
-              details: ['Скорость доступа - до 200 Мбит/сек'],
+              details: ['Скорость доступа - до 100 Мбит/сек'],
             ),
             TariffOffer(
-              name: 'Комфорт 200 на год',
-              price: 7500,
-              days: 365,
-              perMonth: 625,
+              name: 'Квартал+Неделя 100М',
+              price: 3600,
+              days: 98,
+              perMonth: 1114,
               details: [
-                'Стоимость в перерасчёте на месяц - 625 рублей',
-                'Экономия - 1500 руб.',
-                'Скорость доступа - до 200 Мбит/сек',
+                'В подарок - одна неделя бесплатно',
+                'Стоимость в перерасчёте на месяц - 1114 рублей',
+                'Экономия - 276 руб.',
+                'Скорость доступа - до 100 Мбит/сек',
+              ],
+            ),
+            TariffOffer(
+              name: 'Полгода+Месяц 100М',
+              price: 7200,
+              days: 212,
+              perMonth: 1029,
+              details: [
+                'В подарок - один месяц бесплатно',
+                'Стоимость в перерасчёте на месяц - 1029 рублей',
+                'Экономия - 1200 руб.',
+                'Скорость доступа - до 100 Мбит/сек',
+              ],
+            ),
+            TariffOffer(
+              name: 'Год+Квартал 100М',
+              price: 14400,
+              days: 456,
+              perMonth: 960,
+              details: [
+                'В подарок - один квартал бесплатно',
+                'Стоимость в перерасчёте на месяц - 960 рублей',
+                'Экономия - 3600 руб.',
+                'Скорость доступа - до 100 Мбит/сек',
               ],
             ),
           ],
@@ -114,66 +141,18 @@ class DemoMode {
         ],
       );
 
+  // биллинг отдаёт в услугах только действующий тариф, цена - из суммы к оплате
   static List<ServiceItem> get demoServices => [
-        ServiceItem(
-          name: 'Комфорт 200 (Безлимитный интернет 200 Мбит/с)',
-          cost: '750 ₽ / мес',
-          status: 'Активен',
-        ),
-        ServiceItem(
-          name: 'Интерактивное ТВ «Базовое» (150+ телеканалов)',
-          cost: 'Включено',
-          status: 'Активно',
-        ),
-        ServiceItem(
-          name: 'Умный домофон Интерра (видеокамера и архив)',
-          cost: 'Включено',
-          status: 'Активно',
-        ),
+        ServiceItem(name: 'Месяц 100М', cost: '${BalanceStore.format(1200)} / мес', status: ''),
       ];
 
+  // операции как в отчёте aaaotch: «оплата» и «активация услуги» с тарифом в комментарии
   static List<PaymentItem> get demoPayments => [
-        PaymentItem(
-          date: '04.11.2026 14:22',
-          amount: 750.0,
-          operation: 'СБП (Система быстрых платежей)',
-          comment: 'Зачислено моментально',
-          operator: 'СБП',
-        ),
-        PaymentItem(
-          date: '01.11.2026 00:00',
-          amount: -750.0,
-          operation: 'Абонентская плата (Комфорт 200)',
-          comment: 'Списание за ноябрь',
-          operator: 'SYSTEM',
-        ),
-        PaymentItem(
-          date: '25.10.2026 19:10',
-          amount: 750.0,
-          operation: 'Банковская карта (SberPay)',
-          comment: 'Автоплатёж',
-          operator: 'СберБанк',
-        ),
-        PaymentItem(
-          date: '01.10.2026 00:00',
-          amount: -750.0,
-          operation: 'Абонентская плата (Комфорт 200)',
-          comment: 'Списание за октябрь',
-          operator: 'SYSTEM',
-        ),
-        PaymentItem(
-          date: '20.09.2026 11:45',
-          amount: 1000.0,
-          operation: 'Система быстрых платежей',
-          comment: 'Пополнение счёта',
-          operator: 'СБП',
-        ),
-        PaymentItem(
-          date: '01.09.2026 00:00',
-          amount: -750.0,
-          operation: 'Абонентская плата (Комфорт 200)',
-          comment: 'Списание за сентябрь',
-          operator: 'SYSTEM',
-        ),
+        PaymentItem(date: '16-11-2026 00:03', amount: -1200.0, operation: 'активация услуги', comment: 'Месяц 100М'),
+        PaymentItem(date: '15-11-2026 19:42', amount: 1200.0, operation: 'оплата', comment: ''),
+        PaymentItem(date: '17-10-2026 00:02', amount: -1200.0, operation: 'активация услуги', comment: 'Месяц 100М'),
+        PaymentItem(date: '14-10-2026 12:10', amount: 1500.0, operation: 'оплата', comment: ''),
+        PaymentItem(date: '17-09-2026 00:04', amount: -1200.0, operation: 'активация услуги', comment: 'Месяц 100М'),
+        PaymentItem(date: '16-09-2026 21:35', amount: 1200.0, operation: 'оплата', comment: ''),
       ];
 }

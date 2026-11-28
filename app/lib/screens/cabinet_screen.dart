@@ -276,11 +276,11 @@ class _CabinetScreenState extends State<CabinetScreen> with WidgetsBindingObserv
           balance: acc.accountId == '654321' ? -150.00 : 1250.00,
           account: acc.accountId,
           fullName: acc.name,
-          tariff: acc.accountId == '654321' ? 'Дачный 50' : 'Комфорт 200',
+          tariff: 'Месяц 100М',
           address: acc.address,
           login: acc.accountId,
           isRestricted: acc.accountId == '654321',
-          recommendedPayment: acc.accountId == '654321' ? '160 ₽' : null,
+          recommendedPayment: acc.accountId == '654321' ? '1 350 ₽' : null,
           accounts: _data!.accounts,
           rawHtml: '',
         );
