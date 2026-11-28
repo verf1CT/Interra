@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../services/auth_store.dart';
 import '../services/cabinet_parser.dart';
 import '../services/demo_mode.dart';
@@ -213,7 +215,7 @@ class _BlockScreenState extends State<BlockScreen> {
             Text(s.warning!,
                 style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.danger, height: 1.4)),
           ],
-          for (final group in _forms(_withResend(s.actions))) ...[
+          for (final group in _forms(s.actions)) ...[
             if (group.first.hint != null) ...[
               const SizedBox(height: 12),
               // биллинг пишет ошибку кода в той же форме: её выделяем
@@ -254,28 +256,35 @@ class _BlockScreenState extends State<BlockScreen> {
               ),
             ],
           ],
+          if (_codeLocked(s.actions)) ...[
+            const SizedBox(height: 14),
+            Text(
+              'Код приходит одной sms, повторно биллинг его не присылает. Интернет при этом работает как обычно. '
+              'Если sms потерялась, код сбросят в поддержке',
+              style: TextStyle(fontSize: 13, color: p.inkMute, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 48,
+              child: TextButton.icon(
+                onPressed: () => launchUrl(Uri(scheme: 'tel', path: AppConfig.supportPhone),
+                    mode: LaunchMode.externalApplication),
+                icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                label: const Text('Позвонить: ${AppConfig.supportPhoneHuman}'),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// пока код родительского контроля не введён, биллинг держит форму кода и
-/// убирает кнопку «получить код». потерял sms - выхода нет, поэтому шлём тот
-/// же запрос, что и та кнопка: если биллинг его примет, придёт новая sms
-List<BlockAction> _withResend(List<BlockAction> actions) {
-  final waitsCode = actions.any((a) => a.needsCode);
-  final canRequest = actions.any((a) => a.fields.containsKey('isms'));
-  if (!waitsCode || canRequest) return actions;
-  return [
-    ...actions,
-    const BlockAction(
-      label: 'прислать код ещё раз',
-      fields: {'isms': 'получить код родительского контроля'},
-      form: -1,
-    ),
-  ];
-}
+/// после первой sms биллинг держит форму кода и убирает кнопку «получить код»,
+/// а повторный запрос молча игнорирует (проверено дампом). потерянный код
+/// сбрасывает только поддержка
+bool _codeLocked(List<BlockAction> actions) =>
+    actions.any((a) => a.needsCode) && !actions.any((a) => a.fields.containsKey('isms'));
 
 /// кнопки по формам, в порядке страницы
 List<List<BlockAction>> _forms(List<BlockAction> actions) {
