@@ -27,15 +27,21 @@ class SitePay {
         Uri.parse(_endpoint),
         body: {'epay': account, 'amount': '$amount'},
       ).timeout(const Duration(seconds: 15));
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      if (res.statusCode == 200 && data is Map && data['form_url'] is String) {
-        final url = data['form_url'] as String;
-        if (url.startsWith('https://')) return PayLink(url: url);
-      }
-      return PayLink(error: parseError(data));
+      return parseResponse(res.statusCode, jsonDecode(utf8.decode(res.bodyBytes)));
     } catch (_) {
       return const PayLink();
     }
+  }
+
+  /// сайт берёт form_url при любом успешном статусе (сейчас отвечает не 200),
+  /// поэтому проверяем 2xx, иначе ссылка банка уходила в текст ошибки
+  static PayLink parseResponse(int status, Object? data) {
+    // успех без ссылки - пусть откроется форма сайта, а не ошибка
+    if (status >= 200 && status < 300) {
+      final url = data is Map ? data['form_url'] : null;
+      return url is String && url.startsWith('https://') ? PayLink(url: url) : const PayLink();
+    }
+    return PayLink(error: parseError(data));
   }
 
   /// {"epay": ["..."], "amount": ["..."], "detail": "..."} -> одна строка

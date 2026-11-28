@@ -89,6 +89,16 @@ void main() {
     expect(SitePay.fallbackUrl('276997'), 'https://interra.ru/sberbank/?epay=276997');
   });
 
+  test('ссылка банка берётся при любом 2xx, а не уходит в ошибку', () {
+    const url = 'https://yoomoney.ru/checkout/payments/v2/contract?orderId=x';
+    expect(SitePay.parseResponse(201, {'form_url': url}).url, url);
+    expect(SitePay.parseResponse(201, {'form_url': url}).error, isNull);
+    expect(SitePay.parseResponse(200, {'form_url': url}).url, url);
+    expect(SitePay.parseResponse(200, {}).url, isNull);
+    expect(SitePay.parseResponse(200, {}).error, isNull);
+    expect(SitePay.parseResponse(400, {'amount': ['Сумма неверна']}).error, 'Сумма неверна');
+  });
+
   test('ответ sms-формы: обычная страница - не запрос кода', () {
     expect(CabinetParser.smsCodeRequested(_sms), isFalse);
     expect(CabinetParser.smsCodeRequested('<body>Введите код из SMS</body>'), isTrue);

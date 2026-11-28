@@ -16,6 +16,7 @@ import 'package:lk_interra/screens/cabinet_screen.dart';
 import 'package:lk_interra/screens/settings_screen.dart';
 import 'package:lk_interra/screens/tariffs_screen.dart';
 import 'package:lk_interra/screens/block_screen.dart';
+import 'package:lk_interra/widgets/payment_modal.dart';
 
 Future<void> _loadFont(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -140,6 +141,42 @@ void main() {
 
       final key = await open(tester, b, const BlockScreen());
       await snap(tester, key, '7_block_$tag');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('payment $tag', (tester) async {
+      tester.view.physicalSize = const Size(393 * 2, 852 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      Future<void> frames() async {
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+      }
+
+      final key = await open(
+          tester,
+          b,
+          Builder(
+            builder: (c) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => PaymentModal.show(c, account: '123456'),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ));
+      await tester.tap(find.text('open'));
+      await frames();
+      await snap(tester, key, '8_pay_copied_$tag');
+      await tester.pump(const Duration(seconds: 3));
+      await snap(tester, key, '8_pay_$tag');
+      await tester.tap(find.text('Банковская карта, SberPay, T-Pay, СБП'));
+      await frames();
+      await tester.enterText(find.byType(TextField), '1500');
+      await frames();
+      await snap(tester, key, '8_pay_amount_$tag');
       await tester.pumpWidget(const SizedBox());
     });
 
